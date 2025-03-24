@@ -8,11 +8,11 @@ const patientBPValidationSchema = Joi.object({
       "string.pattern.base": "Invalid patient ID format!",
       "any.required": "Patient is required!",
     }),
-  sysGoal: Joi.number().required().messages({
+  sysGoal: Joi.number().messages({
     "number.base": "Systolic pressure (sys) must be a number!",
     "any.required": "Systolic pressure (sys) is required!",
   }),
-  diaGoal: Joi.number().required().messages({
+  diaGoal: Joi.number().messages({
     "number.base": "Diastolic pressure (dia) must be a number!",
     "any.required": "Diastolic pressure (dia) is required!",
   }),
