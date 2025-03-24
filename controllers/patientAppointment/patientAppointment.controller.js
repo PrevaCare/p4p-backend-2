@@ -248,9 +248,9 @@ const createNewPatientAppointment2 = async (req, res) => {
         paymentLinkResponse = await razorpayInstance.paymentLink.create({
           amount: existingDoctor.consultationFees * 100, // Convert to paise
           currency: "INR",
-          description: Make payment to book your appointment with Dr. ${existingDoctor.firstName} ${existingDoctor.lastName},
+          description: `Make payment to book your appointment with Dr. ${existingDoctor.firstName} ${existingDoctor.lastName}`,
           customer: {
-            name: ${existingUser.firstName} ${existingUser.lastName},
+            name: `${existingUser.firstName} ${existingUser.lastName}`,
             email: existingUser.email,
             contact: existingUser.phone,
           },
@@ -273,7 +273,7 @@ const createNewPatientAppointment2 = async (req, res) => {
         paymentLinkResponse = await razorpayInstance.orders.create({
           amount: existingDoctor.consultationFees * 100, // Convert to paise
           currency: "INR",
-          receipt: receipt_${req.body.patientId},
+          receipt: `receipt_${req.body.patientId}`,
         });
 
         // Save payment details
@@ -401,7 +401,7 @@ const cancelAndRefundAppointment = async (req, res) => {
         res,
         400,
         AppConstant.FAILED,
-        Appointment is already ${appointment.status}!
+        `Appointment is already ${appointment.status}!`
       );
     }
 
@@ -411,7 +411,7 @@ const cancelAndRefundAppointment = async (req, res) => {
     );
     const startTime = appointment.startTime;
     const appointmentStartDateTime = dayjs(
-      ${appointmentDate} ${startTime},
+      `${appointmentDate} ${startTime}`,
       "YYYY-MM-DD HH:mm"
     );
     const timeDiff = appointmentStartDateTime.diff(dayjs(), "hour", true);
@@ -502,16 +502,19 @@ const cancelAndRefundAppointment = async (req, res) => {
       .session(session);
 
     // Create notifications for each Superadmin
-    const patientObj = appointment.patientId.toObject ? appointment.patientId.toObject() : appointment.patientId;
-    const doctorObj = appointment.doctorId.toObject ? appointment.doctorId.toObject() : appointment.doctorId;
+    const patientObj = appointment.patientId.toObject
+      ? appointment.patientId.toObject()
+      : appointment.patientId;
+    const doctorObj = appointment.doctorId.toObject
+      ? appointment.doctorId.toObject()
+      : appointment.doctorId;
 
-    
     const notifications = existingSuperadmins.map((superadmin) =>
       appointmentCancellationTemplate(
         superadmin._id,
-        ${patientObj.firstName} ${patientObj.lastName},
+        `${patientObj.firstName} ${patientObj.lastName}`,
         patientObj.phone,
-        ${doctorObj.firstName} ${doctorObj.lastName},
+        `${doctorObj.firstName} ${doctorObj.lastName}`,
         doctorObj.phone,
         role,
         cancellationReason
@@ -548,7 +551,8 @@ const cancelAndRefundAppointment = async (req, res) => {
         // refundResponse,
       },
       200,
-      `Appointment cancelled ${paymentRecord && "and refund initiated"
+      `Appointment cancelled ${
+        paymentRecord && "and refund initiated"
       } successfully!   `
     );
   } catch (err) {
