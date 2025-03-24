@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Id": "Policy1234567890",
+  "Statement": [
+    {
+      "Sid": "AllowGetRequestsFromSpecificDomain",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::p4phealthcareprofileimg/*",
+      "Condition": {
+        "StringLike": {
+          "aws:Referer": "https://p4phealthcare.com/*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowGetRequestsFromLocalIP",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::p4phealthcareprofileimg/*",
+      "Condition": {
+        "IpAddress": {
+          "aws:SourceIp": "152.58.189.85"
+        }
+      }
+    }
+  ]
+}
