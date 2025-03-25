@@ -405,7 +405,7 @@ const register = async (req, res) => {
         break;
 
       case "IndividualUser":
-        // console.log("individual user hitted");
+        console.log("individual user hitted");
         // verify the request source mobile or web
         const clientType = req.headers["x-client-type"];
         if (!clientType || !["web", "mobile"].includes(clientType)) {

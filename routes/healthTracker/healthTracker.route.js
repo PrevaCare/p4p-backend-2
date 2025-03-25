@@ -103,14 +103,14 @@ router.post(
 
 router.post(
   "/app/healthtracker/patient-blood-glucose-goal",
-  // verifyToken,
+  verifyToken,
   verifyAndAuthoriseToken,
 
   createPatienBloodGlucoseGoal
 );
 router.post(
   "/app/healthtracker/patient-blood-glucose-goals",
-  // verifyToken,
+  verifyToken,
   verifyAndAuthoriseToken,
 
   getCurrentPatienBloodGlucoseGoalByPatientId

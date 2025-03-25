@@ -28,7 +28,7 @@ const router = require("express").Router();
 // <========= coronary heart calc =========>
 router.post(
   "/admin/patient/coronaryheart-diseases",
-  // verifyToken,
+  verifyToken,
   //   checkPermissions("CREATE", "Superadmin"),
   createCoronaryHeartDisease
 );
@@ -74,13 +74,13 @@ router.post(
 // <========= liver risk calc =========>
 router.post(
   "/admin/patient/liver-risk-calc",
-  // verifyToken,
+  verifyToken,
   //   checkPermissions("CREATE", "Superadmin"),
   createLiverRiskCalculator
 );
 router.post(
   "/admin/patient/liver-risk-calcs",
-  // verifyToken,
+  verifyToken,
   //   checkPermissions("CREATE", "Superadmin"),
   getAllLiverRiskCalculator
 );

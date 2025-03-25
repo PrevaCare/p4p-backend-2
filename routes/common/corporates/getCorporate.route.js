@@ -79,7 +79,7 @@ router.get(
 );
 
 // app
-router.post(
+router.get(
   "/app/patient/assigned-doctors",
   verifyToken,
   // checkPermissions("READ", "Corporate"), // login user should have permission related to
@@ -87,7 +87,7 @@ router.post(
 );
 router.post(
   "/app/employee/corporate-info",
-  // verifyToken,
+  verifyToken,
   // checkPermissions("READ", "Corporate"), // login user should have permission related to
   getCorrporateInfoByEmployeeId
 );
@@ -112,13 +112,13 @@ router.post(
 // );
 router.post(
   "/app/patient/latest-health-data",
-  // verifyToken,
+  verifyToken,
   // checkPermissions("READ", "Employee"),
   healthTrackerController.getLatestHealthData
 );
 router.post(
   "/app/patient/health-scores",
-  // verifyToken,
+  verifyToken,
   // checkPermissions("READ", "Employee"),
   healthTrackerController.getHealthScoreByPatientId
 );

@@ -58,7 +58,7 @@ router.post(
 router.post(
   "/individual/user/register",
   upload.fields([{ name: "profileImg", maxCount: 1 }]),
-  // verifyToken, -- here instead check whether registering user is individual user.
+  verifyToken, // -- here instead check whether registering user is individual user.
   register
 );
 // router.post(

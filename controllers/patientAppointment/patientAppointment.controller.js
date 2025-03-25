@@ -244,13 +244,16 @@ const createNewPatientAppointment2 = async (req, res) => {
 
       if (!teleconsultationPlan) {
         // Generate payment link if no plan exists
-        // const { amount } = req.body; // Get amount from request
         paymentLinkResponse = await razorpayInstance.paymentLink.create({
           amount: existingDoctor.consultationFees * 100, // Convert to paise
           currency: "INR",
-          description: `Make payment to book your appointment with Dr. ${existingDoctor.firstName} ${existingDoctor.lastName}`,
+          description:
+            "Make payment to book your appointment with Dr. " +
+            existingDoctor.firstName +
+            " " +
+            existingDoctor.lastName,
           customer: {
-            name: `${existingUser.firstName} ${existingUser.lastName}`,
+            name: existingUser.firstName + " " + existingUser.lastName,
             email: existingUser.email,
             contact: existingUser.phone,
           },

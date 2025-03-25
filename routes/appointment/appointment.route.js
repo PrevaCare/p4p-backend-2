@@ -44,28 +44,36 @@ router.post(
 // patient list for add appointment
 router.post(
   "/patient/appointments/patient-lists",
+  verifyToken,
   getAssignedDoctorPatientForAppointmentBooking
 );
 // date, isavailable and timeslots to book an appointments
 router.post(
   "/patient/appointments/date-timeslots",
+  verifyToken,
   getDateIsAvailableAndAvailableTimeSlotToBookAnAppointment
 );
 // my appointment dashboard cards
 router.post(
   "/patient/appointments/dashboard-cards",
+  verifyToken,
   getAppointmentDashboardCardDataByDoctorId
 );
 
 // my appointment table list
-router.post("/patient/appointments/table-data", myAppointmentTableList);
+router.post(
+  "/patient/appointments/table-data",
+  verifyToken, // Modify to check if the doctor requests for the table-data for herself only
+  myAppointmentTableList
+);
 //  upcoming appointment dashboard cards
 router.post(
   "/patient/appointments/upcoming-appointments",
+  verifyToken, // Modify to check if the doctor requests for the table-data for herself only
   upcomingConsultationTableData
 );
 // get appointment by id
-router.post("/patient/appointments/single", getAppointmentById);
+router.post("/patient/appointments/single", verifyToken, getAppointmentById);
 router.get(
   "/admin/patient/appointments-all",
   verifyToken,

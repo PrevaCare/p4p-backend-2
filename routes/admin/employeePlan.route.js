@@ -37,7 +37,7 @@ router.post(
 );
 router.post(
   "/app/patient/validate-tele-consultation-plan",
-  // verifyToken,
+  verifyToken, // Modify to check if the doctor requests for the table-data for herself only
   // checkPermissions("CREATE", "Superadmin"),
   checkUserHasValidTeleConsultationPlan
 );

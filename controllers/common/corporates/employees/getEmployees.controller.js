@@ -303,6 +303,7 @@ const getListOfAssignedDoctorsOfEmployee = async (req, res) => {
     const responseData = getAssignedDoctorsList.assignedDoctors.map(
       (doctor) => {
         const { _id, firstName, lastName, profileImg, education } = doctor;
+        console.log("Doctor object:", doctor);
         return {
           _id,
           doctorName: `${firstName} ${lastName}`,
@@ -358,6 +359,7 @@ const getListOfAssignedDoctorsOfCorporateForDashboard = async (req, res) => {
           education,
           specialization,
         } = doctor;
+        console.log("Doctor object:", doctor);
         return {
           _id,
           doctorName: `${firstName} ${lastName}`,
@@ -412,6 +414,7 @@ const getListOfAssignedDoctorsOfCorporate = async (req, res) => {
     //
     const responseData = existingUser.assignedDoctors.map((doctor) => {
       const { _id, firstName, lastName } = doctor;
+      console.log("Doctor object:", doctor);
       return { _id, doctorName: `${firstName} ${lastName}` };
     });
 
@@ -441,7 +444,8 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
       $or: [{ role: "Employee" }, { role: "IndividualUser" }],
     }).populate({
       path: "assignedDoctors",
-      select: "_id firstName lastName profileImg education specialization",
+      select:
+        "_id firstName lastName profileImg education specialization noOfYearExperience role",
     });
 
     // Check if the user exists
@@ -456,9 +460,26 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
 
     // Prepare assigned doctor list
     const assignedDoctors = existingUser.assignedDoctors || [];
+    const specializations = assignedDoctors.map(
+      (doctor) => doctor.specialization
+    );
     const responseData = assignedDoctors.map((doctor) => {
-      const { _id, firstName, lastName, education, profileImg } = doctor;
-
+      const {
+        _id,
+        firstName,
+        lastName,
+        education,
+        profileImg,
+        noOfYearExperience,
+        specialization,
+        role,
+      } = doctor;
+      console.log("specialization: ", specialization);
+      console.log("noOfYearExperience: ", noOfYearExperience);
+      console.log("education: ", education);
+      console.log("profileImg: ", profileImg);
+      console.log("firstName: ", firstName);
+      console.log("lastName: ", lastName);
       // Extract courses and degrees if education exists
       const courseList = Array.isArray(education)
         ? education.map((item) => item.course || null)
@@ -474,6 +495,9 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
         lastName,
         course: courseList,
         degree: degreeList,
+        noOfYearExperience: noOfYearExperience || null,
+        specialization: specialization || null,
+        role: role || null,
       };
     });
 
@@ -495,7 +519,6 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
 };
 
 // get coroprate info by employeeId
-
 const getCorrporateInfoByEmployeeId = async (req, res) => {
   try {
     const { employeeId } = req.body;
