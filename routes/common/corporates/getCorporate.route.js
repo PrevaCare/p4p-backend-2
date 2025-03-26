@@ -79,7 +79,7 @@ router.get(
 );
 
 // app
-router.get(
+router.post(
   "/app/patient/assigned-doctors",
   verifyToken,
   // checkPermissions("READ", "Corporate"), // login user should have permission related to
