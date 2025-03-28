@@ -6,7 +6,7 @@ const {
   patientSpo2ValidationSchema,
 } = require("../../../../validators/patient/healthTracker/patientSpo2.validator");
 const patientSpo2GoalModel = require("../../../../models/patient/healthTracker/spo2/patientSpo2Goal.model");
-const patientspo2Model = require("../../../../models/patient/healthTracker/spo2/patientspo2.model");
+const patientSpo2Model = require("../../../../models/patient/healthTracker/spo2/patientSpo2.model");
 
 // Create SpO2 Goal
 const createPatientSpo2Goal = async (req, res) => {
@@ -71,7 +71,7 @@ const createPatientSpo2 = async (req, res) => {
       await defaultGoal.save();
     }
 
-    const newSpo2 = new patientspo2Model({
+    const newSpo2 = new patientSpo2Model({
       ...req.body,
       spo2Goal: latestSpo2Goal?.spo2Goal || 95,
       measurementUnit: latestSpo2Goal?.measurementUnit || "%",
@@ -99,12 +99,17 @@ const getAllPatientSpo2ByDateRange = async (req, res) => {
   try {
     const { startDate, endDate, patientId } = req.body;
 
-    const data = await patientspo2Model.find(
+    // Set start date to beginning of day (00:00:00)
+    const startDateTime = dayjs(startDate).startOf("day").toDate();
+    // Set end date to end of day (23:59:59)
+    const endDateTime = dayjs(endDate).endOf("day").toDate();
+
+    const data = await patientSpo2Model.find(
       {
         patientId,
         date: {
-          $gte: dayjs(new Date(startDate)).format("YYYY-MM-DD"),
-          $lte: dayjs(new Date(endDate)).format("YYYY-MM-DD"),
+          $gte: startDateTime,
+          $lte: endDateTime,
         },
       },
       "patientId spo2 spo2Goal date measurementUnit"
