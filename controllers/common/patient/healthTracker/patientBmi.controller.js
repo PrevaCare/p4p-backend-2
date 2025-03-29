@@ -111,7 +111,7 @@ const getAllPatientBmisByDateRange = async (req, res) => {
         },
       },
       "patientId bmi bmiGoal date measurementUnit"
-    );
+    ).sort({ date: -1 });
 
     const responseData =
       data && data.length > 0

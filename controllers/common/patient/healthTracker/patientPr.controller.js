@@ -111,7 +111,7 @@ const getAllPatientPrByDateRange = async (req, res) => {
         },
       },
       "patientId pr prGoal date measurementUnit"
-    );
+    ).sort({ date: -1 });
 
     return Response.success(
       res,

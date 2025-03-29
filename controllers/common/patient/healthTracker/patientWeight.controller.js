@@ -114,7 +114,7 @@ const getAllPatientWeightsByDateRange = async (req, res) => {
         },
       },
       "patientId weight weightGoal date measurementUnit"
-    );
+    ).sort({ date: -1 });
 
     return Response.success(
       res,

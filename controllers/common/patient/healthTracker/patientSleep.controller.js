@@ -129,7 +129,7 @@ const getAllPatientSleepByDateRange = async (req, res) => {
         },
       },
       "patientId sleep sleepGoal date measurementUnit"
-    );
+    ).sort({ date: -1 });
 
     return Response.success(
       res,

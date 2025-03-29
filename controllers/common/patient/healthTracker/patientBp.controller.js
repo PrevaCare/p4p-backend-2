@@ -110,7 +110,7 @@ const getAllPatientBpByDateRange = async (req, res) => {
         },
       },
       "patient sys dia sysGoal diaGoal date"
-    );
+    ).sort({ date: -1 });
     return Response.success(res, data, 200, "BP records fetched successfully!");
   } catch (err) {
     return Response.error(

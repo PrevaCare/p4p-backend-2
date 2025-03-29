@@ -108,7 +108,7 @@ const getAllMoodByDateRange = async (req, res) => {
         $gte: dayjs(new Date(startDate)).startOf("day").toDate(),
         $lte: dayjs(new Date(endDate)).endOf("day").toDate(),
       },
-    });
+    }).sort({ date: -1 });
 
     return Response.success(
       res,

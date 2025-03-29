@@ -113,7 +113,7 @@ const getAllWaterIntakeByDateRange = async (req, res) => {
         },
       },
       "patientId waterIntake waterIntakeGoal measurementUnit date"
-    );
+    ).sort({ date: -1 });
 
     return Response.success(
       res,

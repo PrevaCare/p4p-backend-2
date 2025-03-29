@@ -113,7 +113,7 @@ const getAllPatientSpo2ByDateRange = async (req, res) => {
         },
       },
       "patientId spo2 spo2Goal date measurementUnit"
-    );
+    ).sort({ date: -1 });
 
     return Response.success(
       res,

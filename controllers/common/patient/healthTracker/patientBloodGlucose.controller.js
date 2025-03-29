@@ -106,7 +106,7 @@ const getAllPatientBloodGlucoseByDateRange = async (req, res) => {
         },
       },
       "bloodGlucose bloodGlucoseGoal readingType date"
-    );
+    ).sort({ date: -1 });
     return Response.success(
       res,
       data,
