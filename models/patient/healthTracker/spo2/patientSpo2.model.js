@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 // spo2 model change
-const patientSpo2Schema = new mongoose.Schema(
+const patientSpo2Schema  = new mongoose.Schema(
   {
     patientId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -9,11 +9,22 @@ const patientSpo2Schema = new mongoose.Schema(
     },
     spo2Goal: {
       type: Number,
-      required: [true, "spo2Goal  is required !"],
     },
     spo2: {
       type: Number,
       required: [true, "spo2  is required !"],
+    },
+    measurementType:{
+      type: String,
+      enum:["Room Air","On Oxygen"],
+      required:[true,"measurementType is required !"],
+    },
+    oxygenFlowRate: {
+      type: Number,
+    },
+    oxygenFlowRateUnit: {
+      type: String,
+      default: "L/min",
     },
     date: {
       type: Date,

@@ -57,6 +57,13 @@ const {
   verifyAndAuthoriseToken,
 } = require("../../middlewares/jwt/verifyToken");
 
+const{
+  createPatientSpo2Goal,
+  createPatientSpo2,
+  getAllPatientSpo2ByDateRange,
+  getCurrentPatientSpo2Goal
+}=require("../../controllers/common/patient/healthTracker/patientSpo2.controller");
+
 const router = require("express").Router();
 
 router.post(
@@ -99,6 +106,39 @@ router.post(
 
   getAllPatientBpByDateRange
 );
+
+// <====================  patient spo2 ==============>
+
+router.post(
+  "/app/healthtracker/patient-spo2-goal",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  createPatientSpo2Goal
+); 
+
+router.post(
+  "/app/healthtracker/patient-spo2",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  createPatientSpo2
+); 
+
+router.post(
+  "/app/healthtracker/patient-spo2-goals",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  getCurrentPatientSpo2Goal
+  
+); 
+
+router.post(
+  "/app/healthtracker/patient-spo2s",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  getAllPatientSpo2ByDateRange
+); 
+
+
 // <====================  patient blood glucose ===============>
 
 router.post(
