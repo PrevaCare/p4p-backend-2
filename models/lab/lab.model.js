@@ -17,6 +17,29 @@ const accountsDetailSchema = new mongoose.Schema({
   accountNumber: { type: String },
 });
 
+// Available Cities Schema - new addition
+const availableCitiesSchema = new mongoose.Schema({
+  cityName: {
+    type: String,
+    trim: true,
+    required: [true, "city name is required !"],
+  },
+  PinCode: {
+    type: String,
+    trim: true,
+    required: [true, "Pin code is required !"],
+  },
+  locationType: {
+    type: String,
+    enum: ["Same City Lab", "Non Lab City"],
+    default: "Same City Lab",
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+});
+
 // Lab Schema with multiple middleware hooks
 const labSchema = new mongoose.Schema(
   {
@@ -57,6 +80,7 @@ const labSchema = new mongoose.Schema(
         },
       },
     ],
+    availableCities: [availableCitiesSchema], // New field for available cities
   },
   { timestamps: true }
 );
@@ -77,6 +101,12 @@ labSchema.pre("save", function (next) {
   if (this.cityOperatedIn) {
     this.cityOperatedIn = convertCityNamesToLowercase(this.cityOperatedIn);
   }
+
+  // Also convert available cities to lowercase
+  if (this.availableCities) {
+    this.availableCities = convertCityNamesToLowercase(this.availableCities);
+  }
+
   next();
 });
 
@@ -89,30 +119,58 @@ labSchema.pre(["updateOne", "findOneAndUpdate", "updateMany"], function (next) {
     update.cityOperatedIn = convertCityNamesToLowercase(update.cityOperatedIn);
   }
 
-  // Handle updates using $set
-  if (update.$set && update.$set.cityOperatedIn) {
-    update.$set.cityOperatedIn = convertCityNamesToLowercase(
-      update.$set.cityOperatedIn
+  // Handle direct updates to availableCities
+  if (update.availableCities) {
+    update.availableCities = convertCityNamesToLowercase(
+      update.availableCities
     );
   }
 
+  // Handle updates using $set
+  if (update.$set) {
+    if (update.$set.cityOperatedIn) {
+      update.$set.cityOperatedIn = convertCityNamesToLowercase(
+        update.$set.cityOperatedIn
+      );
+    }
+
+    if (update.$set.availableCities) {
+      update.$set.availableCities = convertCityNamesToLowercase(
+        update.$set.availableCities
+      );
+    }
+  }
+
   // Handle updates using $push with single item
-  if (update.$push && update.$push.cityOperatedIn) {
-    const city = update.$push.cityOperatedIn;
-    if (city.cityName) {
-      city.cityName = city.cityName.toLowerCase();
+  if (update.$push) {
+    if (update.$push.cityOperatedIn) {
+      const city = update.$push.cityOperatedIn;
+      if (city.cityName) {
+        city.cityName = city.cityName.toLowerCase();
+      }
+    }
+
+    if (update.$push.availableCities) {
+      const city = update.$push.availableCities;
+      if (city.cityName) {
+        city.cityName = city.cityName.toLowerCase();
+      }
     }
   }
 
   // Handle updates using $push with $each
-  if (
-    update.$push &&
-    update.$push.cityOperatedIn &&
-    update.$push.cityOperatedIn.$each
-  ) {
-    update.$push.cityOperatedIn.$each = convertCityNamesToLowercase(
-      update.$push.cityOperatedIn.$each
-    );
+  if (update.$push) {
+    if (update.$push.cityOperatedIn && update.$push.cityOperatedIn.$each) {
+      update.$push.cityOperatedIn.$each = convertCityNamesToLowercase(
+        update.$push.cityOperatedIn.$each
+      );
+    }
+
+    if (update.$push.availableCities && update.$push.availableCities.$each) {
+      update.$push.availableCities.$each = convertCityNamesToLowercase(
+        update.$push.availableCities.$each
+      );
+    }
   }
 
   next();

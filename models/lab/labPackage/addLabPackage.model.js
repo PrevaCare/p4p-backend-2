@@ -5,6 +5,19 @@ const testIncludedSchema = new mongoose.Schema({
   parameters: [String],
 });
 
+// City availability schema - new addition
+const cityAvailabilitySchema = new mongoose.Schema({
+  cityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Lab.availableCities",
+    required: true,
+  },
+  isAvailable: {
+    type: Boolean,
+    default: true,
+  },
+});
+
 // lab schema
 const labPackage = new mongoose.Schema(
   {
@@ -12,6 +25,12 @@ const labPackage = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lab",
       required: true,
+    },
+    PackageCode: {
+      type: String,
+      required: [true, "Package code is required !"],
+      unique: true,
+      trim: true,
     },
     desc: { type: String },
     category: { type: String, required: [true, "category is required !"] },
@@ -57,6 +76,7 @@ const labPackage = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    cityAvailability: [cityAvailabilitySchema], // New field for city availability
   },
   { timestamps: true }
 );
