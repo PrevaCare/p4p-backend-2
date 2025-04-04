@@ -22,7 +22,7 @@ const PatientAppointmentPaymentSchema = new mongoose.Schema(
     razorpayOrderId: {
       type: String,
       required: function () {
-        return this.createdBy === "Patient"; // Required if razorpayOrderId is not present
+        return this.createdBy === "Doctor" || this.createdBy === "Superadmin"; // Required if razorpayOrderId is not present
       },
     },
     razorpayPaymentId: {

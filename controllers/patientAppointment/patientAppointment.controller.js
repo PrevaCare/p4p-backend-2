@@ -29,7 +29,7 @@ const decrementTeleconsultationCount = async (existingUser, session) => {
     status: "active",
     countFeatureList: {
       $elemMatch: {
-        name: { $regex: /tele[\s]?consultation/i }, // Matches "tele consultation" or "teleconsultation" case-insensitively
+        name: "tele consultation", // Matches "tele consultation" or "teleconsultation" case-insensitively
         count: { $gt: 0 }, // Ensures count is greater than 0
       },
     },
@@ -39,6 +39,7 @@ const decrementTeleconsultationCount = async (existingUser, session) => {
   const planModel =
     userRole === "Employee" ? employeePlanModel : individualUserPlanModel;
 
+    
   const plan = await planModel.findOneAndUpdate(
     userRole === "Employee"
       ? { employeeId: existingUser._id, ...query }
@@ -202,20 +203,21 @@ const createNewPatientAppointment2 = async (req, res) => {
         //   $in: [new mongoose.Types.ObjectId(req.body.doctorId)],
         // },
       })
-      .select("firstName lastName phone email");
+      .select("firstName lastName phone email role");
 
     // console.log(existingUser);
     // return;
     if (!existingUser) {
       return Response.error(res, 404, AppConstant.FAILED, "Patient not found!");
     }
-
+    console.log(role);
     // Decrement teleconsultation count if applicable
     const teleconsultationPlan = await decrementTeleconsultationCount(
       existingUser,
       session
     );
 
+    console.log(teleconsultationPlan)
     let paymentLinkResponse = null;
     let existingDoctor = null;
     if (role === "Doctor" || role === "Superadmin") {
@@ -273,10 +275,25 @@ const createNewPatientAppointment2 = async (req, res) => {
       if (!teleconsultationPlan) {
         // User must pay if no plan exists
         // const { amount } = req.body; // Get amount from request
-        paymentLinkResponse = await razorpayInstance.orders.create({
+        paymentLinkResponse = await razorpayInstance.paymentLink.create({
           amount: existingDoctor.consultationFees * 100, // Convert to paise
           currency: "INR",
-          receipt: `receipt_${req.body.patientId}`,
+          description:
+            "Make payment to book your appointment with Dr. " +
+            existingDoctor.firstName +
+            " " +
+            existingDoctor.lastName,
+          customer: {
+            name: existingUser.firstName + " " + existingUser.lastName,
+            email: existingUser.email,
+            contact: existingUser.phone,
+          },
+          notify: {
+            sms: true,
+            email: true,
+          },
+          callback_url: "https://preva.care/admin/payment-success", // Your callback URL
+          callback_method: "get",
         });
 
         // Save payment details
@@ -300,7 +317,7 @@ const createNewPatientAppointment2 = async (req, res) => {
       appointmentId: savedAppointment._id,
       createdBy: role === "Doctor" || role === "Superadmin" ? role : "Patient",
       razorpayOrderId:
-        role === "Doctor" || role === "Superadmin"
+        role === "Doctor" || role === "Superadmin" || teleconsultationPlan
           ? null
           : paymentLinkResponse.id,
       razorpayPaymentLinkId:
