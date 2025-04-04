@@ -6,1075 +6,878 @@ const { dummyDataFemalePdf } = require("../../../../../public/emrPdfData");
 const Response = require("../../../../../utils/Response");
 const AppConstant = require("../../../../../utils/AppConstant");
 const emrModel = require("../../../../../models/common/emr.model.js");
+const puppeteer = require("puppeteer");
 const {
   generateEMRPDFFn,
   generatePrescriptionPDFFn,
 } = require("../../../../../helper/emrPdf/generateEmrPdfFn.helper.js");
 const eprescriptionModel = require("../../../../../models/patient/eprescription/eprescription.model.js");
+
+// Helper function to sanitize strings for HTML
+const sanitizeHtml = (str) => {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+// Create EMR PDF with dummy data
 const createEMRPDF = async (req, res) => {
+  let browser = null;
+  let pdfFilePath = null;
+
   try {
-    // const emrPdfData = new EemrPdfData(req.body);
-    // await emrPdfData.save();
+    console.log("\n=== Creating EMR PDF with Dummy Data ===");
+    console.log(JSON.stringify(dummyDataFemalePdf, null, 2));
+    console.log("=====================================\n");
 
-    // Generate and send the PDF directly
-    await generateEMRPDF(dummyDataFemalePdf, res);
-    // const pdfPath = await generatePrescriptionPDF(emrPdfData);
-    // return res.download(pdfPath);
-  } catch (err) {
-    // console.log(err);
-    res.status(500).json({ error: "Failed to generate emrPdfData" });
-  }
-};
+    const pdfBuffer = await generateEMRPDF(dummyDataFemalePdf);
 
-// const generateEMRPDF = async (emrPdfData, res) => {
-const generateEMRPDF = async (emrPdfData) => {
-  // console.log(emrPdfData);
-  let doc;
-  // return new Promise((resolve, reject) => {
-  try {
-    doc = new PDFDocument({
-      size: "A4",
-      margin: 0,
-    });
+    // Ensure temp directory exists
+    const tempDir = path.resolve(__dirname, "../../../../../public/temp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
 
-    // you can test here -- by enabling below comment line to test in api response directly
-    // // Set up the response headers for PDF download
-    // res.setHeader("Content-Type", "application/pdf");
-    // res.setHeader(
-    //   "Content-Disposition",
-    //   `attachment; filename=emrPdfData_${emrPdfData._id}.pdf`
-    // );
+    // Save PDF to file
+    const fileName = `EMR_sample_${Date.now()}.pdf`;
+    pdfFilePath = path.join(tempDir, fileName);
+    fs.writeFileSync(pdfFilePath, pdfBuffer);
 
-    // // Pipe the PDF directly to the response
-    // doc.pipe(res);
+    console.log("PDF saved to:", pdfFilePath);
 
-    // save the pdf file in the public temp folder
-    const fileName = `emr_pdf${emrPdfData.basicInfo.phoneNumber}.pdf`;
-    const filePath = path.join(
-      __dirname,
-      "../../../../../public",
-      "temp",
-      fileName
-    );
-    // console.log(filePath);
-
-    // Pipe the PDF to a writable stream (write to disk)
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
-
-    // register font
-    const fontRegularPath = path.join(
-      __dirname,
-      "../../../../../public/font/Roboto",
-      "Roboto-Regular.ttf"
-    );
-    const fontMediumPath = path.join(
-      __dirname,
-      "../../../../../public/font/Roboto",
-      "Roboto-Medium.ttf"
-    );
-    const fontBoldPath = path.join(
-      __dirname,
-      "../../../../../public/font/Roboto",
-      "Roboto-Bold.ttf"
-    );
-    // console.log(fontBoldPath);
-
-    // Register the font
-    doc.registerFont("Roboto-Regular", fontRegularPath);
-    doc.registerFont("Roboto-Medium", fontMediumPath);
-    doc.registerFont("Roboto-Bold", fontBoldPath);
-
-    // Doctor info
-    doc
-      .font("Roboto-Medium")
-      .fontSize(18)
-      .fillColor("#4b90e2")
-      .text(
-        `${emrPdfData.doctor.firstName} ${emrPdfData.doctor.lastName}`,
-        50,
-        50,
-        { align: "left" }
-      )
-      .fillColor("#000")
-      .fontSize(12)
-
-      .text(`${emrPdfData.doctor.degree}`, 50, doc.y, {
-        align: "left",
-      })
-      .text(`${emrPdfData.doctor.specialization}`, 50, doc.y, {
-        align: "left",
-      })
-      .text(`${emrPdfData.doctor.medicalRegistrationNumber}`, 50, doc.y, {
-        align: "left",
-      });
-
-    // Add logo
-    doc
-      .image(path.join(__dirname, "../../../../../public/logo.png"), 400, 45, {
-        width: 30,
-      })
-      .fontSize(15)
-      .font("Roboto-Medium")
-      .text("Preva care", 436, 52)
-      .font("Roboto-Regular")
-      .fontSize(8)
-      .text("CIN : U85100DL2019PTC352165", 425, doc.y + 10)
-      .text(
-        "Registered Office : P-1 GROUND FLOOR B/P P-1 TO P-20 NDSE II OPP. LI/11 , Delhi, India - 110049",
-        370,
-        doc.y + 5,
-        { width: 180 }
-      );
-    // create new page if space less
-    let currentPage = 1; // Start with the first page
-    // fn to add border
-    const addFooter = () => {
-      // Footer
-      const footerHeight = 50;
-      const footerTop = doc.page.height - 50;
-
-      // Draw the footer rectangle
-      doc.rect(0, footerTop, doc.page.width, footerHeight).fill("#4A90E2");
-
-      // Set text color and font size
-      doc.fillColor("#fff").fontSize(11).font("Roboto-Medium");
-
-      // Left section
-      doc.text("+91 995 8502197", 75, footerTop + 15);
-
-      // left image
-      doc.image(
-        path.join(__dirname, "../../../../../public/footerIcon/call.png"),
-        50,
-        footerTop + 15,
-        { width: 15 }
-      );
-      // middle section
-
-      // middle
-      doc.text("www.preva.care", 225, footerTop + 15, {
-        link: "https://preva.care",
-      });
-
-      // middle image
-      doc.image(
-        path.join(__dirname, "../../../../../public/footerIcon/internet.png"),
-        200,
-        footerTop + 15,
-        { width: 15 }
-      );
-      // right section
-      doc.text("info@p4phealthcare.com", 425, footerTop + 15, {
-        link: "mailto:info@p4phealthcare.com",
-      });
-
-      // right image
-      doc.image(
-        path.join(__dirname, "../../../../../public/footerIcon/mail.png"),
-        400,
-        footerTop + 15,
-        { width: 15 }
-      );
-
-      // add page
-      doc
-        .fillColor("#000")
-        .fontSize(11)
-        .font("Roboto-Medium")
-        .text(`Page ${currentPage}`, 0, footerTop - 18, {
-          align: "center",
-        });
-      currentPage++;
-    };
-    const ensureSpace = (neededSpace) => {
-      addFooter();
-
-      // Check if there's enough space on the current page
-      if (doc.y + neededSpace > doc.page.height - doc.page.margins.bottom) {
-        // Add a new page
-        doc.addPage();
+    // Download file instead of sending buffer
+    return res.download(pdfFilePath, fileName, (err) => {
+      if (err) {
+        console.error("Download error:", err);
       }
-    };
-
-    doc.moveDown(0.5);
-
-    const lineY = doc.y + 10; // Add 10 units of margin above the line
-    doc
-      .moveTo(0, lineY)
-      .lineTo(doc.page.width, lineY)
-      .strokeColor("#4b90e2")
-      .lineWidth(3)
-      .stroke();
-
-    // middle
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(`EMR (Electronic Medical Report)`, 0, doc.y + 20, {
-        align: "center",
-      });
-
-    // doc.moveTo(50, 100).lineTo(550, 100).strokeColor("#4b90e2").stroke();
-
-    // Patient info
-    const basicInfoAndDateY = doc.y + 40;
-
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Basic Info: `, 50, basicInfoAndDateY, {
-        align: "left",
-      });
-
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(
-        `Date : ${dayjs(emrPdfData.createdAt).format("DD-MM-YYYY")}`,
-        445,
-        basicInfoAndDateY
-      );
-
-    patientY = doc.y + 20;
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(`Patient Name : ${emrPdfData.basicInfo.name}`, 60, patientY, {
-        align: "left",
-      });
-
-    doc
-      .fontSize(12)
-      .text(`Age : ${emrPdfData.basicInfo?.age || ""} Years`, 110, doc.y + 20, {
-        align: "left",
-      });
-
-    // Prescription details
-    doc.text(
-      `Children : ${emrPdfData.basicInfo?.children || ""}`,
-      90,
-      doc.y + 20
-    );
-    doc.text(
-      `Gender : ${emrPdfData.basicInfo.gender === "F" ? "Female" : "Male"}`,
-      98,
-      doc.y + 20
-    );
-    doc.text(
-      `Phone Number : ${emrPdfData.basicInfo?.phoneNumber || ""}`,
-      58,
-      doc.y + 20
-    );
-    doc.text(
-      `Marital Status : ${emrPdfData.basicInfo?.maritalStatus || ""}`,
-      62,
-      doc.y + 20
-    );
-    doc.text(
-      `Blood Group : ${emrPdfData.basicInfo?.bloodGroup || ""}`,
-      70,
-      doc.y + 20
-    );
-    doc.text(
-      `Address : ${emrPdfData.basicInfo.address.name} ${emrPdfData.basicInfo.address.street} ${emrPdfData.basicInfo.address.city} ${emrPdfData.basicInfo.address.state}, ${emrPdfData.basicInfo.address.zipCode}`,
-      96,
-      doc.y + 20
-    );
-
-    // history section
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`History: `, 50, doc.y + 40, {
-        align: "left",
-      });
-
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(
-        `Chief Complaint : ${emrPdfData.history?.chiefComplaint || ""}`,
-        55,
-        doc.y + 20
-      );
-    const historyOfPresentingIllnessY = doc.y + 20;
-
-    doc.text(
-      `History Of Presenting Illness `,
-      70,
-      historyOfPresentingIllnessY,
-      { width: 100 }
-    );
-
-    doc.text(
-      `: ${emrPdfData.history?.historyOfPresentingIllness || ""}`,
-      146,
-      historyOfPresentingIllnessY
-    );
-
-    doc.text(
-      `Past History : ${
-        emrPdfData.history?.pastHistory.length > 0
-          ? emrPdfData.history?.pastHistory
-              .map((item) => item.sufferingFrom)
-              .join(", ")
-          : ""
-      }`,
-      80,
-      doc.y + 30
-    );
-    doc.text(
-      `Drug Taking : ${
-        emrPdfData.history?.pastHistory.length > 0
-          ? emrPdfData.history?.pastHistory
-              .map((item) => item.drugName)
-              .join(", ")
-          : ""
-      }`,
-      83,
-      doc.y + 20
-    );
-    doc.text(
-      `Previous Surgeries : ${emrPdfData.history?.previousSurgeries || ""}`,
-      50,
-      doc.y + 20
-    );
-    ensureSpace(90);
-
-    const personalHabbitY = doc.y + 20;
-    doc
-      .text(`Habits : `, 115, personalHabbitY)
-      .text(
-        `Smoking: ${emrPdfData.history.habits.smoking ? "Yes" : "No"}`,
-        160,
-        personalHabbitY
-      )
-      .text(
-        `Pack Years: ${
-          emrPdfData.history.habits.packYears
-            ? emrPdfData.history.habits.packYears
-            : ""
-        }`,
-        240,
-        personalHabbitY
-      )
-      .text(
-        `Alcohol: ${emrPdfData.history.habits?.alcohol ? "Yes" : "No"}`,
-        160,
-        personalHabbitY + 20
-      )
-      .text(
-        `Alcohol Details: ${
-          emrPdfData.history.habits.alcoholDetails
-            ? emrPdfData.history.habits.alcoholDetails
-            : ""
-        }`,
-        240,
-        personalHabbitY + 20
-      )
-      .text(
-        `Qty. Per Week: ${
-          emrPdfData.history.habits.qntPerWeek
-            ? emrPdfData.history.habits.qntPerWeek
-            : "0"
-        } ml`,
-        400,
-        personalHabbitY + 20
-      );
-
-    doc.text(
-      `Bowel And Bladder : ${emrPdfData.history?.bowelAndBladder || ""}`,
-      50,
-      doc.y + 20
-    );
-
-    doc.text(
-      `Appetite : ${emrPdfData.history?.appetite || ""}`,
-      113,
-      doc.y + 20
-    );
-    doc.text(`Sleep : ${emrPdfData.history?.sleep || ""}`, 127, doc.y + 20);
-    doc.text(`Stress Screening :   `, 65, doc.y + 30);
-    doc.text(
-      `Desc: ${emrPdfData.history.stressScreening?.desc || ""}`,
-      118,
-      doc.y + 10
-    );
-    doc.text(
-      `Recomendation : ${
-        emrPdfData.history.stressScreening?.recomendation || ""
-      }`,
-      118,
-      doc.y + 10
-    );
-    doc.text(
-      `Score: ${emrPdfData.history.stressScreening?.score || ""}`,
-      118,
-      doc.y + 10
-    );
-
-    doc.text(`Depression Screening :   `, 65, doc.y + 20);
-    doc.text(
-      `Desc: ${emrPdfData.history.depressionScreening?.desc || ""}`,
-      118,
-      doc.y + 10
-    );
-    doc.text(
-      `Recomendation : ${
-        emrPdfData.history.depressionScreening?.recomendation || ""
-      }`,
-      118,
-      doc.y + 10
-    );
-    doc.text(
-      `Score : ${emrPdfData.history.depressionScreening?.score || ""}`,
-      118,
-      doc.y + 10
-    );
-    const mentalHealthAssementY = doc.y + 20;
-    doc.text(`Mental Health Assessment `, 75, mentalHealthAssementY, {
-      width: 120,
-    });
-    doc.text(
-      `: ${emrPdfData.history?.depressionScreening?.score || ""}`,
-      150,
-      mentalHealthAssementY,
-      { width: 120 }
-    );
-    // General Physical Exam
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`General Physical Exam : `, 50, doc.y + 40, {
-        align: "left",
-      });
-
-    const generalPhysicalExamY1 = doc.y + 20;
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(
-        `PR : ${
-          emrPdfData.generalPhysicalExamination?.PR || ""
-        } bpm               BP : ${
-          emrPdfData.generalPhysicalExamination?.BP?.sys || ""
-        }/${
-          emrPdfData.generalPhysicalExamination?.BP?.dia || ""
-        } mmHg               Volume : ${
-          emrPdfData.generalPhysicalExamination?.volume || ""
-        }`,
-        100,
-        generalPhysicalExamY1
-      );
-    const generalPhysicalExamY2 = doc.y + 20;
-    doc
-      .fontSize(12)
-      .text(
-        `Regularity : ${
-          emrPdfData.generalPhysicalExamination?.regularity || ""
-        }               Character : ${
-          emrPdfData.generalPhysicalExamination?.character || ""
-        }               Temperature : ${
-          emrPdfData.generalPhysicalExamination.temperature || ""
-        }`,
-        100,
-        generalPhysicalExamY2
-      );
-    const generalPhysicalExamY3 = doc.y + 20;
-    doc
-      .fontSize(12)
-      .text(
-        `RR : ${
-          emrPdfData.generalPhysicalExamination?.RR || ""
-        }               SPO2 : ${
-          emrPdfData.generalPhysicalExamination?.SPO2 || ""
-        } %               Radio Femoral Delay : ${
-          emrPdfData.generalPhysicalExamination?.radioFemoralDelay || ""
-        }`,
-        100,
-        generalPhysicalExamY3
-      );
-    const generalPhysicalExamY4 = doc.y + 20;
-    doc
-      .fontSize(12)
-      .text(
-        `Height : ${
-          emrPdfData.generalPhysicalExamination?.height || ""
-        } cm               Weight : ${
-          emrPdfData.generalPhysicalExamination?.weight || ""
-        } Kg               BMI : ${
-          emrPdfData.generalPhysicalExamination?.BMI || ""
-        } kg/m2`,
-        100,
-        generalPhysicalExamY4
-      );
-    const generalPhysicalExamY5 = doc.y + 20;
-    doc
-      .fontSize(12)
-      .text(
-        `Pallor : ${
-          emrPdfData.generalPhysicalExamination?.pallor || ""
-        }               Icterus : ${
-          emrPdfData.generalPhysicalExamination.icterus || ""
-        }               Cyanosis : ${
-          emrPdfData.generalPhysicalExamination.cyanosis || ""
-        }                JVP : ${
-          emrPdfData.generalPhysicalExamination.JVP || ""
-        }`,
-        100,
-        generalPhysicalExamY5
-      );
-    const generalPhysicalExamY6 = doc.y + 20;
-    doc
-      .fontSize(12)
-      .text(
-        `Clubbing : ${
-          emrPdfData.generalPhysicalExamination?.clubbing || ""
-        }               Lymphadenopathy : ${
-          emrPdfData.generalPhysicalExamination.lymphadenopathy || ""
-        }               Edema : ${
-          emrPdfData.generalPhysicalExamination.edema || ""
-        }`,
-        100,
-        generalPhysicalExamY6
-      );
-    ensureSpace(70);
-
-    // Systemic Examination
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Systemic Examination : `, 50, doc.y + 100, {
-        align: "left",
-      });
-
-    const systemicExaminationY1 = doc.y + 20;
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(
-        `Respiratory System : ${
-          emrPdfData.systemicExamination?.respiratorySystem || ""
-        }               CVS : ${
-          emrPdfData.systemicExamination?.CVS || ""
-        }               CNS : ${emrPdfData.systemicExamination?.CNS || ""}`,
-        100,
-        systemicExaminationY1
-      );
-    const systemicExaminationY2 = doc.y + 20;
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(
-        `PA : ${
-          emrPdfData.systemicExamination?.PA || ""
-        }               Other Systemic Findings : ${
-          emrPdfData.systemicExamination?.otherSystemicFindings || ""
-        }`,
-        100,
-        systemicExaminationY2
-      );
-
-    // investigations
-
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Investigations : `, 50, doc.y + 20, {
-        align: "left",
-      });
-
-    emrPdfData.investigations.forEach((investigation, index) => {
-      let investigationY1 = doc.y + 20;
-
-      doc
-        .font("Roboto-Medium")
-        .fontSize(12)
-        .text(`${index + 1} : ${investigation || ""} `, 100, investigationY1);
-    });
-    // Diagonosis
-
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Diagonosis : `, 50, doc.y + 20, {
-        align: "left",
-      });
-
-    emrPdfData.diagnosis.forEach((diagnosis) => {
-      let diagonosisY1 = doc.y + 20;
-
-      doc
-        .font("Roboto-Medium")
-        .fontSize(12)
-        .text(
-          `Name : ${diagnosis.diagnosisName || ""}               Date : ${
-            diagnosis.dateOfDiagnosis
-              ? dayjs(diagnosis.dateOfDiagnosis || "").format("DD-MM-YYYY")
-              : "NA"
-          }`,
-          100,
-          diagonosisY1
-        );
-    });
-
-    // gynaecologicalHistory -- only for gender F
-    if (emrPdfData.basicInfo.gender === "F") {
-      doc
-        .font("Roboto-Bold")
-        .fontSize(14)
-        .text(`Gynaecological History : `, 50, doc.y + 30, {
-          align: "left",
-        });
-
-      doc
-        .font("Roboto-Medium")
-        .fontSize(12)
-        .text(
-          `Age Of Menarche : ${
-            emrPdfData.gynaecologicalHistory?.ageOfMenarche || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Cycle Duration : ${
-            emrPdfData.gynaecologicalHistory?.cycleDuration || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Cycle Regularity : ${
-            emrPdfData.gynaecologicalHistory?.cycleRegularity || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Days Of Bleeding : ${
-            emrPdfData.gynaecologicalHistory?.daysOfBleeding || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Pads Used Per Day : ${
-            emrPdfData.gynaecologicalHistory?.padsUsedPerDay || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Passage Of Clots : ${
-            emrPdfData.gynaecologicalHistory?.passageOfClots || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Complaints : ${emrPdfData.gynaecologicalHistory?.complaints || ""}`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Previous History : ${
-            emrPdfData.gynaecologicalHistory?.previousHistory || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-
-      doc
-        .font("Roboto-Bold")
-        .fontSize(14)
-        .text(`Obstetric History : `, 50, doc.y + 30, {
-          align: "left",
-        });
-      doc
-        .font("Roboto-Medium")
-        .fontSize(12)
-        .text(
-          `G : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory.gScore || ""
-          }     P : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory.pScore || ""
-          }     L : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory.lScore || ""
-          }     A : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory.aScore || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .font("Roboto-Medium")
-        .fontSize(12)
-        .text(
-          `Partner Blood Group : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory
-              ?.partnerBloodGroup || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      ensureSpace(70);
-
-      doc
-        .font("Roboto-Bold")
-        .fontSize(14)
-        .text(`Conceptions : `, 50, doc.y + 30, {
-          align: "left",
-        });
-
-      emrPdfData.gynaecologicalHistory.obstetricHistory.conceptions.forEach(
-        (conception) => {
-          // let conceptionY1 = doc.y + 20;
-
-          doc
-            .font("Roboto-Medium")
-            .fontSize(12)
-            .text(
-              `Age At Conception : ${conception?.ageAtConception || ""}`,
-              100,
-              doc.y + 20
-            );
-          doc
-            .font("Roboto-Medium")
-            .fontSize(12)
-            .text(
-              `Mode Of Conception : ${conception?.modeOfConception || ""}`,
-              100,
-              doc.y + 20
-            );
-          doc
-            .font("Roboto-Medium")
-            .fontSize(12)
-            .text(
-              `Mode Of Delivery : ${conception?.modeOfDelivery || ""}`,
-              100,
-              doc.y + 20
-            );
-          doc
-            .font("Roboto-Medium")
-            .fontSize(12)
-            .text(
-              `Complications : ${conception?.complications || ""}`,
-              100,
-              doc.y + 20
-            );
+      // Optionally clean up the file after sending
+      try {
+        if (fs.existsSync(pdfFilePath)) {
+          fs.unlinkSync(pdfFilePath);
         }
-      );
-      doc
-        .font("Roboto-Medium")
-        .fontSize(12)
-        .text(
-          `Primigravida Weeks : ${
-            emrPdfData.gynaecologicalHistory?.obstetricHistory
-              ?.primigravidaWeeks || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `EDD : ${
-            emrPdfData.gynaecologicalHistory?.obstetricHistory.EDD
-              ? dayjs(emrPdfData.gynaecologicalHistory.obstetricHistory.EDD)
-              : ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Symptoms : ${
-            emrPdfData.gynaecologicalHistory?.obstetricHistory?.symptoms || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Examination : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory?.examination || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `USG Scans : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory?.USGScans || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `TD Dose Taken : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory?.TDDoseTaken || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Prenatal Screening Reports : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory
-              ?.prenatalScreeningReports || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `PrenatalVitamins : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory?.prenatalVitamins
-              ? "Yes"
-              : "No"
-          }`,
-          100,
-          doc.y + 20
-        );
-
-      doc
-        .fontSize(12)
-        .text(
-          `Fresh Complaint : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory?.freshComplaint ||
-            ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Fresh Complaint : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory?.freshComplaint ||
-            ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Nutritional History : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory
-              ?.nutritionalHistory || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Treating Gynaecologist Name : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory
-              ?.treatingGynaecologistName || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-      doc
-        .fontSize(12)
-        .text(
-          `Gynaecologist Address : ${
-            emrPdfData.gynaecologicalHistory.obstetricHistory
-              ?.gynaecologistAddress || ""
-          }`,
-          100,
-          doc.y + 20
-        );
-    }
-    ensureSpace(90);
-
-    // doctor notes
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Doctor Notes : `, 50, doc.y + 20, {
-        align: "left",
-      });
-
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(`${emrPdfData?.doctorNotes || ""}`, 100, doc.y + 15);
-    // advice
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Advice : `, 50, doc.y + 20, {
-        align: "left",
-      });
-
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(`${emrPdfData?.advice || ""}`, 100, doc.y + 15);
-    // Referrals
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Referrals : `, 50, doc.y + 20, {
-        align: "left",
-      });
-
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(`${emrPdfData?.referrals || ""}`, 100, doc.y + 15);
-
-    // Follow Up Schedule
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(`Follow Up Schedule : `, 50, doc.y + 20, {
-        align: "left",
-      });
-
-    doc
-      .font("Roboto-Medium")
-      .fontSize(12)
-      .text(`${emrPdfData?.followUpSchedule || ""}`, 100, doc.y + 15);
-
-    // Consultation Mode
-    doc
-      .font("Roboto-Bold")
-      .fontSize(14)
-      .text(
-        `Consultation Mode : ${
-          emrPdfData.consultationMode === "online"
-            ? "Tele Consultation"
-            : "On Site"
-        }`,
-        50,
-        doc.y + 20,
-        {
-          align: "left",
-        }
-      );
-    doc.moveDown(4);
-
-    // E-Signature
-    const eSignY = doc.page.height - 150;
-
-    // Add ESIGN photo
-
-    // doc.image(
-    //   path.join(__dirname, "../../../../../public/anupriya-sign.png"),
-    //   450,
-    //   doc.y + 35,
-    //   {
-    //     width: 100,
-    //     algin: "right",
-    //   }
-    // );
-
-    if (
-      emrPdfData?.doctor?.eSign && // Check if the value exists
-      typeof emrPdfData.doctor.eSign === "string" && // Ensure it is a string
-      emrPdfData.doctor.eSign.trim().toLowerCase() !== "null"
-    ) {
-      // console.log(emrPdfData?.doctor?.eSign);
-      // console.log("prescription?.doctor?.eSign" + prescription?.doctor?.eSign);
-
-      doc.image(emrPdfData.doctor.eSign, 450, eSignY - 65, {
-        width: 100,
-        align: "right", // Corrected the typo from 'algin' to 'align'
-      });
-    }
-
-    doc.fontSize(12).text("E - SIGNATURE", 470, eSignY);
-    addFooter();
-    doc.end();
-    return doc;
+      } catch (cleanupErr) {
+        console.error("Cleanup error:", cleanupErr);
+      }
+    });
   } catch (err) {
-    // console.log("go into catch");
-    console.log(err);
-    doc.end();
-
-    //   if (doc && doc.pipe) {
-    //     doc.end();
-    //     return Response.error(
-    //       res,
-    //       500,
-    //       AppConstant.FAILED,
-    //       err.message || "Internal server error!"
-    //     );
-    //   } else {
-    //     return Response.error(
-    //       res,
-    //       500,
-    //       AppConstant.FAILED,
-    //       err.message || "Internal server error!"
-    //     );
-    //   }
+    console.error("PDF generation error:", err);
+    return res.status(500).json({
+      error: "Failed to generate EMR PDF",
+      details: err.message,
+    });
   }
 };
 
-// get emr pdf by id
+// Generate EMR PDF
+const generateEMRPDF = async (emrPdfData) => {
+  let browser = null;
+  let logoBase64 = null;
+
+  console.log("\n\n");
+  console.log("emrPdfData", emrPdfData);
+  console.log("\n\n");
+
+  try {
+    // Ensure temp directory exists
+    const tempDir = path.resolve(__dirname, "../../../../../public/temp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Ensure debug directory exists
+    const debugDir = path.resolve(tempDir, "debug");
+    if (!fs.existsSync(debugDir)) {
+      fs.mkdirSync(debugDir, { recursive: true });
+    }
+
+    // Copy logo to a location accessible by the browser
+    const logoSourcePath = path.resolve(
+      __dirname,
+      "../../../../../public/logo.png"
+    );
+    const logoTempPath = path.join(tempDir, "temp_logo.png");
+    fs.copyFileSync(logoSourcePath, logoTempPath);
+
+    // Generate an absolute file URL for the copied logo
+    const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
+
+    // Launch browser with proper error handling
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--allow-file-access-from-files", // Important for accessing local files
+      ],
+    });
+
+    const page = await browser.newPage();
+
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
+
+    // Allow all requests to proceed, including file access
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      req.continue();
+    });
+
+    // Generate HTML content with logo path
+    const htmlContent = getEmrHTML(emrPdfData, logoUrl);
+
+    // Add embedded Bootstrap CSS to avoid external dependency
+    const bootstrapCSS = `
+      <style>
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #333;
+          line-height: 1.6;
+          font-size: 12px;
+        }
+        .header {
+          background: #ffffff;
+          padding: 1.5rem;
+          color: #333;
+          margin-bottom: 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 4px solid #0096F2;
+          page-break-inside: avoid;
+          page-break-after: avoid;
+        }
+        .doctor-info {
+          flex: 1;
+        }
+        .doctor-info h2 {
+          margin: 0;
+          font-weight: 700;
+          font-size: 1.2rem;
+          word-wrap: break-word;
+          color: #333;
+        }
+        .doctor-info p {
+          margin: 0.05rem 0;
+          font-size: 0.8rem;
+          word-wrap: break-word;
+          color: #666;
+        }
+        .logo {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          min-width: 120px;
+          margin-left: 1rem;
+        }
+        .logo img {
+          max-height: 46px;
+          object-fit: contain;
+          background-color: #ffffff;
+          padding: 10px;
+          border-radius: 10px;
+        }
+        .logo-address {
+          font-size: 0.7rem;
+          color: #666;
+          text-align: right;
+          margin-top: 0.5rem;
+          max-width: 200px;
+          word-wrap: break-word;
+        }
+        .title {
+          text-align: center;
+          margin: 1.5rem 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #0096F2;
+          text-transform: uppercase;
+          page-break-after: avoid;
+          word-wrap: break-word;
+        }
+        .section-title {
+          background-color: #0096F2;
+          color: white;
+          padding: 8px 12px;
+          font-weight: 600;
+          font-size: 0.8rem;
+          margin-bottom: 0;
+          border-radius: 4px 4px 0 0;
+          page-break-after: avoid;
+          word-wrap: break-word;
+        }
+        .section-container {
+          page-break-inside: avoid;
+          margin-bottom: 1.5rem;
+        }
+        .table-container {
+          margin-bottom: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          border-radius: 0 0 4px 4px;
+          page-break-inside: avoid;
+          overflow: hidden;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 0;
+          table-layout: fixed;
+        }
+        th, td {
+          padding: 8px 12px;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          vertical-align: top;
+        }
+        th {
+          background-color: #f8f9fa;
+          color: #333;
+          font-weight: 600;
+          width: 25%;
+        }
+        td {
+          width: 75%;
+          white-space: pre-wrap;
+        }
+        tr:last-child td {
+          border-bottom: none;
+        }
+        .vital-signs-table td:first-child {
+          font-weight: 500;
+          width: 30%;
+        }
+        .diagnosis-table th {
+          text-align: left;
+        }
+        .footer {
+          background: #0096F2;
+          color: white;
+          text-align: center;
+          padding: 0.8rem 0;
+          font-size: 0.9rem;
+          margin-top: 2rem;
+          border-radius: 4px;
+          page-break-inside: avoid;
+          page-break-before: auto;
+          word-wrap: break-word;
+        }
+        .signature-section {
+          margin-top: 2rem;
+          padding: 1rem;
+          text-align: right;
+          page-break-inside: avoid;
+        }
+        .signature-image {
+          max-width: 150px;
+          height: auto;
+        }
+
+        /* Multi-column tables */
+        table.multi-col th {
+          width: auto;
+        }
+        table.multi-col td {
+          width: auto;
+        }
+
+        /* Long text handling */
+        .long-text {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          max-width: 100%;
+        }
+
+        /* Print-specific styles */
+        @media print {
+          .header, .footer {
+            background-color: #0096F2 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .section-title {
+            background-color: #0096F2 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          th {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .section-container {
+            break-inside: avoid;
+          }
+          h4 {
+            break-after: avoid;
+          }
+          table {
+            break-inside: avoid;
+          }
+          tr {
+            break-inside: avoid;
+          }
+          td, th {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+        }
+      </style>
+    `;
+
+    // Inject bootstrap CSS directly into HTML to avoid loading from CDN
+    const enhancedHtml = htmlContent.replace(
+      "</head>",
+      `${bootstrapCSS}</head>`
+    );
+
+    // Set content with proper timeout
+    await page.setContent(enhancedHtml, {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
+
+    // Wait for images to load
+    await page
+      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
+      .catch(() => {
+        console.log("Logo image may not have loaded, continuing anyway");
+      });
+
+    // Take screenshot for debugging
+    const safeFilename = (emrPdfData.basicInfo?.name || "unnamed")
+      .replace(/[^a-z0-9]/gi, "_")
+      .toLowerCase();
+
+    const screenshotPath = path.join(
+      debugDir,
+      `emr_debug_${safeFilename}_${Date.now()}.png`
+    );
+    await page.screenshot({
+      path: screenshotPath,
+      fullPage: true,
+    });
+
+    console.log("Debug screenshot saved to:", screenshotPath);
+
+    // Generate PDF with increased timeout
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "15mm",
+        bottom: "20mm",
+        left: "15mm",
+      },
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Preva Care EMR</div>`,
+      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div>© 2025 Preva Care</div>
+      </div>`,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+
+    // Save file with proper path for debugging
+    const fileName = `emr_pdf_${safeFilename}_${Date.now()}.pdf`;
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, pdfBuffer);
+
+    console.log("PDF saved to:", filePath);
+
+    // Clean up temporary logo file
+    try {
+      if (fs.existsSync(logoTempPath)) {
+        fs.unlinkSync(logoTempPath);
+      }
+    } catch (err) {
+      console.error("Error removing temporary logo:", err);
+    }
+
+    // Close browser before returning buffer
+    await browser.close();
+    browser = null;
+
+    return pdfBuffer;
+  } catch (err) {
+    console.error("PDF Generation Error:", err);
+    throw err; // Re-throw to allow proper handling in calling function
+  } finally {
+    // Ensure browser is closed even if an error occurs
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Error closing browser:", closeErr);
+      }
+    }
+  }
+};
+
+// Get EMR PDF by ID - UPDATED FOR FILE DOWNLOAD
 const getEmrPdfByemrId = async (req, res) => {
+  let browser = null;
+  let pdfFilePath = null;
+  let logoTempPath = null;
+
   try {
     const { emrId } = req.body;
     if (!emrId) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "emrId is missing  !"
-      );
+      return Response.error(res, 404, AppConstant.FAILED, "emrId is missing!");
     }
+
     const existingEmr = await emrModel.findById(emrId).populate({
       path: "doctor",
       select:
-        "firstName lastName education specialization eSign medicalRegistrationNumber",
+        "firstName lastName education specialization eSign medicalRegistrationNumber degree",
     });
+
     if (!existingEmr) {
       return Response.error(
         res,
         404,
         AppConstant.FAILED,
-        "emrId is missing  !"
+        "EMR not found with provided ID!"
       );
     }
-    // console.log(existingEmr);
 
-    await generateEMRPDFFn(existingEmr, res);
-    // const pdfPath = await generatePrescriptionPDF(emrPdfData);
-    // return res.download(pdfPath);
+    // Create a safe copy of the data
+    const safeEmr = existingEmr.toObject ? existingEmr.toObject() : existingEmr;
+
+    console.log("\n=== Creating EMR PDF from Database Data ===");
+    console.log("EMR ID:", emrId);
+    console.log("EMR Data:", JSON.stringify(safeEmr, null, 2));
+    console.log("=========================================\n");
+
+    // Ensure temp directory exists
+    const tempDir = path.resolve(__dirname, "../../../../../public/temp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Copy logo to a location accessible by the browser
+    const logoSourcePath = path.resolve(
+      __dirname,
+      "../../../../../public/logo.png"
+    );
+    logoTempPath = path.join(tempDir, `temp_logo_${Date.now()}.png`);
+    fs.copyFileSync(logoSourcePath, logoTempPath);
+
+    // Generate an absolute file URL for the copied logo
+    const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
+
+    // Launch browser
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--allow-file-access-from-files",
+      ],
+    });
+
+    const page = await browser.newPage();
+
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
+    try {
+      const logoPath = path.resolve(
+        __dirname,
+        "../../../../../public/logo1.png"
+      );
+      console.log("Looking for logo at:", logoPath);
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+        console.log("Logo loaded successfully");
+      } else {
+        console.error("Logo file not found at path:", logoPath);
+      }
+    } catch (err) {
+      console.error("Error loading logo:", err);
+    }
+    // Generate HTML content with embedded logo
+    const htmlContent = getEmrHTML(safeEmr, logoBase64);
+
+    // Add embedded Bootstrap CSS
+    const bootstrapCSS = `
+      <style>
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #333;
+          line-height: 1.6;
+          font-size: 12px;
+        }
+        .header {
+          background: #ffffff;
+          padding: 1.5rem;
+          color: #333;
+          margin-bottom: 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 4px solid #0096F2;
+          page-break-inside: avoid;
+          page-break-after: avoid;
+        }
+        .doctor-info {
+          flex: 1;
+        }
+        .doctor-info h2 {
+          margin: 0;
+          font-weight: 700;
+          font-size: 1.2rem;
+          word-wrap: break-word;
+          color: #333;
+        }
+        .doctor-info p {
+          margin: 0.05rem 0;
+          font-size: 0.8rem;
+          word-wrap: break-word;
+          color: #666;
+        }
+        .logo {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          min-width: 120px;
+          margin-left: 1rem;
+        }
+        .logo img {
+          max-height: 46px;
+          object-fit: contain;
+          background-color: #ffffff;
+          padding: 10px;
+          border-radius: 10px;
+        }
+        .logo-address {
+          font-size: 0.7rem;
+          color: #666;
+          text-align: right;
+          margin-top: 0.5rem;
+          max-width: 200px;
+          word-wrap: break-word;
+        }
+        .title {
+          text-align: center;
+          margin: 1.5rem 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #0096F2;
+          text-transform: uppercase;
+          page-break-after: avoid;
+          word-wrap: break-word;
+        }
+        .section-title {
+          background-color: #0096F2;
+          color: white;
+          padding: 8px 12px;
+          font-weight: 600;
+          font-size: 0.8rem;
+          margin-bottom: 0;
+          border-radius: 4px 4px 0 0;
+          page-break-after: avoid;
+          word-wrap: break-word;
+        }
+        .section-container {
+          page-break-inside: avoid;
+          margin-bottom: 1.5rem;
+        }
+        .table-container {
+          margin-bottom: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          border-radius: 0 0 4px 4px;
+          page-break-inside: avoid;
+          overflow: hidden;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 0;
+          table-layout: fixed;
+        }
+        th, td {
+          padding: 8px 12px;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          vertical-align: top;
+        }
+        th {
+          background-color: #f8f9fa;
+          color: #333;
+          font-weight: 600;
+          width: 25%;
+        }
+        td {
+          width: 75%;
+          white-space: pre-wrap;
+        }
+        tr:last-child td {
+          border-bottom: none;
+        }
+        .vital-signs-table td:first-child {
+          font-weight: 500;
+          width: 30%;
+        }
+        .diagnosis-table th {
+          text-align: left;
+        }
+        .footer {
+          background: #0096F2;
+          color: white;
+          text-align: center;
+          padding: 0.8rem 0;
+          font-size: 0.9rem;
+          margin-top: 2rem;
+          border-radius: 4px;
+          page-break-inside: avoid;
+          page-break-before: auto;
+          word-wrap: break-word;
+        }
+        .signature-section {
+          margin-top: 2rem;
+          padding: 1rem;
+          text-align: right;
+          page-break-inside: avoid;
+        }
+        .signature-image {
+          max-width: 150px;
+          height: auto;
+        }
+
+        /* Multi-column tables */
+        table.multi-col th {
+          width: auto;
+        }
+        table.multi-col td {
+          width: auto;
+        }
+
+        /* Long text handling */
+        .long-text {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          max-width: 100%;
+        }
+
+        /* Print-specific styles */
+        @media print {
+          .header, .footer {
+            background-color: #ffffff !important;
+            color: #333 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .section-title {
+            background-color: #0096F2 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          th {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .section-container {
+            break-inside: avoid;
+          }
+          h4 {
+            break-after: avoid;
+          }
+          table {
+            break-inside: avoid;
+          }
+          tr {
+            break-inside: avoid;
+          }
+          td, th {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          .doctor-info h2 {
+            color: #333 !important;
+          }
+          .doctor-info p {
+            color: #666 !important;
+          }
+          .logo-address {
+            color: #666 !important;
+          }
+        }
+      </style>
+    `;
+
+    const enhancedHtml = htmlContent.replace(
+      "</head>",
+      `${bootstrapCSS}</head>`
+    );
+
+    // Allow all requests to proceed, including file access
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      req.continue();
+    });
+
+    // Set content and wait for it to load
+    await page.setContent(enhancedHtml, {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
+
+    // Wait for images to load
+    await page
+      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
+      .catch(() => {
+        console.log("Logo image may not have loaded, continuing anyway");
+      });
+
+    // Debug with screenshot if needed
+    const debugDir = path.resolve(tempDir, "debug");
+    if (!fs.existsSync(debugDir)) {
+      fs.mkdirSync(debugDir, { recursive: true });
+    }
+
+    const safeId = String(existingEmr._id).replace(/[^a-z0-9]/gi, "");
+    const screenshotPath = path.join(
+      debugDir,
+      `emr_debug_${safeId}_${Date.now()}.png`
+    );
+
+    await page.screenshot({
+      path: screenshotPath,
+      fullPage: true,
+    });
+
+    console.log("Debug screenshot saved to:", screenshotPath);
+    console.log("Generating PDF...");
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "15mm",
+        bottom: "20mm",
+        left: "15mm",
+      },
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Medical Record</div>`,
+      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div>© 2025 Preva Care</div>
+      </div>`,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+
+    console.log("PDF generated successfully");
+
+    // Close browser before file operations
+    await browser.close();
+    browser = null;
+
+    // Save the file to disk
+    const pdfFileName = `EMR_${safeId}_${Date.now()}.pdf`;
+    pdfFilePath = path.join(tempDir, pdfFileName);
+    fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+    console.log("PDF saved to:", pdfFilePath);
+    console.log("PDF size:", pdfBuffer.length, "bytes");
+
+    // Use res.download instead of res.send
+    return res.download(pdfFilePath, pdfFileName, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        // If there's a download error, try to send an error response if headers haven't been sent
+        if (!res.headersSent) {
+          return Response.error(
+            res,
+            500,
+            AppConstant.FAILED,
+            "Error downloading PDF: " + err.message
+          );
+        }
+      }
+
+      // Clean up the files after sending (optional)
+      try {
+        if (fs.existsSync(pdfFilePath)) {
+          fs.unlinkSync(pdfFilePath);
+          console.log("Temporary PDF file deleted");
+        }
+        if (fs.existsSync(logoTempPath)) {
+          fs.unlinkSync(logoTempPath);
+          console.log("Temporary logo file deleted");
+        }
+      } catch (cleanupErr) {
+        console.error("Error cleaning up files:", cleanupErr);
+      }
+    });
   } catch (err) {
-    // console.log(err);
-    res.status(500).json({ error: "Failed to generate emrPdfData" });
+    console.error("EMR PDF generation error:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      "Failed to generate EMR PDF: " + err.message
+    );
+  } finally {
+    // Ensure browser is closed and temp files are cleaned up
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Error closing browser:", closeErr);
+      }
+    }
+    if (logoTempPath && fs.existsSync(logoTempPath)) {
+      try {
+        fs.unlinkSync(logoTempPath);
+      } catch (err) {
+        console.error("Error removing temporary logo:", err);
+      }
+    }
   }
 };
-// get emr pdf by id
+
+// Get e-prescription PDF by ID
 const getEPrescriptionPdfById = async (req, res) => {
+  let browser = null;
+  let pdfFilePath = null;
+  let logoTempPath = null;
+
   try {
     const { ePrescriptionId } = req.body;
     if (!ePrescriptionId) {
@@ -1082,30 +885,1532 @@ const getEPrescriptionPdfById = async (req, res) => {
         res,
         404,
         AppConstant.FAILED,
-        "ePrescriptionId is missing  !"
+        "ePrescriptionId is missing!"
       );
     }
+
     const existingEPrescription = await eprescriptionModel.findById(
       ePrescriptionId
     );
+    console.log("existingEPrescription", existingEPrescription);
 
     if (!existingEPrescription) {
       return Response.error(
         res,
         404,
         AppConstant.FAILED,
-        "ePrescriptionId is missing  !"
+        "E-Prescription not found with provided ID!"
       );
     }
 
-    await generatePrescriptionPDFFn(existingEPrescription, res);
-    // const pdfPath = await generatePrescriptionPDF(emrPdfData);
-    // return res.download(pdfPath);
+    // Ensure temp directory exists
+    const tempDir = path.resolve(__dirname, "../../../../../public/temp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Copy logo to a location accessible by the browser
+    const logoSourcePath = path.resolve(
+      __dirname,
+      "../../../../../public/logo.png"
+    );
+    logoTempPath = path.join(tempDir, `temp_logo_${Date.now()}.png`);
+    fs.copyFileSync(logoSourcePath, logoTempPath);
+
+    // Generate an absolute file URL for the copied logo
+    const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
+
+    // Launch browser
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--allow-file-access-from-files",
+      ],
+    });
+
+    const page = await browser.newPage();
+
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
+
+    try {
+      const logoPath = path.resolve(
+        __dirname,
+        "../../../../../public/logo1.png"
+      );
+      console.log("Looking for logo at:", logoPath);
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+        console.log("Logo loaded successfully");
+      } else {
+        console.error("Logo file not found at path:", logoPath);
+      }
+    } catch (err) {
+      console.error("Error loading logo:", err);
+    }
+
+    // Generate HTML content
+    const htmlContent = getPrescriptionHTML(existingEPrescription, logoBase64);
+
+    // Add embedded Bootstrap CSS
+    const bootstrapCSS = `
+      <style>
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #333;
+          line-height: 1.6;
+          font-size: 12px;
+        }
+        .header {
+          background: #ffffff;
+          padding: 1.5rem;
+          color: #333;
+          margin-bottom: 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 4px solid #0096F2;
+          page-break-inside: avoid;
+          page-break-after: avoid;
+        }
+        .doctor-info {
+          flex: 1;
+        }
+        .doctor-info h2 {
+          margin: 0;
+          font-weight: 700;
+          font-size: 1.2rem;
+          word-wrap: break-word;
+          color: #333;
+        }
+        .doctor-info p {
+          margin: 0.05rem 0;
+          font-size: 0.8rem;
+          word-wrap: break-word;
+          color: #666;
+        }
+        .logo {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          min-width: 120px;
+          margin-left: 1rem;
+        }
+        .logo img {
+          max-height: 46px;
+          object-fit: contain;
+          background-color: #ffffff;
+          padding: 10px;
+          border-radius: 10px;
+        }
+        .logo-address {
+          font-size: 0.7rem;
+          color: #666;
+          text-align: right;
+          margin-top: 0.5rem;
+          max-width: 200px;
+          word-wrap: break-word;
+        }
+        .title {
+          text-align: center;
+          margin: 1.5rem 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #0096F2;
+          text-transform: uppercase;
+          page-break-after: avoid;
+          word-wrap: break-word;
+        }
+        .section-title {
+          background-color: #0096F2;
+          color: white;
+          padding: 8px 12px;
+          font-weight: 600;
+          font-size: 0.8rem;
+          margin-bottom: 0;
+          border-radius: 4px 4px 0 0;
+          page-break-after: avoid;
+          word-wrap: break-word;
+        }
+        .section-container {
+          page-break-inside: avoid;
+          margin-bottom: 1.5rem;
+        }
+        .table-container {
+          margin-bottom: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          border-radius: 0 0 4px 4px;
+          page-break-inside: avoid;
+          overflow: hidden;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 0;
+          table-layout: fixed;
+        }
+        th, td {
+          padding: 8px 12px;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          vertical-align: top;
+        }
+        th {
+          background-color: #f8f9fa;
+          color: #333;
+          font-weight: 600;
+          width: 25%;
+        }
+        td {
+          width: 75%;
+          white-space: pre-wrap;
+        }
+        tr:last-child td {
+          border-bottom: none;
+        }
+        .footer {
+          background: #0096F2;
+          color: white;
+          text-align: center;
+          padding: 0.8rem 0;
+          font-size: 0.9rem;
+          margin-top: 2rem;
+          border-radius: 4px;
+          page-break-inside: avoid;
+          page-break-before: auto;
+          word-wrap: break-word;
+        }
+        .signature-section {
+          margin-top: 2rem;
+          padding: 1rem;
+          text-align: right;
+          page-break-inside: avoid;
+        }
+        .signature-image {
+          max-width: 150px;
+          height: auto;
+        }
+
+        /* Multi-column tables */
+        table.multi-col th {
+          width: auto;
+        }
+        table.multi-col td {
+          width: auto;
+        }
+
+        /* Long text handling */
+        .long-text {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          max-width: 100%;
+        }
+
+        /* Print-specific styles */
+        @media print {
+          .header, .footer {
+            background-color: #ffffff !important;
+            color: #333 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .section-title {
+            background-color: #0096F2 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          th {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .section-container {
+            break-inside: avoid;
+          }
+          h4 {
+            break-after: avoid;
+          }
+          table {
+            break-inside: avoid;
+          }
+          tr {
+            break-inside: avoid;
+          }
+          td, th {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          .doctor-info h2 {
+            color: #333 !important;
+          }
+          .doctor-info p {
+            color: #666 !important;
+          }
+          .logo-address {
+            color: #666 !important;
+          }
+        }
+      </style>
+    `;
+
+    const enhancedHtml = htmlContent.replace(
+      "</head>",
+      `${bootstrapCSS}</head>`
+    );
+
+    // Allow all requests to proceed, including file access
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      req.continue();
+    });
+
+    // Set content and wait for it to load
+    await page.setContent(enhancedHtml, {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
+
+    // Wait for images to load
+    await page
+      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
+      .catch(() => {
+        console.log("Logo image may not have loaded, continuing anyway");
+      });
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "15mm",
+        bottom: "20mm",
+        left: "15mm",
+      },
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
+      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div>© 2025 Preva Care</div>
+      </div>`,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+
+    // Close browser before file operations
+    await browser.close();
+    browser = null;
+
+    // Save the file to disk
+    const pdfFileName = `Prescription_${
+      existingEPrescription._id
+    }_${Date.now()}.pdf`;
+    pdfFilePath = path.join(tempDir, pdfFileName);
+    fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+    // Use res.download instead of res.send
+    return res.download(pdfFilePath, pdfFileName, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        if (!res.headersSent) {
+          return Response.error(
+            res,
+            500,
+            AppConstant.FAILED,
+            "Error downloading PDF: " + err.message
+          );
+        }
+      }
+
+      // Clean up the files after sending
+      try {
+        if (fs.existsSync(pdfFilePath)) {
+          fs.unlinkSync(pdfFilePath);
+          console.log("Temporary PDF file deleted");
+        }
+        if (fs.existsSync(logoTempPath)) {
+          fs.unlinkSync(logoTempPath);
+          console.log("Temporary logo file deleted");
+        }
+      } catch (cleanupErr) {
+        console.error("Error cleaning up files:", cleanupErr);
+      }
+    });
   } catch (err) {
-    // console.log(err);
-    res.status(500).json({ error: "Failed to generate emrpdf" });
+    console.error("E-Prescription PDF generation error:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      "Failed to generate e-prescription PDF: " + err.message
+    );
+  } finally {
+    // Ensure browser is closed and temp files are cleaned up
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Error closing browser:", closeErr);
+      }
+    }
+    if (logoTempPath && fs.existsSync(logoTempPath)) {
+      try {
+        fs.unlinkSync(logoTempPath);
+      } catch (err) {
+        console.error("Error removing temporary logo:", err);
+      }
+    }
   }
 };
+
+function getEmrHTML(emrPdfData, logoBase64) {
+  const {
+    basicInfo = {},
+    doctor = {},
+    history = {},
+    immunization = [],
+    generalPhysicalExamination = {},
+    systemicExamination = {},
+    diagnosis = [],
+    advice = "",
+    referrals = "",
+    followUpSchedule = "",
+    doctorNotes = "",
+    consultationMode = "",
+    createdAt = new Date(),
+  } = emrPdfData || {};
+
+  const formatDate = (date) => {
+    return date ? dayjs(date).format("DD/MM/YYYY") : "";
+  };
+
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" alt="Preva Care Logo" style="max-height:40px; background-color:#ffffff; padding:10px; border-radius:10px;" />`
+    : `<div style="background:#ffffff; padding:10px; border-radius:10px; font-weight:bold; color:#4b90e2; text-align:center;">
+       <span style="font-size:1.5rem;">Preva Care</span>
+     </div>`;
+
+  return `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>EMR PDF</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        line-height: 1.6;
+        font-size: 12px;
+      }
+      .header {
+        background: #ffffff;
+        padding: 1.5rem;
+        color: #333;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 4px solid #0096F2;
+        page-break-inside: avoid;
+        page-break-after: avoid;
+      }
+      .doctor-info {
+        flex: 1;
+      }
+      .doctor-info h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.2rem;
+        word-wrap: break-word;
+        color: #333;
+      }
+      .doctor-info p {
+        margin: 0.05rem 0;
+        font-size: 0.8rem;
+        word-wrap: break-word;
+        color: #666;
+      }
+      .logo {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        min-width: 120px;
+        margin-left: 1rem;
+      }
+      .logo img {
+        max-height: 46px;
+        object-fit: contain;
+        background-color: #ffffff;
+        padding: 10px;
+        border-radius: 10px;
+      }
+      .logo-address {
+        font-size: 0.7rem;
+        color: #666;
+        text-align: right;
+        margin-top: 0.5rem;
+        max-width: 200px;
+        word-wrap: break-word;
+      }
+      .title {
+        text-align: center;
+        margin: 1.5rem 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #0096F2;
+        text-transform: uppercase;
+        page-break-after: avoid;
+        word-wrap: break-word;
+      }
+      .section-title {
+        background-color: #0096F2;
+        color: white;
+        padding: 8px 12px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-bottom: 0;
+        border-radius: 4px 4px 0 0;
+        page-break-after: avoid;
+        word-wrap: break-word;
+      }
+      .section-container {
+        page-break-inside: avoid;
+        margin-bottom: 1.5rem;
+      }
+      .table-container {
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 0 0 4px 4px;
+        page-break-inside: avoid;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+        table-layout: fixed;
+      }
+      th, td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        vertical-align: top;
+      }
+      th {
+        background-color: #f8f9fa;
+        color: #333;
+        font-weight: 600;
+        width: 25%;
+      }
+      td {
+        width: 75%;
+        white-space: pre-wrap;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      .vital-signs-table td:first-child {
+        font-weight: 500;
+        width: 30%;
+      }
+      .diagnosis-table th {
+        text-align: left;
+      }
+      .footer {
+        background: #0096F2;
+        color: white;
+        text-align: center;
+        padding: 0.8rem 0;
+        font-size: 0.9rem;
+        margin-top: 2rem;
+        border-radius: 4px;
+        page-break-inside: avoid;
+        page-break-before: auto;
+        word-wrap: break-word;
+      }
+      .signature-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        text-align: right;
+        page-break-inside: avoid;
+      }
+      .signature-image {
+        max-width: 150px;
+        height: auto;
+      }
+
+      /* Multi-column tables */
+      table.multi-col th {
+        width: auto;
+      }
+      table.multi-col td {
+        width: auto;
+      }
+
+      /* Long text handling */
+      .long-text {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-width: 100%;
+      }
+
+      /* Print-specific styles */
+      @media print {
+        .header, .footer {
+          background-color: #0096F2 !important;
+          color: white !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .section-title {
+          background-color: #0096F2 !important;
+          color: white !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        th {
+          background-color: #f8f9fa !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .section-container {
+          break-inside: avoid;
+        }
+        h4 {
+          break-after: avoid;
+        }
+        table {
+          break-inside: avoid;
+        }
+        tr {
+          break-inside: avoid;
+        }
+        td, th {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="doctor-info">
+        <h2>Dr. ${doctor.firstName || ""} ${doctor.lastName || ""}</h2>
+        <p>${doctor.specialization || ""}</p>
+        <p>Reg. No: ${doctor.medicalRegistrationNumber || ""}</p>
+        <p>Consultation Mode: ${consultationMode}</p>
+        <p>Date: ${formatDate(createdAt)}</p>
+      </div>
+      <div class="logo">
+        ${logoHtml}
+        <div class="logo-address">Registered Office : P-1 GROUND FLOOR B/P P-1 TO P-20 NDSE II OPP. LI/11 , Delhi, India - 110049</div>
+      </div>
+    </div>
+
+    <h1 class="title">Electronic Medical Record</h1>
+
+    <div class="container-fluid px-4">
+      <!-- Patient Info -->
+      <div class="section-container">
+        <h4 class="section-title">Patient Information</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Patient Name</th><td>${basicInfo.name || ""}</td></tr>
+              <tr><th>Age</th><td>${basicInfo.age || ""} years</td></tr>
+              <tr><th>Gender</th><td>${
+                basicInfo.gender === "F" ? "Female" : "Male"
+              }</td></tr>
+              <tr><th>Phone Number</th><td>${
+                basicInfo.phoneNumber || ""
+              }</td></tr>
+              <tr><th>Blood Group</th><td>${
+                basicInfo.bloodGroup || ""
+              }</td></tr>
+              <tr><th>Marital Status</th><td>${
+                basicInfo.maritalStatus ? "Married" : "Single"
+              }</td></tr>
+              <tr><th>Children</th><td>${basicInfo.children || "0"}</td></tr>
+              <tr><th>Address</th><td>${basicInfo.address?.name || ""}, ${
+    basicInfo.address?.street || ""
+  }, ${basicInfo.address?.city || ""}, ${basicInfo.address?.state || ""} - ${
+    basicInfo.address?.zipCode || ""
+  }</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="section-container">
+        <h4 class="section-title">Medical History</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Chief Complaint</th><td>${
+                history.chiefComplaint || ""
+              }</td></tr>
+              <tr><th>History of Present Illness</th><td>${
+                history.historyOfPresentingIllness || ""
+              }</td></tr>
+              <tr><th>Previous Surgeries</th><td>${
+                history.previousSurgeries || ""
+              }</td></tr>
+              <tr><th>Bowel and Bladder</th><td>${
+                history.bowelAndBladder || ""
+              }</td></tr>
+              <tr><th>Appetite</th><td>${history.appetite || ""}</td></tr>
+              <tr><th>Sleep</th><td>${history.sleep || ""} hours</td></tr>
+              <tr><th>Mental Health Assessment</th><td>${
+                history.mentalHealthAssessment || ""
+              }</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Habits -->
+      <div class="section-container">
+        <h4 class="section-title">Habits</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Smoking</th><td>${
+                history.habits?.smoking ? "Yes" : "No"
+              }</td></tr>
+              <tr><th>Alcohol</th><td>${
+                history.habits?.alcohol ? "Yes" : "No"
+              }</td></tr>
+              ${
+                history.habits?.alcohol
+                  ? `
+              <tr><th>Alcohol Details</th><td>${
+                history.habits?.alcoholDetails || ""
+              }</td></tr>
+              <tr><th>Quantity per Week</th><td>${
+                history.habits?.qntPerWeek || ""
+              } ml</td></tr>
+              `
+                  : ""
+              }
+              <tr><th>Substance Abuse</th><td>${
+                history.habits?.substanceAbuse || "None"
+              }</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Screening -->
+      <div class="section-container">
+        <h4 class="section-title">Health Screening</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr>
+                <th>Stress Screening</th>
+                <td>
+                  Description: ${history.stressScreening?.desc || ""}<br>
+                  Score: ${history.stressScreening?.score || ""}<br>
+                  Recommendation: ${
+                    history.stressScreening?.recomendation || ""
+                  }
+                </td>
+              </tr>
+              <tr>
+                <th>Depression Screening</th>
+                <td>
+                  Description: ${history.depressionScreening?.desc || ""}<br>
+                  Score: ${history.depressionScreening?.score || ""}<br>
+                  Recommendation: ${
+                    history.depressionScreening?.recomendation || ""
+                  }
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Past History -->
+      ${
+        history.pastHistory && history.pastHistory.length > 0
+          ? `
+        <div class="section-container">
+          <h4 class="section-title">Past Medical History</h4>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Condition</th>
+                  <th>Medications</th>
+                  <th>Frequency</th>
+                  <th>Readings</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${history.pastHistory
+                  .map(
+                    (ph) => `
+                  <tr>
+                    <td>${ph.sufferingFrom || ""}</td>
+                    <td>${ph.drugName?.join(", ") || ""}</td>
+                    <td>${ph.freequency?.join(", ") || ""}</td>
+                    <td>${ph.readings || ""}</td>
+                    <td>${ph.pastHistoryNotes || ""}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Allergies -->
+      ${
+        history.allergies && history.allergies.length > 0
+          ? `
+        <div class="section-container">
+          <h4 class="section-title">Allergies</h4>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Allergy</th>
+                  <th>Past Medications</th>
+                  <th>Frequency</th>
+                  <th>Advised By</th>
+                  <th>Advice</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${history.allergies
+                  .map(
+                    (allergy) => `
+                  <tr>
+                    <td>${allergy.allergyName || ""}</td>
+                    <td>${allergy.pastAllergyDrugName?.join(", ") || ""}</td>
+                    <td>${allergy.pastAllergyFreequency?.join(", ") || ""}</td>
+                    <td>${allergy.advisedBy || ""}</td>
+                    <td>${allergy.advise || ""}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Immunization -->
+      ${
+        immunization && immunization.length > 0
+          ? `
+        <div class="section-container">
+          <h4 class="section-title">Immunization History</h4>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Vaccine</th>
+                  <th>Total Doses</th>
+                  <th>Doctor</th>
+                  <th>Side Effects</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${immunization
+                  .map(
+                    (imm) => `
+                  <tr>
+                    <td>${imm.immunizationType || ""}</td>
+                    <td>${imm.vaccinationName || ""}</td>
+                    <td>${imm.totalDose || ""}</td>
+                    <td>${imm.doctorName || ""}</td>
+                    <td>${imm.sideEffects || ""}</td>
+                    <td>${imm.immunizationNotes || ""}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- General Physical Examination -->
+      <div class="section-container">
+        <h4 class="section-title">General Physical Examination</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Blood Pressure</th><td>${
+                generalPhysicalExamination.BP?.sys || ""
+              }/${generalPhysicalExamination.BP?.dia || ""} mmHg</td></tr>
+              <tr><th>Pulse Rate</th><td>${
+                generalPhysicalExamination.PR || ""
+              } bpm</td></tr>
+              <tr><th>Volume</th><td>${
+                generalPhysicalExamination.volume || ""
+              }</td></tr>
+              <tr><th>Regularity</th><td>${
+                generalPhysicalExamination.regularity || ""
+              }</td></tr>
+              <tr><th>Character</th><td>${
+                generalPhysicalExamination.character || ""
+              }</td></tr>
+              <tr><th>Temperature</th><td>${
+                generalPhysicalExamination.temperature || ""
+              }</td></tr>
+              <tr><th>Respiratory Rate</th><td>${
+                generalPhysicalExamination.RR || ""
+              }</td></tr>
+              <tr><th>SpO2</th><td>${
+                generalPhysicalExamination.SPO2 || ""
+              }%</td></tr>
+              <tr><th>Height</th><td>${
+                generalPhysicalExamination.height || ""
+              } m</td></tr>
+              <tr><th>Weight</th><td>${
+                generalPhysicalExamination.weight || ""
+              } kg</td></tr>
+              <tr><th>BMI</th><td>${
+                generalPhysicalExamination.BMI || ""
+              }</td></tr>
+              <tr><th>Radio Femoral Delay</th><td>${
+                generalPhysicalExamination.radioFemoralDelay || ""
+              }</td></tr>
+              <tr><th>Pallor</th><td>${
+                generalPhysicalExamination.pallor || ""
+              }</td></tr>
+              <tr><th>Icterus</th><td>${
+                generalPhysicalExamination.icterus || ""
+              }</td></tr>
+              <tr><th>Cyanosis</th><td>${
+                generalPhysicalExamination.cyanosis || ""
+              }</td></tr>
+              <tr><th>Clubbing</th><td>${
+                generalPhysicalExamination.clubbing || ""
+              }</td></tr>
+              <tr><th>Lymphadenopathy</th><td>${
+                generalPhysicalExamination.lymphadenopathy || ""
+              }</td></tr>
+              <tr><th>Edema</th><td>${
+                generalPhysicalExamination.edema || ""
+              }</td></tr>
+              <tr><th>JVP</th><td>${
+                generalPhysicalExamination.JVP || ""
+              }</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Systemic Examination -->
+      <div class="section-container">
+        <h4 class="section-title">Systemic Examination</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Respiratory System</th><td>${
+                systemicExamination.respiratorySystem || ""
+              }</td></tr>
+              <tr><th>Cardiovascular System</th><td>${
+                systemicExamination.CVS || ""
+              }</td></tr>
+              <tr><th>Central Nervous System</th><td>${
+                systemicExamination.CNS || ""
+              }</td></tr>
+              <tr><th>Per Abdomen</th><td>${
+                systemicExamination.PA || ""
+              }</td></tr>
+              <tr><th>Other Findings</th><td>${
+                systemicExamination.otherSystemicFindings || ""
+              }</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Diagnosis and Prescription -->
+      ${
+        diagnosis && diagnosis.length > 0
+          ? `
+        <div class="section-container">
+          <h4 class="section-title">Diagnosis & Prescription</h4>
+          ${diagnosis
+            .map(
+              (diag) => `
+            <div class="table-container">
+              <table>
+                <tbody>
+                  <tr>
+                    <th style="width: 30%">Diagnosis</th>
+                    <td>${diag.diagnosisName || ""}</td>
+                  </tr>
+                  <tr>
+                    <th>Date</th>
+                    <td>${formatDate(diag.dateOfDiagnosis)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              ${
+                diag.prescription && diag.prescription.length > 0
+                  ? `
+                <table style="margin-top: 10px;">
+                  <thead>
+                    <tr>
+                      <th>Medicine</th>
+                      <th>Frequency</th>
+                      <th>Duration</th>
+                      <th>Route</th>
+                      <th>How to Take</th>
+                      <th>Investigations</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${diag.prescription
+                      .map(
+                        (med) => `
+                      <tr>
+                        <td>${med.drugName || ""}</td>
+                        <td>${med.freequency || ""}</td>
+                        <td>${med.duration || ""} days</td>
+                        <td>${med.routeOfAdministration || ""}</td>
+                        <td>${med.howToTake || ""}</td>
+                        <td>${med.investigations || ""}</td>
+                      </tr>
+                    `
+                      )
+                      .join("")}
+                  </tbody>
+                </table>
+              `
+                  : ""
+              }
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Advice and Follow-up -->
+      <div class="section-container">
+        <h4 class="section-title">Advice & Follow-up</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Advice</th><td>${advice || ""}</td></tr>
+              <tr><th>Referrals</th><td>${referrals || ""}</td></tr>
+              <tr><th>Follow-up Schedule</th><td>${
+                followUpSchedule || ""
+              }</td></tr>
+              ${
+                doctorNotes
+                  ? `<tr><th>Doctor Notes</th><td>${doctorNotes}</td></tr>`
+                  : ""
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>© 2025 Preva Care | Electronic Medical Record System</span>
+    </div>
+  </body>
+</html>
+`;
+}
+
+function getPrescriptionHTML(prescriptionData, logoBase64) {
+  const {
+    patient = {},
+    doctor = {},
+    date = new Date(),
+    prescriptionID = "",
+    vitals = {},
+    dx = [],
+    sx = "",
+    rx = [],
+    labTest = [],
+    advice = [],
+    followUpSchedule = "",
+    consultationMode = "",
+  } = prescriptionData || {};
+
+  const formatDate = (date) => {
+    return date ? dayjs(date).format("DD/MM/YYYY") : "";
+  };
+
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" alt="Preva Care Logo" style="max-height:40px; background-color:#ffffff; padding:10px; border-radius:10px;" />`
+    : `<div style="background:#ffffff; padding:10px; border-radius:10px; font-weight:bold; color:#4b90e2; text-align:center;">
+         <span style="font-size:1.5rem;">Preva Care</span>
+       </div>`;
+
+  return `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>E-Prescription</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        line-height: 1.6;
+        font-size: 12px;
+      }
+      .header {
+        background: #ffffff;
+        padding: 1.5rem;
+        color: #333;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 4px solid #0096F2;
+        page-break-inside: avoid;
+        page-break-after: avoid;
+      }
+      .doctor-info {
+        flex: 1;
+      }
+      .doctor-info h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.2rem;
+        word-wrap: break-word;
+        color: #333;
+      }
+      .doctor-info p {
+        margin: 0.05rem 0;
+        font-size: 0.8rem;
+        word-wrap: break-word;
+        color: #666;
+      }
+      .logo {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        min-width: 120px;
+        margin-left: 1rem;
+      }
+      .logo img {
+        max-height: 46px;
+        object-fit: contain;
+        background-color: #ffffff;
+        padding: 10px;
+        border-radius: 10px;
+      }
+      .logo-address {
+        font-size: 0.7rem;
+        color: #666;
+        text-align: right;
+        margin-top: 0.5rem;
+        max-width: 200px;
+        word-wrap: break-word;
+      }
+      .title {
+        text-align: center;
+        margin: 1.5rem 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #0096F2;
+        text-transform: uppercase;
+        page-break-after: avoid;
+        word-wrap: break-word;
+      }
+      .section-title {
+        background-color: #0096F2;
+        color: white;
+        padding: 8px 12px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-bottom: 0;
+        border-radius: 4px 4px 0 0;
+        page-break-after: avoid;
+        word-wrap: break-word;
+      }
+      .section-container {
+        page-break-inside: avoid;
+        margin-bottom: 1.5rem;
+      }
+      .table-container {
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 0 0 4px 4px;
+        page-break-inside: avoid;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+        table-layout: fixed;
+      }
+      th, td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        vertical-align: top;
+      }
+      th {
+        background-color: #f8f9fa;
+        color: #333;
+        font-weight: 600;
+        width: 25%;
+      }
+      td {
+        width: 75%;
+        white-space: pre-wrap;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      .footer {
+        background: #0096F2;
+        color: white;
+        text-align: center;
+        padding: 0.8rem 0;
+        font-size: 0.9rem;
+        margin-top: 2rem;
+        border-radius: 4px;
+        page-break-inside: avoid;
+        page-break-before: auto;
+        word-wrap: break-word;
+      }
+      .signature-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        text-align: right;
+        page-break-inside: avoid;
+      }
+      .signature-image {
+        max-width: 150px;
+        height: auto;
+      }
+
+      /* Multi-column tables */
+      table.multi-col th {
+        width: auto;
+      }
+      table.multi-col td {
+        width: auto;
+      }
+
+      /* Long text handling */
+      .long-text {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-width: 100%;
+      }
+
+      /* Print-specific styles */
+      @media print {
+        .header, .footer {
+          background-color: #ffffff !important;
+          color: #333 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .section-title {
+          background-color: #0096F2 !important;
+          color: white !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        th {
+          background-color: #f8f9fa !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .section-container {
+          break-inside: avoid;
+        }
+        h4 {
+          break-after: avoid;
+        }
+        table {
+          break-inside: avoid;
+        }
+        tr {
+          break-inside: avoid;
+        }
+        td, th {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        .doctor-info h2 {
+          color: #333 !important;
+        }
+        .doctor-info p {
+          color: #666 !important;
+        }
+        .logo-address {
+          color: #666 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="doctor-info">
+        <h2>Dr. ${doctor.firstName || ""} ${doctor.lastName || ""}</h2>
+        <p>${doctor.specialization || ""}</p>
+        <p>${doctor.degree || ""}</p>
+        <p>Reg. No: ${doctor.medicalRegistrationNumber || ""}</p>
+        <p>Consultation Mode: ${consultationMode}</p>
+        <p>Date: ${formatDate(date)}</p>
+      </div>
+      <div class="logo">
+        ${logoHtml}
+        <div class="logo-address">Registered Office : P-1 GROUND FLOOR B/P P-1 TO P-20 NDSE II OPP. LI/11 , Delhi, India - 110049</div>
+      </div>
+    </div>
+
+    <h1 class="title">E-Prescription</h1>
+
+    <div class="container-fluid px-4">
+      <!-- Patient Info -->
+      <div class="section-container">
+      <h4 class="section-title">Patient Information</h4>
+      <div class="table-container">
+          <table>
+          <tbody>
+              <tr><th>Patient Name</th><td>${patient.name || ""}</td></tr>
+              <tr><th>Age</th><td>${patient.age || ""} years</td></tr>
+              <tr><th>Gender</th><td>${patient.gender || ""}</td></tr>
+              <tr><th>Prescription ID</th><td>${prescriptionID || ""}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Vitals -->
+      <div class="section-container">
+        <h4 class="section-title">Vital Signs</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Blood Pressure</th><td>${vitals.BP || ""} mmHg</td></tr>
+              <tr><th>Pulse Rate</th><td>${vitals.PR || ""} bpm</td></tr>
+              <tr><th>SpO2</th><td>${vitals.SpO2 || ""}%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Symptoms -->
+      ${
+        sx
+          ? `
+      <div class="section-container">
+        <h4 class="section-title">Symptoms</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr><th>Presenting Complaints</th><td>${sx}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- Diagnosis -->
+      ${
+        dx && dx.length > 0
+          ? `
+      <div class="section-container">
+        <h4 class="section-title">Diagnosis</h4>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Diagnosis</th>
+                <th>Date</th>
+            </tr>
+            </thead>
+            <tbody>
+              ${dx
+                .map(
+                  (diagnosis) => `
+            <tr>
+                  <td>${diagnosis.diagnosisName || ""}</td>
+                  <td>${formatDate(diagnosis.dateOfDiagnosis)}</td>
+            </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- Medications -->
+      ${
+        rx && rx.length > 0
+          ? `
+      <div class="section-container">
+        <h4 class="section-title">Medications</h4>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Medicine</th>
+                <th>Frequency</th>
+                <th>Duration</th>
+                <th>Quantity</th>
+            </tr>
+            </thead>
+            <tbody>
+              ${rx
+                .map(
+                  (medicine) => `
+                <tr>
+                  <td>${medicine.drugName || ""}</td>
+                  <td>${medicine.freequency || ""}</td>
+                  <td>${medicine.duration || ""}</td>
+                  <td>${medicine.quantity || ""}</td>
+            </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- Lab Tests -->
+      ${
+        labTest && labTest.length > 0
+          ? `
+      <div class="section-container">
+        <h4 class="section-title">Laboratory Tests</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr>
+                <th>Recommended Tests</th>
+                <td>${labTest.join(", ")}</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- Advice -->
+      ${
+        advice && advice.length > 0
+          ? `
+      <div class="section-container">
+        <h4 class="section-title">Medical Advice</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr>
+                <th>Instructions</th>
+                <td>${advice.join("<br>")}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- Follow-up -->
+      ${
+        followUpSchedule
+          ? `
+      <div class="section-container">
+        <h4 class="section-title">Follow-up</h4>
+        <div class="table-container">
+          <table>
+            <tbody>
+              <tr>
+                <th>Next Visit</th>
+                <td>${followUpSchedule}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `
+          : ""
+      }
+    </div>
+
+    <div class="footer">
+      <span>© 2025 Preva Care | Electronic Prescription System</span>
+    </div>
+  </body>
+</html>
+`;
+}
 
 module.exports = {
   createEMRPDF,
