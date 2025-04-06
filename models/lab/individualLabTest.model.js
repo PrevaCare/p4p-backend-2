@@ -5,7 +5,7 @@ const testIncludedSchema = new mongoose.Schema({
   parameters: [String],
 });
 
-// City availability schema - new addition
+// City availability schema - with required pricing fields
 const cityAvailabilitySchema = new mongoose.Schema({
   cityId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -15,6 +15,28 @@ const cityAvailabilitySchema = new mongoose.Schema({
   isAvailable: {
     type: Boolean,
     default: true,
+  },
+  // City-specific pricing fields (all required)
+  labSellingPrice: {
+    type: Number,
+    required: [true, "City-specific lab selling price is required!"],
+  },
+  offeredPriceToPrevaCare: {
+    type: Number,
+    required: [true, "City-specific offered price to PrevaCare is required!"],
+  },
+  prevaCarePrice: {
+    type: Number,
+    required: [true, "City-specific PrevaCare price is required!"],
+  },
+  discountPercentage: {
+    type: Number,
+    required: [true, "City-specific discount percentage is required!"],
+  },
+  homeCollectionCharge: {
+    type: Number,
+    default: 0,
+    // required: [true, "City-specific home collection charge is required!"],
   },
 });
 
@@ -34,7 +56,6 @@ const individualLabTestSchema = new mongoose.Schema(
     },
     desc: { type: String },
     category: { type: String, required: [true, "category is required !"] },
-    // packages: [packageSchema],
     testName: {
       type: String,
       trim: true,
@@ -51,32 +72,11 @@ const individualLabTestSchema = new mongoose.Schema(
       type: String,
       default: "all age group",
     },
-    labSellingPrice: {
-      type: Number,
-      required: [true, "labSellingPrice is required !"],
-    },
-    offeredPriceToPrevaCare: {
-      type: Number,
-      required: [true, "offeredPriceToPrevaCare is required !"],
-    },
-    prevaCarePrice: {
-      type: Number,
-      required: [true, "prevaCarePrice is required !"],
-    },
-    discountPercentage: {
-      type: Number,
-      required: [true, "discountPercentage is required !"],
-    },
-    homeCollectionCharge: {
-      type: Number,
-      defualt: 0,
-      // required: [true, "homeCollectionCharge is required !"],
-    },
     homeCollectionChargeIncluded: {
       type: Boolean,
       default: false,
     },
-    cityAvailability: [cityAvailabilitySchema], // New field for city availability
+    cityAvailability: [cityAvailabilitySchema], // Enhanced field for city availability with pricing
   },
   { timestamps: true }
 );
