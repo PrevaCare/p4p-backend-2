@@ -1278,11 +1278,16 @@ const generateHealthCertificateCompanyFn = async (certificateData, res) => {
 
     // Launch browser
     browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
+      ignoreHTTPSErrors: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-gpu",
       ],
     });
 
@@ -1398,11 +1403,16 @@ const generateCorporateEmployeeFitnessCertificatePDFFn = async (
     // Launch browser
     console.log("Launching Puppeteer browser...");
     browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
+      ignoreHTTPSErrors: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-gpu",
       ],
     });
     console.log("Browser launched successfully");
