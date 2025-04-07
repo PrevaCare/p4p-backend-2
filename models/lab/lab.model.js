@@ -24,7 +24,7 @@ const availableCitiesSchema = new mongoose.Schema({
     trim: true,
     required: [true, "city name is required !"],
   },
-  PinCode: {
+  zipCode: {
     type: String,
     trim: true,
     required: [true, "Pin code is required !"],

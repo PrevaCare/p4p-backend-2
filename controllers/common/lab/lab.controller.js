@@ -151,6 +151,58 @@ const getLabById = async (req, res) => {
   }
 };
 
+const getLabsByLocation=async (req,res)=>{
+  try {
+    const { city, zipCode } = req.body;
+
+    if (!city) {
+      return res.status(400).json({
+        success: false,
+        message: "City name is required"
+      });
+    }
+
+    // Using aggregation to match labs with the specified city and optional zipcode
+    const pipeline = [
+      {
+        $match: {
+          cityOperatedIn: {
+            $elemMatch: {
+              cityName: { $regex: new RegExp(city, 'i') },
+              ...(zipCode && { zipCode: zipCode })
+            }
+          }
+        }
+      }
+    ];
+
+    const labs = await Lab.aggregate(pipeline);
+
+    if (labs.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: zipCode
+          ? `No labs found in ${city} with zipCode ${zipCode}`
+          : `No labs found in ${city}`
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: labs.length,
+      data: labs
+    });
+  } catch (error) {
+    console.error("Error fetching labs:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+}
+
+
 //
 
-module.exports = { createLab, getAllLabs, getLabById, updateLab };
+module.exports = { createLab, getAllLabs, getLabById, updateLab ,getLabsByLocation};

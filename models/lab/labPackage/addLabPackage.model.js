@@ -49,7 +49,7 @@ const labPackage = new mongoose.Schema(
     },
     PackageCode: {
       type: String,
-      required: [true, "Package code is required !"],
+      // required: [true, "Package code is required !"], 
       unique: true,
       trim: true,
     },

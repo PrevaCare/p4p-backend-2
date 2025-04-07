@@ -5,12 +5,17 @@ const {
 } = require("../../../controllers/auth/deleteUser.controller.js");
 const {
   createIndividualLabTest,
+  searchIndividualLabTest,
+  getTestsByCategory,
+  getAllTestOfParticularLab,
+  getTestByCategoryOfPaticularLab,
 } = require("../../../controllers/common/lab/individualLabTest/individualLabTest.controller.js");
 const {
   createLab,
   getAllLabs,
   getLabById,
   updateLab,
+  getLabsByLocation
 } = require("../../../controllers/common/lab/lab.controller.js");
 const {
   getAllCategoryOfPackageOfParticularLab,
@@ -18,6 +23,10 @@ const {
   getSingleLabPackageById,
   updateLabPackageById,
   deleteLabPackageById,
+  searchLabPackages,
+  getPackagesByCategory,
+  getAllPackagesOfParticularLab,
+  getPackagesByCategoryOfPaticularLab
 } = require("../../../controllers/common/lab/labPackage/getLabPackage.controller.js");
 const {
   createLabPackage,
@@ -60,6 +69,13 @@ router.get(
   verifyToken,
   // checkPermissions("READ", "Employee"), // admin and doctor
   getAllLabs
+);
+
+router.post(
+  "/admin/labs/location",
+  verifyToken,
+  // checkPermissions("READ", "Employee"), // admin and doctor
+  getLabsByLocation
 );
 // get single lab by id
 router.post(
@@ -113,6 +129,20 @@ router.post(
   // checkPermissions("READ", "Employee"),
   getAllTestOfParticularCategoryOfPackageOfParticularLab
 );
+
+router.post(
+  "/admin/packages/search",
+  verifyToken,
+  // checkPermissions("READ", "Employee"),
+  searchLabPackages
+);
+
+router.get(
+  "/admin/packages/byCategory",
+  verifyToken,
+  // checkPermissions("READ", "Employee"),
+  getPackagesByCategory,
+);
 // lab package -- get category only
 router.post(
   "/admin/lab/pacakge-single",
@@ -129,5 +159,48 @@ router.post(
   // checkPermissions("CREATE", "Employee"),
   createIndividualLabTest
 );
+
+router.post(
+  "/admin/tests/search",
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"),
+  searchIndividualLabTest
+);
+
+router.get(
+  "/admin/tests/byCategory",
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"),
+  getTestsByCategory
+);
+
+router.get(
+  "/admin/labs/:labId/tests",
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"),
+  getAllTestOfParticularLab
+);
+
+router.get(
+  "/admin/labs/:labId/packages",
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"),
+  getAllPackagesOfParticularLab
+);
+
+router.get(
+  "/admin/labs/:labId/test/by-category/:category",
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"),
+  getTestByCategoryOfPaticularLab
+);
+
+router.get(
+  "/admin/labs/:labId/packages/by-category/:category",
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"),
+  getPackagesByCategoryOfPaticularLab
+);
+
 router.delete("/admin/lab/:labId", verifyAndSuperAdmin, deleteLabById);
 module.exports = router;
