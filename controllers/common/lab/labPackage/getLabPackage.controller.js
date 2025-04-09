@@ -402,7 +402,7 @@ const getAllPackagesOfParticularLab = async (req, res) => {
 const getPackagesByCategoryOfPaticularLab = async (req, res) => {
   try {
     const { labId, category } = req.params;
-
+    console.log(labId);
     // Validate labId is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(labId)) {
       return res.status(400).json({
@@ -427,7 +427,7 @@ const getPackagesByCategoryOfPaticularLab = async (req, res) => {
     }
     const labIdobj = new mongoose.Types.ObjectId(labId);
     console.log(labIdobj);
-    const packages = await LabPackage.find({ lab: labIdobj, category: { $regex: new RegExp(category, 'i') } });
+    const packages = await LabPackage.find({ labId: labIdobj, category: { $regex: new RegExp(category, 'i') } });
     return res.status(200).json({
       success: true,
       count: packages.length,
