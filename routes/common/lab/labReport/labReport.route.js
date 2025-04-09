@@ -3,6 +3,10 @@ const {
   createlabReport,
 } = require("../../../../controllers/common/lab/labReport/labReport.controller.js");
 const {
+  createReport,
+  getReportsByUser,
+} = require("../../../../controllers/common/lab/labReport/report.controller.js");
+const {
   createExistingPatientLabReport,
 } = require("../../../../controllers/common/lab/labReport/ExistingPatientLabReport.controller.js");
 const {
@@ -31,6 +35,24 @@ router.post(
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
   createlabReport
+);
+
+router.post(
+  "/admin/report",
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "labReportFile" },
+  ]),
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"), // admin and doctor
+  createReport
+);
+
+router.get(
+  "/admin/reports/:userId",
+  verifyToken,
+  // checkPermissions("CREATE", "Employee"), // admin and doctor
+  getReportsByUser,
 );
 
 //

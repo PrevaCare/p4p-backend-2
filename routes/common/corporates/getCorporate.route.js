@@ -31,6 +31,7 @@ const {
 const {
   createOrUpdateAndScore,
   getCorporateScoreByCalculatingEachEmployees,
+  getLatestHealthScore,
 } = require("../../../controllers/common/corporates/employees/healthScore/healthScore.controller");
 const {
   downloadSampleHealthScoreTemplate,
@@ -174,6 +175,13 @@ router.post(
   verifyToken,
   checkPermissions("READ", "Corporate"), // login user should have permission related to
   createOrUpdateAndScore
+);
+
+router.get(
+  "/common/corporate/employees/health-score/:userId",
+  verifyToken,
+  checkPermissions("READ", "Corporate"), // login user should have permission related to
+  getLatestHealthScore,
 );
 
 // generate bullk excel for corporate employee.

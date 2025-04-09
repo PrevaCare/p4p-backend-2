@@ -27,11 +27,16 @@ const createOrUpdateAndScore = async (req, res) => {
 
     if (healthScore) {
       // If exists, update the HealthScore entry
-      healthScore = await HealthScore.findOneAndUpdate(
-        { user: req.body.user },
-        { $set: { ...req.body } },
-        { new: true, runValidators: true }
-      );
+      // healthScore = await HealthScore.findOneAndUpdate(
+      //   { user: req.body.user },
+      //   { $set: { ...req.body } },
+      //   { new: true, runValidators: true }
+      // );
+      healthScore = new HealthScore({
+        user: req.body.user,
+        ...req.body,
+      });
+      await healthScore.save();
     } else {
       // Otherwise, create a new HealthScore entry
       healthScore = new HealthScore({
@@ -61,6 +66,40 @@ const createOrUpdateAndScore = async (req, res) => {
     );
   }
 };
+
+const getLatestHealthScore = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log(userId)
+    const latestScore = await HealthScore.findOne({ user: userId })
+      .sort({ createdAt: -1 }); // Sort by newest first
+
+    if (!latestScore) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "No health score found for this user."
+      );
+    }
+
+    return Response.success(
+      res,
+      { healthScore: latestScore },
+      200,
+      AppConstant.SUCCESS,
+      "Latest health score fetched successfully!"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
+  }
+};
+
 
 // get corporateScore
 
@@ -221,4 +260,5 @@ const getCorporateScoreByCalculatingEachEmployees = async (req, res) => {
 module.exports = {
   createOrUpdateAndScore,
   getCorporateScoreByCalculatingEachEmployees,
+  getLatestHealthScore,
 };

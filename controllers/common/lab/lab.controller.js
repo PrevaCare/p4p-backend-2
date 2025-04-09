@@ -273,6 +273,7 @@ const getAllLabs = async (req, res) => {
 const getLabById = async (req, res) => {
   try {
     const { labId } = req.body;
+    console.log(labId)
     if (!labId) {
       return Response.error(res, 404, AppConstant.FAILED, "labId is missing !");
     }

@@ -12,7 +12,7 @@ const getAllCategoryOfPackageOfParticularLab = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "labId is missing !");
     }
 
-    const allCategories = await LabPackage.find({ lab: labId }).select(
+    const allCategories = await LabPackage.find({ labId: new mongoose.Types.ObjectId(labId) }).select(
       "_id category"
     );
 
@@ -401,7 +401,7 @@ const getAllPackagesOfParticularLab = async (req, res) => {
 
 const getPackagesByCategoryOfPaticularLab = async (req, res) => {
   try {
-    const { labId,category } = req.params;
+    const { labId, category } = req.params;
 
     // Validate labId is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(labId)) {
@@ -410,7 +410,7 @@ const getPackagesByCategoryOfPaticularLab = async (req, res) => {
         message: 'Invalid lab ID format'
       });
     }
-    if(!category){
+    if (!category) {
       return res.status(400).json({
         success: false,
         message: 'category is required'
