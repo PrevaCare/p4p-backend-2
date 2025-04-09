@@ -1,0 +1,11 @@
+Package Name,Category,Package Code,Tests Included,Billing Rate,Partner Rate,PrevaCare Price,Discount Price,Description,Age Group,Gender,Samples Required,Preparation Required,Location_place_name,Location_pincode,Home Collection Charges,Home Collection available
+Basic Health Checkup,General Wellness,BHC001,"CBC001,GLU001,LIP001",2500,2000,2300,1999,Comprehensive basic health screening,all age group,both,"Blood, Urine","12 hours fasting required, only water allowed",Mumbai,400001,100,true
+Diabetes Care Package,Diabetes,DCP001,"GLU001,HBA001,KFT001",1800,1500,1700,1499,Essential tests for diabetes management,all age group,both,Blood,"8-12 hours fasting required, only water allowed",Mumbai,400001,75,true
+Thyroid Care Package,Endocrinology,TCP001,"THY001,VTD001",2200,1800,2000,1799,Comprehensive thyroid health assessment,all age group,both,Blood,No specific preparation,Mumbai,400001,75,true
+Heart Health Package,Cardiology,HHP001,"LIP001,CBC001,GLU001",2300,1900,2100,1899,Essential cardiovascular health screening,all age group,both,Blood,12 hours fasting required,Mumbai,400001,100,true
+Women's Health Package,Women's Health,WHP001,"CBC001,THY001,VTD001",3500,3000,3300,2999,Essential health screening for women,all age group,female,Blood,No specific preparation,Mumbai,400001,100,true
+Men's Health Package,Men's Health,MHP001,"CBC001,LIP001,LFT001",3500,3000,3300,2999,Essential health screening for men,all age group,male,Blood,"12 hours fasting required, only water allowed",Mumbai,400001,100,true
+Basic Health Checkup,General Wellness,BHC001,"CBC001,GLU001,LIP001",2700,2200,2500,2199,Comprehensive basic health screening,all age group,both,"Blood, Urine","12 hours fasting required, only water allowed",Pune,411001,120,true
+Diabetes Care Package,Diabetes,DCP001,"GLU001,HBA001,KFT001",2000,1700,1900,1699,Essential tests for diabetes management,all age group,both,Blood,"8-12 hours fasting required, only water allowed",Pune,411001,90,true
+Thyroid Care Package,Endocrinology,TCP001,"THY001,VTD001",2400,2000,2200,1999,Comprehensive thyroid health assessment,all age group,both,Blood,No specific preparation,Pune,411001,90,true
+Heart Health Package,Cardiology,HHP001,"LIP001,CBC001,GLU001",2500,2100,2300,2099,Essential cardiovascular health screening,all age group,both,Blood,12 hours fasting required,Pune,411001,120,true

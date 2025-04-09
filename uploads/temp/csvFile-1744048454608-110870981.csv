@@ -1,0 +1,17 @@
+Test Name,Test Code,Billing Rate,Partner Rate,PrevaCare Price,Discount Price,Category,Description,Age Group,Gender,Samples Required,Preparation Required,Location_place_name,Location_pincode,Home Collection Charges,Home Collection available
+Complete Blood Count,CBC001,500,400,450,400,Hematology,Complete blood count analysis including RBC WBC and platelets,all age group,both,Blood,No specific preparation,Mumbai,400001,50,true
+Blood Glucose Fasting,GLU001,200,150,180,160,Biochemistry,Measurement of fasting blood glucose levels,all age group,both,Blood,"8-12 hours fasting required, only water allowed",Mumbai,400001,50,true
+HbA1c,HBA001,800,650,750,700,Diabetes,Glycated hemoglobin test for diabetes monitoring,all age group,both,Blood,No specific preparation,Mumbai,400001,50,true
+Thyroid Profile,THY001,1200,950,1100,950,Endocrinology,Comprehensive thyroid function tests (TSH T3 T4),all age group,both,Blood,No specific preparation,Mumbai,400001,50,true
+Lipid Profile,LIP001,900,750,850,750,Cardiology,Complete lipid panel including cholesterol triglycerides HDL LDL,all age group,both,Blood,12 hours fasting required,Mumbai,400001,50,true
+Liver Function Test,LFT001,1000,800,950,850,Gastroenterology,Comprehensive assessment of liver function,all age group,both,Blood,No specific preparation,Mumbai,400001,50,true
+Kidney Function Test,KFT001,1000,800,950,850,Nephrology,Comprehensive assessment of kidney function,all age group,both,"Blood, Urine",No specific preparation,Mumbai,400001,50,true
+Vitamin D3,VTD001,1500,1200,1400,1200,Nutrition,Measurement of 25-hydroxy vitamin D levels,all age group,both,Blood,No specific preparation,Mumbai,400001,50,true
+Complete Blood Count,CBC001,550,450,500,450,Hematology,Complete blood count analysis including RBC WBC and platelets,all age group,both,Blood,No specific preparation,Pune,411001,75,true
+Blood Glucose Fasting,GLU001,220,170,200,180,Biochemistry,Measurement of fasting blood glucose levels,all age group,both,Blood,"8-12 hours fasting required, only water allowed",Pune,411001,75,true
+HbA1c,HBA001,880,715,825,770,Diabetes,Glycated hemoglobin test for diabetes monitoring,all age group,both,Blood,No specific preparation,Pune,411001,75,true
+Thyroid Profile,THY001,1300,1050,1200,1050,Endocrinology,Comprehensive thyroid function tests (TSH T3 T4),all age group,both,Blood,No specific preparation,Pune,411001,75,true
+Lipid Profile,LIP001,990,825,935,825,Cardiology,Complete lipid panel including cholesterol triglycerides HDL LDL,all age group,both,Blood,12 hours fasting required,Pune,411001,75,true
+Complete Blood Count,CBC001,600,480,550,500,Hematology,Complete blood count analysis including RBC WBC and platelets,all age group,both,Blood,No specific preparation,Delhi,110001,100,true
+Blood Glucose Fasting,GLU001,250,200,230,200,Biochemistry,Measurement of fasting blood glucose levels,all age group,both,Blood,"8-12 hours fasting required, only water allowed",Delhi,110001,100,true
+Thyroid Profile,THY001,1400,1120,1300,1150,Endocrinology,Comprehensive thyroid function tests (TSH T3 T4),all age group,both,Blood,No specific preparation,Delhi,110001,100,true

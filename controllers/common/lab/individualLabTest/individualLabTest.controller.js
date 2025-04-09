@@ -2,11 +2,16 @@ const AppConstant = require("../../../../utils/AppConstant");
 const Response = require("../../../../utils/Response");
 const IndividualLabTest = require("../../../../models/lab/individualLabTest.model");
 const Lab = require("../../../../models/lab/lab.model");
-const mongoose = require('mongoose');
+const City = require("../../../../models/lab/city.model");
+const mongoose = require("mongoose");
 const {
   individualLabTestValidationSchema,
 } = require("../../../../validators/lab/individualLabTest.validator");
 
+/**
+ * Create a new individual lab test
+ * @route POST /admin/lab/test/create
+ */
 const createIndividualLabTest = async (req, res) => {
   try {
     // Validate request body
@@ -20,37 +25,46 @@ const createIndividualLabTest = async (req, res) => {
       );
     }
 
-    const { lab, category, testName } = req.body;
+    const { lab, category, testName, testCode } = req.body;
     const lowerCaseCategory = category.toLowerCase();
 
-    // Check if a lab package with the same lab, category and test name already exists
-    const existingLabPackage = await IndividualLabTest.findOne({
+    // Check if lab exists
+    const labExists = await Lab.findById(lab);
+    if (!labExists) {
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
+    }
+
+    // Check if a test with the same code already exists
+    const existingTest = await IndividualLabTest.findOne({
+      testCode,
       lab,
-      category: lowerCaseCategory,
-      testName,
     });
 
-    if (existingLabPackage) {
+    if (existingTest) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "A lab package with this lab, category and test name already exists!"
+        "A test with this code already exists for this lab!"
       );
     }
 
-    // Create a new LabPackage instance
-    const newLabPackage = new IndividualLabTest({
+    // Create a new IndividualLabTest instance
+    const newTest = new IndividualLabTest({
       ...req.body,
       category: lowerCaseCategory,
     });
 
-    const savedLabPackage = await newLabPackage.save();
+    const savedTest = await newTest.save();
+
+    // Update lab's test count
+    await Lab.findByIdAndUpdate(lab, { $inc: { testCount: 1 } });
+
     return Response.success(
       res,
-      savedLabPackage,
+      savedTest,
       201,
-      "Lab package created successfully!"
+      "Lab test created successfully!"
     );
   } catch (err) {
     return Response.error(
@@ -62,73 +76,71 @@ const createIndividualLabTest = async (req, res) => {
   }
 };
 
+/**
+ * Update an individual lab test
+ * @route PATCH /admin/lab/test/:testId
+ */
 const updateIndividualLabTest = async (req, res) => {
   try {
-    const { labTestId } = req.params;
-    if (!labTestId) {
+    const { testId } = req.params;
+    if (!testId) {
       return Response.error(
         res,
         404,
         AppConstant.FAILED,
-        "labTest Id is missing!"
+        "Test ID is missing!"
       );
     }
 
     // Validate request body
-    // const { error } = labPackageValidationSchema.validate(req.body);
-    // if (error) {
-    //   return Response.error(
-    //     res,
-    //     400,
-    //     AppConstant.FAILED,
-    //     error.message || "Validation failed!"
-    //   );
-    // }
+    const { error } = individualLabTestValidationSchema.validate(req.body);
+    if (error) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        error.message || "Validation failed!"
+      );
+    }
 
     // If category is being updated, convert to lowercase
     if (req.body.category) {
       req.body.category = req.body.category.toLowerCase();
     }
 
-    // Check if updating would create a duplicate
-    if (req.body.testName || req.body.category || req.body.lab) {
-      const existingPackage = await IndividualLabTest.findOne({
-        _id: { $ne: labTestId },
+    // Check if updating would create a duplicate test code
+    if (req.body.testCode) {
+      const existingTest = await IndividualLabTest.findOne({
+        _id: { $ne: testId },
+        testCode: req.body.testCode,
         lab: req.body.lab || undefined,
-        category: req.body.category || undefined,
-        testName: req.body.testName || undefined,
       });
 
-      if (existingPackage) {
+      if (existingTest) {
         return Response.error(
           res,
           400,
           AppConstant.FAILED,
-          "A lab package with these details already exists!"
+          "A test with this code already exists!"
         );
       }
     }
 
-    const updatedPackage = await IndividualLabTest.findOneAndUpdate(
-      { _id: labTestId },
+    const updatedTest = await IndividualLabTest.findOneAndUpdate(
+      { _id: testId },
       { $set: req.body },
       { new: true }
-    );
+    ).populate("lab", "name email phone address logo");
 
-    if (!updatedPackage) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "Lab package not found!"
-      );
+    if (!updatedTest) {
+      return Response.error(res, 404, AppConstant.FAILED, "Test not found!");
     }
 
     return Response.success(
       res,
-      updatedPackage,
+      updatedTest,
       200,
-      "Lab package updated successfully!"
+      "Test updated successfully!"
     );
   } catch (err) {
     return Response.error(
@@ -140,6 +152,48 @@ const updateIndividualLabTest = async (req, res) => {
   }
 };
 
+/**
+ * Delete an individual lab test
+ * @route DELETE /admin/lab/test/:testId
+ */
+const deleteIndividualLabTest = async (req, res) => {
+  try {
+    const { testId } = req.params;
+    if (!testId) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "Test ID is missing!"
+      );
+    }
+
+    const test = await IndividualLabTest.findById(testId);
+    if (!test) {
+      return Response.error(res, 404, AppConstant.FAILED, "Test not found!");
+    }
+
+    // Delete the test
+    await test.remove();
+
+    // Update lab's test count
+    await Lab.findByIdAndUpdate(test.lab, { $inc: { testCount: -1 } });
+
+    return Response.success(res, null, 200, "Test deleted successfully!");
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
+  }
+};
+
+/**
+ * Search for individual lab tests
+ * @route POST /admin/tests/search
+ */
 const searchIndividualLabTest = async (req, res) => {
   try {
     const {
@@ -150,7 +204,7 @@ const searchIndividualLabTest = async (req, res) => {
       maxPrice,
       city,
       zipCode,
-      home_collection
+      home_collection,
     } = req.body;
 
     // Build the search query object
@@ -158,44 +212,44 @@ const searchIndividualLabTest = async (req, res) => {
 
     // Add filters based on provided parameters
     if (name) {
-      query.testName = { $regex: new RegExp(name, 'i') }; // Case-insensitive search
+      query.testName = { $regex: new RegExp(name, "i") };
     }
 
     if (category) {
-      query.category = { $regex: new RegExp(category, 'i') };
+      query.category = { $regex: new RegExp(category, "i") };
     }
 
     if (code) {
-      query.code = { $regex: new RegExp(code, 'i') };
+      query.testCode = { $regex: new RegExp(code, "i") };
     }
 
     // Handle price range
     if (minPrice || maxPrice) {
-      query.prevaCarePrice = {}
+      query.prevaCarePrice = {};
       if (minPrice) query.prevaCarePrice.$gte = Number(minPrice);
       if (maxPrice) query.prevaCarePrice.$lte = Number(maxPrice);
     }
 
     // Handle location search
     if (city || zipCode) {
-      // Build the filter for cityOperatedIn array
-      const cityFilter = {};
-
+      const cityQuery = {};
       if (city) {
-        cityFilter['cityOperatedIn.cityName'] = { $regex: new RegExp(city, 'i') };
+        cityQuery.cityName = { $regex: new RegExp(city, "i") };
       }
-
       if (zipCode) {
-        cityFilter['cityOperatedIn.zipCode'] = zipCode;
+        cityQuery.pincode = zipCode;
       }
 
-      // Apply the filters to the query
-      Object.assign(query, cityFilter);
+      const cities = await City.find(cityQuery);
+      const cityIds = cities.map((city) => city._id);
+
+      query["cityAvailability.cityId"] = { $in: cityIds };
     }
 
     // Handle home collection filter
-    if (home_collection) {
-      query['home_collection.available'] = home_collection === 'true';
+    if (home_collection !== undefined) {
+      query["cityAvailability.homeCollectionAvailable"] =
+        home_collection === "true";
     }
 
     // Execute the search query with pagination
@@ -204,165 +258,181 @@ const searchIndividualLabTest = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const tests = await IndividualLabTest.find(query)
+      .populate("lab", "name email phone address logo")
+      .populate("cityAvailability.cityId")
       .skip(skip)
       .limit(limit)
-      .sort({ name: 1 });
+      .sort({ testName: 1 });
 
     // Get total count for pagination info
     const totalTests = await IndividualLabTest.countDocuments(query);
 
-    // Return response
-    return res.status(200).json({
-      success: true,
-      count: tests.length,
-      total: totalTests,
-      totalPages: Math.ceil(totalTests / limit),
-      currentPage: page,
-      data: tests
-    });
-  } catch (error) {
-    console.error("Error searching tests:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    return Response.success(
+      res,
+      {
+        tests,
+        pagination: {
+          total: totalTests,
+          totalPages: Math.ceil(totalTests / limit),
+          currentPage: page,
+          perPage: limit,
+        },
+      },
+      200,
+      "Tests retrieved successfully"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
   }
 };
 
+/**
+ * Get tests by category
+ * @route GET /admin/tests/byCategory
+ */
 const getTestsByCategory = async (req, res) => {
   try {
     const { category } = req.query;
 
-    // Validate that category parameter is provided
     if (!category) {
-      return res.status(400).json({
-        success: false,
-        message: "Category parameter is required"
-      });
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Category is required"
+      );
     }
 
-    // Build the search query with case-insensitive category search
-    const query = {
-      category: { $regex: new RegExp(category, 'i') }
-    };
+    const tests = await IndividualLabTest.find({
+      category: { $regex: new RegExp(category, "i") },
+    })
+      .populate("lab", "name email phone address logo")
+      .populate("cityAvailability.cityId")
+      .sort({ testName: 1 });
 
-    // Handle pagination
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    // Find tests matching the category
-    const tests = await IndividualLabTest.find(query)
-      .skip(skip)
-      .limit(limit)
-      .sort({ name: 1 });
-
-    // Get total count for pagination
-    const totalTests = await IndividualLabTest.countDocuments(query);
-
-    // Return response with pagination metadata
-    return res.status(200).json({
-      success: true,
-      count: tests.length,
-      total: totalTests,
-      totalPages: Math.ceil(totalTests / limit),
-      currentPage: page,
-      data: tests
-    });
-
-  } catch (error) {
-    console.error("Error fetching tests by category:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    return Response.success(
+      res,
+      { tests },
+      200,
+      "Tests retrieved successfully"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
   }
 };
 
+/**
+ * Get all tests for a particular lab
+ * @route GET /admin/labs/:labId/tests
+ */
 const getAllTestOfParticularLab = async (req, res) => {
   try {
     const { labId } = req.params;
 
-    // Validate labId is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(labId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid lab ID format'
-      });
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid lab ID format"
+      );
     }
 
-    // Check if lab exists
     const lab = await Lab.findById(labId);
     if (!lab) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lab not found'
-      });
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
-    const labIdobj = new mongoose.Types.ObjectId(labId);
-    console.log(labIdobj);
-    const tests = await IndividualLabTest.find({ lab: labIdobj });
-    return res.status(200).json({
-      success: true,
-      count: tests.length,
-      data: tests
-    });
 
-  } catch (error) {
-    console.error('Error fetching lab tests:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: error.message
-    });
+    const tests = await IndividualLabTest.find({ lab: labId })
+      .populate("cityAvailability.cityId")
+      .sort({ testName: 1 });
+
+    return Response.success(
+      res,
+      { tests },
+      200,
+      "Tests retrieved successfully"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
   }
-}
+};
 
+/**
+ * Get tests by category for a particular lab
+ * @route GET /admin/labs/:labId/test/by-category/:category
+ */
 const getTestByCategoryOfPaticularLab = async (req, res) => {
   try {
-    const { labId,category } = req.params;
+    const { labId, category } = req.params;
 
-    // Validate labId is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(labId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid lab ID format'
-      });
-    }
-    if(!category){
-      return res.status(400).json({
-        success: false,
-        message: 'category is required'
-      });
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid lab ID format"
+      );
     }
 
-    // Check if lab exists
+    if (!category) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Category is required"
+      );
+    }
+
     const lab = await Lab.findById(labId);
     if (!lab) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lab not found'
-      });
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
-    const labIdobj = new mongoose.Types.ObjectId(labId);
-    console.log(labIdobj);
-    const tests = await IndividualLabTest.find({ lab: labIdobj, category: { $regex: new RegExp(category, 'i') } });
-    return res.status(200).json({
-      success: true,
-      count: tests.length,
-      data: tests
-    });
 
-  } catch (error) {
-    console.error('Error fetching lab tests:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: error.message
-    });
+    const tests = await IndividualLabTest.find({
+      lab: labId,
+      category: { $regex: new RegExp(category, "i") },
+    })
+      .populate("cityAvailability.cityId")
+      .sort({ testName: 1 });
+
+    return Response.success(
+      res,
+      { tests },
+      200,
+      "Tests retrieved successfully"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
   }
-}
+};
 
-module.exports = { createIndividualLabTest, updateIndividualLabTest, searchIndividualLabTest, getTestsByCategory, getAllTestOfParticularLab,getTestByCategoryOfPaticularLab };
+module.exports = {
+  createIndividualLabTest,
+  updateIndividualLabTest,
+  deleteIndividualLabTest,
+  searchIndividualLabTest,
+  getTestsByCategory,
+  getAllTestOfParticularLab,
+  getTestByCategoryOfPaticularLab,
+};

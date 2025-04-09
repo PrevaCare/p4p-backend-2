@@ -1,22 +1,41 @@
 const multer = require("multer");
+const path = require("path");
 
-//
-const fileFilter = (req, file, cb) => {
+const imageFileFilter = (req, file, cb) => {
+  // Accept images only
+  if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+    return cb(new Error("Only image files are allowed!"), false);
+  }
+  cb(null, true);
+};
+
+// Configure storage
+const storage = multer.memoryStorage();
+
+// Create multer upload instance for images
+const upload = multer({
+  storage: storage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  },
+});
+
+// PDF specific upload configuration
+const pdfFileFilter = (req, file, cb) => {
   if (file.mimetype === "application/pdf") {
-    // Accept the file
     cb(null, true);
   } else {
-    // Reject the file
     cb(new Error("Only PDF files are allowed!"), false);
   }
 };
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
-
 const pdfUpload = multer({
   storage: storage,
-  fileFilter: fileFilter,
+  fileFilter: pdfFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size for PDFs
+  },
 });
 
 module.exports = { upload, pdfUpload };

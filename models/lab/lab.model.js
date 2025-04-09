@@ -18,21 +18,19 @@ const accountsDetailSchema = new mongoose.Schema({
 });
 
 // Available Cities Schema - new addition
-const availableCitiesSchema = new mongoose.Schema({
+const availableCitySchema = new mongoose.Schema({
+  cityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "City",
+    required: true,
+  },
   cityName: {
     type: String,
-    trim: true,
-    required: [true, "city name is required !"],
+    required: true,
   },
-  zipCode: {
+  pinCode: {
     type: String,
-    trim: true,
-    required: [true, "Pin code is required !"],
-  },
-  locationType: {
-    type: String,
-    enum: ["Same City Lab", "Non Lab City"],
-    default: "Same City Lab",
+    required: true,
   },
   isActive: {
     type: Boolean,
@@ -65,22 +63,7 @@ const labSchema = new mongoose.Schema(
     accountsDetail: {
       type: accountsDetailSchema,
     },
-    cityOperatedIn: [
-      {
-        cityName: {
-          type: String,
-          trim: true,
-          required: [true, "city name is required !"],
-        },
-        zipCode: {
-          type: String,
-          trim: true,
-          minLength: 6,
-          maxLength: 6,
-        },
-      },
-    ],
-    availableCities: [availableCitiesSchema], // New field for available cities
+    availableCities: [availableCitySchema],
   },
   { timestamps: true }
 );

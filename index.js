@@ -12,6 +12,9 @@ const commonPatientRoute = require("./routes/common/patient/patient.route");
 const commonSchoolRoute = require("./routes/common/school/schools.route");
 const healthTrackerRoute = require("./routes/healthTracker/healthTracker.route");
 const labRoute = require("./routes/common/lab/lab.route");
+const labAdminRoute = require("./routes/common/lab/labAdmin.route");
+const labDetailsRoute = require("./routes/common/lab/labDetails.route");
+const labUserFacingRoute = require("./routes/common/lab/labUserFacing.route");
 const labReportRoute = require("./routes/common/lab/labReport/labReport.route");
 const ePrescriptionRoute = require("./routes/common/patient/eprescription/ePrescription.route");
 const emrRoute = require("./routes/common/emr/emr.route");
@@ -59,9 +62,12 @@ app.use("/v1/", doctorRoute);
 app.use("/v1/", instituteRoute);
 app.use("/v1/", commonCorporateRoute); // common
 app.use("/v1/", commonPatientRoute); // common
+app.use("/v1/", labRoute); //  lab
 app.use("/v1/", commonSchoolRoute); // common
 app.use("/v1/", healthTrackerRoute); // health tracker
-app.use("/v1/", labRoute); //  lab
+app.use("/v1/", labDetailsRoute); //  lab details - public API
+app.use("/v1/", labAdminRoute); //  lab admin
+app.use("/v1/", labUserFacingRoute); //  lab user-facing routes
 app.use("/v1/", labReportRoute); // lab report
 app.use("/v1/", ePrescriptionRoute); // e prescription
 app.use("/v1/", emrRoute); //  emr

@@ -1,13 +1,14 @@
 const Joi = require("joi");
 
 const addressSchema = Joi.object({
-  name: Joi.string(),
-  street: Joi.string(),
-  city: Joi.string(),
-  state: Joi.string(),
-  zipCode: Joi.string(),
+  name: Joi.string().required(),
+  street: Joi.string().required(),
+  city: Joi.string().required(),
+  state: Joi.string().required(),
+  zipCode: Joi.string().required(),
 });
-const accountsDetailValidationSchema = Joi.object({
+
+const accountsDetailSchema = Joi.object({
   bankName: Joi.string().allow(""),
   ifscCode: Joi.string().allow(""),
   branchName: Joi.string().allow(""),
@@ -20,56 +21,54 @@ const labValidationSchema = Joi.object({
   contactNumber: Joi.string()
     .length(10)
     .pattern(/^[0-9]+$/),
-  accountsDetail: accountsDetailValidationSchema,
-  address: addressSchema,
-  cityOperatedIn: Joi.array().items(
-    Joi.object({
-      cityName: Joi.string().required(),
-      zipCode: Joi.string()
-        .min(6)
-        .max(6)
-        .pattern(/^[0-9]+$/)
-        .optional()
-        .allow(""),
-    })
-  ),
-});
-
-const addressForUpdateSchema = Joi.object({
-  name: Joi.string().optional(),
-  street: Joi.string().optional(),
-  city: Joi.string().optional(),
-  state: Joi.string().optional(),
-  zipCode: Joi.string().optional(),
-});
-
-const accountsDetailValidationForUpdateSchema = Joi.object({
-  bankName: Joi.string().allow("").optional(),
-  ifscCode: Joi.string().allow("").optional(),
-  branchName: Joi.string().allow("").optional(),
-  accountNumber: Joi.string().allow("").optional(),
+  address: Joi.object({
+    name: Joi.string().required(),
+    street: Joi.string().required(),
+    city: Joi.string().required(),
+    state: Joi.string().required(),
+    zipCode: Joi.string().required(),
+  }).required(),
+  accountsDetail: accountsDetailSchema,
+  cityOperatedIn: Joi.array()
+    .items(
+      Joi.object({
+        cityName: Joi.string().required(),
+        zipCode: Joi.string()
+          .length(6)
+          .pattern(/^[0-9]+$/)
+          .required(),
+        existingCityId: Joi.string().optional(),
+      })
+    )
+    .min(1)
+    .required(),
 });
 
 const updateLabValidationSchema = Joi.object({
-  labName: Joi.string().optional(),
-  labPersonName: Joi.string().optional(),
+  labName: Joi.string(),
+  labPersonName: Joi.string(),
   contactNumber: Joi.string()
     .length(10)
-    .pattern(/^[0-9]+$/)
-    .optional(),
-  accountsDetail: accountsDetailValidationForUpdateSchema.optional(),
-  address: addressForUpdateSchema.optional(),
-  cityOperatedIn: Joi.array().items(
-    Joi.object({
-      cityName: Joi.string().required(),
-      zipCode: Joi.string()
-        .min(6)
-        .max(6)
-        .pattern(/^[0-9]+$/)
-        .optional()
-        .allow(""),
-    })
-  ),
+    .pattern(/^[0-9]+$/),
+  address: Joi.object({
+    name: Joi.string(),
+    street: Joi.string(),
+    city: Joi.string(),
+    state: Joi.string(),
+    zipCode: Joi.string(),
+  }),
+  accountsDetail: accountsDetailSchema,
+  cityOperatedIn: Joi.array()
+    .items(
+      Joi.object({
+        cityName: Joi.string().required(),
+        zipCode: Joi.string()
+          .length(6)
+          .pattern(/^[0-9]+$/)
+          .required(),
+      })
+    )
+    .min(1),
 });
 
 module.exports = {

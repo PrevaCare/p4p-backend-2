@@ -3,18 +3,6 @@ const User = require("../../models/common/user.model");
 const Role = require("../../models/role.model");
 const Permission = require("../../models/permission.model");
 
-// module.exports = {
-//   verifyToken: (req, res, next) => {
-//     const token = req.header("Authorization");
-//     if (!token) return res.status(401).send("Access Denied");
-//     try {
-//       const verified = jwt.verify(token, process.env.TOKEN_SECRET);
-//       req.user = verified;
-//       next();
-//     } catch (err) {
-//       res.status(400).send("Invalid Token");
-//     }
-//   },
 module.exports = {
   verifyToken: (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -73,6 +61,35 @@ module.exports = {
     } catch (err) {
       console.log(err);
       res.status(500).send(err.message || "Internal Server Error");
+    }
+  },
+
+  verifyTokenOptional: (req, res, next) => {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      // No token provided, proceed as unauthenticated user
+      req.user = null;
+      return next();
+    }
+
+    // Extract token
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      // No token after Bearer, proceed as unauthenticated user
+      req.user = null;
+      return next();
+    }
+
+    try {
+      // Verify the token
+      const decoded = jwt.verify(token, process.env.JWT_TOKEN_SEC);
+      req.user = decoded;
+      next();
+    } catch (err) {
+      // Token is invalid, proceed as unauthenticated user
+      req.user = null;
+      next();
     }
   },
 };

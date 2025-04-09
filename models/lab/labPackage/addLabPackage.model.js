@@ -9,19 +9,22 @@ const testIncludedSchema = new mongoose.Schema({
 const cityAvailabilitySchema = new mongoose.Schema({
   cityId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Lab.availableCities",
+    ref: "City",
     required: true,
   },
-  isAvailable: {
-    type: Boolean,
-    default: true,
+  cityName: {
+    type: String,
+    required: true,
   },
-  // City-specific pricing fields (all required)
-  labSellingPrice: {
+  pinCode: {
+    type: String,
+    required: true,
+  },
+  billingRate: {
     type: Number,
     required: [true, "City-specific lab selling price is required!"],
   },
-  offeredPriceToPrevaCare: {
+  partnerRate: {
     type: Number,
     required: [true, "City-specific offered price to PrevaCare is required!"],
   },
@@ -35,27 +38,43 @@ const cityAvailabilitySchema = new mongoose.Schema({
   },
   homeCollectionCharge: {
     type: Number,
-    required: [true, "City-specific home collection charge is required!"],
+    default: 0,
   },
+  homeCollectionAvailable: {
+    type: Boolean,
+    default: false,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+});
+
+// Pre-save hook to set homeCollectionAvailable based on homeCollectionCharge
+cityAvailabilitySchema.pre("save", function (next) {
+  if (this.homeCollectionCharge > 0) {
+    this.homeCollectionAvailable = true;
+  }
+  next();
 });
 
 // lab schema
 const labPackage = new mongoose.Schema(
   {
-    lab: {
+    labId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lab",
       required: true,
     },
-    PackageCode: {
+    packageCode: {
       type: String,
-      // required: [true, "Package code is required !"], 
+      required: [true, "Package code is required and is unique !"],
       unique: true,
       trim: true,
     },
     desc: { type: String },
     category: { type: String, required: [true, "category is required !"] },
-    testName: {
+    packageName: {
       type: String,
       trim: true,
       required: [true, "test name is required !"],
@@ -71,13 +90,12 @@ const labPackage = new mongoose.Schema(
       type: String,
       default: "all age group",
     },
-    homeCollectionChargeIncluded: {
-      type: Boolean,
-      default: false,
-    },
     cityAvailability: [cityAvailabilitySchema], // Enhanced field for city availability with pricing
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("LapPackage", labPackage);
+// Create a compound unique index on packageCode and labId
+labPackage.index({ packageCode: 1, labId: 1 }, { unique: true });
+
+module.exports = mongoose.model("LabPackage", labPackage);

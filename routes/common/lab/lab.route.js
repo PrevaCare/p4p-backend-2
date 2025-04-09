@@ -1,4 +1,8 @@
 const router = require("express").Router();
+const {
+  validateLabData,
+  validateLabUpdateData,
+} = require("../../../middlewares/validation/labValidation");
 
 const {
   deleteLabById,
@@ -9,13 +13,16 @@ const {
   getTestsByCategory,
   getAllTestOfParticularLab,
   getTestByCategoryOfPaticularLab,
+  updateIndividualLabTest,
+  deleteIndividualLabTest,
 } = require("../../../controllers/common/lab/individualLabTest/individualLabTest.controller.js");
 const {
   createLab,
   getAllLabs,
   getLabById,
   updateLab,
-  getLabsByLocation
+  getLabsByLocation,
+  getAllCities,
 } = require("../../../controllers/common/lab/lab.controller.js");
 const {
   getAllCategoryOfPackageOfParticularLab,
@@ -26,7 +33,7 @@ const {
   searchLabPackages,
   getPackagesByCategory,
   getAllPackagesOfParticularLab,
-  getPackagesByCategoryOfPaticularLab
+  getPackagesByCategoryOfPaticularLab,
 } = require("../../../controllers/common/lab/labPackage/getLabPackage.controller.js");
 const {
   createLabPackage,
@@ -41,59 +48,74 @@ const {
 } = require("../../../middlewares/jwt/verifyToken.js");
 const { upload } = require("../../../middlewares/uploads/multerConfig.js");
 
-// router.post(
-//   "/admin/lab",
-//   verifyToken,
-//   checkPermissions("CREATE", "Employee"),
-//   createLab
-// );
+/**
+ * Core Lab Management Routes
+ */
+
+// Create new lab
 router.post(
   "/admin/lab",
-  upload.fields([{ name: "logo", maxCount: 1 }]),
   verifyToken,
-  // checkPermissions("CREATE", "Employee"),
+  checkPermissions("CREATE", "Employee"),
+  upload.fields([{ name: "logo", maxCount: 1 }]),
+  // validateLabData,
   createLab
 );
-// update
+
+// Update existing lab
 router.patch(
   "/admin/lab/:labId",
-  upload.fields([{ name: "logo", maxCount: 1 }]),
   verifyToken,
-  // checkPermissions("UPDATE", "Employee"),
+  checkPermissions("UPDATE", "Employee"),
+  upload.fields([{ name: "logo", maxCount: 1 }]),
+  // validateLabUpdateData,
   updateLab
 );
 
-//
+// Get all labs
 router.get(
   "/admin/labs",
   verifyToken,
-  // checkPermissions("READ", "Employee"), // admin and doctor
+  checkPermissions("READ", "Employee"),
   getAllLabs
 );
 
+// Get lab by ID
 router.post(
-  "/admin/labs/location",
+  "/admin/lab/:labId",
   verifyToken,
-  // checkPermissions("READ", "Employee"), // admin and doctor
-  getLabsByLocation
-);
-// get single lab by id
-router.post(
-  "/admin/lab-detail",
-  verifyToken,
-  // checkPermissions("READ", "Employee"), // admin and doctor
+  checkPermissions("READ", "Employee"),
   getLabById
 );
 
+// Get labs by location
+router.post(
+  "/admin/labs/location",
+  verifyToken,
+  checkPermissions("READ", "Employee"),
+  getLabsByLocation
+);
+
+// Delete lab
+router.delete(
+  "/admin/lab/:labId",
+  verifyToken,
+  verifyAndSuperAdmin,
+  deleteLabById
+);
+
+// Get all cities
+router.get("/admin/cities", verifyToken, getAllCities);
+
 // lab package -- create
 router.post(
-  "/admin/lab/pacakge",
+  "/admin/lab/pacakge/create",
   verifyToken,
   checkPermissions("CREATE", "Employee"),
   createLabPackage
 );
 router.patch(
-  "/admin/lab/pacakge/:packageId",
+  "/admin/lab/pacakge/:packageId/update",
   verifyToken,
   // checkPermissions("CREATE", "Employee"),
   updateLabPackage
@@ -141,7 +163,7 @@ router.get(
   "/admin/packages/byCategory",
   verifyToken,
   // checkPermissions("READ", "Employee"),
-  getPackagesByCategory,
+  getPackagesByCategory
 );
 // lab package -- get category only
 router.post(
@@ -151,34 +173,54 @@ router.post(
   getSingleLabPackageById
 );
 
-// individual lab test
-// lab package -- create
+// Individual lab test routes
 router.post(
-  "/admin/lab/individual-test",
+  "/admin/lab/test/create",
   verifyToken,
-  // checkPermissions("CREATE", "Employee"),
+  checkPermissions("CREATE", "Employee"),
   createIndividualLabTest
+);
+
+router.patch(
+  "/admin/lab/test/:testId",
+  verifyToken,
+  checkPermissions("UPDATE", "Employee"),
+  updateIndividualLabTest
+);
+
+router.delete(
+  "/admin/lab/test/:testId",
+  verifyToken,
+  checkPermissions("DELETE", "Employee"),
+  deleteIndividualLabTest
 );
 
 router.post(
   "/admin/tests/search",
   verifyToken,
-  // checkPermissions("CREATE", "Employee"),
+  checkPermissions("READ", "Employee"),
   searchIndividualLabTest
 );
 
 router.get(
   "/admin/tests/byCategory",
   verifyToken,
-  // checkPermissions("CREATE", "Employee"),
+  checkPermissions("READ", "Employee"),
   getTestsByCategory
 );
 
 router.get(
   "/admin/labs/:labId/tests",
   verifyToken,
-  // checkPermissions("CREATE", "Employee"),
+  checkPermissions("READ", "Employee"),
   getAllTestOfParticularLab
+);
+
+router.get(
+  "/admin/labs/:labId/test/by-category/:category",
+  verifyToken,
+  checkPermissions("READ", "Employee"),
+  getTestByCategoryOfPaticularLab
 );
 
 router.get(
@@ -189,18 +231,10 @@ router.get(
 );
 
 router.get(
-  "/admin/labs/:labId/test/by-category/:category",
-  verifyToken,
-  // checkPermissions("CREATE", "Employee"),
-  getTestByCategoryOfPaticularLab
-);
-
-router.get(
   "/admin/labs/:labId/packages/by-category/:category",
   verifyToken,
   // checkPermissions("CREATE", "Employee"),
   getPackagesByCategoryOfPaticularLab
 );
 
-router.delete("/admin/lab/:labId", verifyAndSuperAdmin, deleteLabById);
 module.exports = router;

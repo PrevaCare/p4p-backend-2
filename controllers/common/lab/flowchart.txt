@@ -1,0 +1,193 @@
+Import Lab Tests CSV Flow (/admin/lab-partner/import-tests)
+
+┌─────────────────────┐
+│ Start               │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Validate Request    │
+│ - Check CSV file    │
+│ - Check labPartnerId│
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Verify Lab Partner  │
+│ - Find lab by ID    │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Parse CSV File      │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Validate CSV Data   │
+│ with Schema         │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Check for Duplicate │
+│ Codes in CSV        │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Check for Existing  │
+│ Codes in Database   │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Transform CSV data  │
+│ to Test Objects     │
+│ - Map city data     │
+│ - Add pricing fields│
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Insert Tests        │
+│ into Database       │
+└──────────┬──────────┘
+           ▼
+      ┌────┴────┐
+      ▼         ▼
+┌─────────┐ ┌─────────┐
+│ Success │ │ Error   │
+└────┬────┘ └────┬────┘
+     │           │
+     ▼           ▼
+┌─────────┐ ┌─────────┐
+│ Return  │ │ Return  │
+│ Success │ │ Error   │
+│ Response│ │ Response│
+└─────────┘ └─────────┘
+
+
+Import Lab Packages CSV Flow (/admin/lab-partner/import-packages)
+
+┌─────────────────────┐
+│ Start               │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Validate Request    │
+│ - Check CSV file    │
+│ - Check labPartnerId│
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Verify Lab Partner  │
+│ - Find lab by ID    │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Parse CSV File      │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Validate CSV Data   │
+│ with Package Schema │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Check for Duplicate │
+│ Codes in CSV        │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Check for Existing  │
+│ Codes in Database   │
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Transform CSV data  │
+│ to Package Objects  │
+│ - Map city data     │
+│ - Process tests     │
+│ - Add pricing fields│
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│ Insert Packages     │
+│ into Database       │
+└──────────┬──────────┘
+           ▼
+      ┌────┴────┐
+      ▼         ▼
+┌─────────┐ ┌─────────┐
+│ Success │ │ Error   │
+└────┬────┘ └────┬────┘
+     │           │
+     ▼           ▼
+┌─────────┐ ┌─────────┐
+│ Return  │ │ Return  │
+│ Success │ │ Error   │
+│ Response│ │ Response│
+└─────────┘ └─────────┘
+
+Key Processing Details
+City Availability & Pricing Handling
+
+┌─────────────────────────────┐
+│ City Availability Processing │
+└─────────────┬───────────────┘
+              ▼
+┌─────────────────────────────┐
+│ Check Location Fields       │
+│ - Location_place_name       │
+│ - Location_pincode          │
+└─────────────┬───────────────┘
+              ▼
+┌─────────────────────────────┐
+│ Find City in Lab's          │
+│ availableCities             │
+└─────────────┬───────────────┘
+              ▼
+      ┌───────┴───────┐
+      ▼               ▼
+┌─────────┐     ┌─────────────┐
+│ Not     │     │ City Found  │
+│ Found   │     └──────┬──────┘
+└─────────┘            ▼
+                ┌─────────────┐
+                │ Create City │
+                │ Availability│
+                │ Entry with: │
+                └──────┬──────┘
+                       ▼
+                ┌─────────────┐
+                │ Add Pricing │
+                │ Fields:     │
+                │ - labSellingPrice │
+                │ - offeredPriceToPrevaCare │
+                │ - prevaCarePrice │
+                │ - discountPercentage │
+                │ - homeCollectionCharge │
+                └─────────────┘
+
+CSV Schema Validation Process
+┌───────────────────────┐
+│ CSV Schema Validation │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│ Define Field Schema   │
+│ - Required fields     │
+│ - Data types          │
+│ - Descriptions        │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│ Validate CSV Headers  │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│ Validate Required     │
+│ Fields Present        │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│ Validate Data Types   │
+└───────────┬───────────┘
+            ▼
+┌───────────────────────┐
+│ Return Validation     │
+│ Result or Errors      │
+└───────────────────────┘

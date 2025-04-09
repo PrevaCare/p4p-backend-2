@@ -6,43 +6,64 @@ const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION,
-  // signatureVersion: "v4",
 });
 
-const uploadToS3 = (file) => {
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: `${Date.now()}_${file.originalname}`,
-    Body: file.buffer,
-    ContentType: file.mimetype,
-    // ACL: "public-read",
-  };
+const uploadToS3 = async (file) => {
+  try {
+    if (!file || !file.buffer) {
+      throw new Error("Invalid file object. File buffer is required.");
+    }
 
-  return s3.upload(params).promise();
+    const params = {
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: `${Date.now()}-${file.originalname}`,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+
+    const result = await s3.upload(params).promise();
+    return result;
+  } catch (error) {
+    console.error("Error in uploadToS3:", error);
+    throw error;
+  }
 };
 
 //
 
 // using disk storage for larger file size
-const uploadToS3DisckStorage = (filePath, file) => {
-  const fileStream = fs.createReadStream(filePath);
+const uploadToS3DiskStorage = async (filePath, file) => {
+  try {
+    if (!filePath || !file) {
+      throw new Error("File path and file object are required");
+    }
 
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: `${Date.now()}_${file.originalname}`,
-    Body: fileStream,
-    ContentType: file.mimetype,
-    // ACL: "public-read",
-  };
+    const fileStream = fs.createReadStream(filePath);
 
-  return s3.upload(params).promise();
+    const params = {
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: `${Date.now()}-${file.originalname}`,
+      Body: fileStream,
+      ContentType: file.mimetype,
+    };
+
+    const result = await s3.upload(params).promise();
+    return result;
+  } catch (error) {
+    console.error("Error in uploadToS3DiskStorage:", error);
+    throw error;
+  }
 };
 
 // Function to delete file from S3
 const deleteS3Object = async (fileUrl) => {
   try {
+    if (!fileUrl) {
+      throw new Error("File URL is required");
+    }
+
     const urlParts = fileUrl.split("/");
-    const fileName = urlParts[urlParts.length - 1]; // Extract the filename/key from the URL
+    const fileName = urlParts[urlParts.length - 1];
 
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
@@ -51,43 +72,41 @@ const deleteS3Object = async (fileUrl) => {
 
     await s3.deleteObject(params).promise();
     console.log(`File ${fileName} deleted successfully from S3`);
+    return true;
   } catch (error) {
-    console.error(`Failed to delete file from S3: ${error.message}`);
+    console.error(`Failed to delete file from S3:`, error);
+    throw error;
   }
 };
 
 const handleFileUpload = async (file) => {
   try {
-    // Step 1: Validate if the file exists
-    // console.log("yes hitted");
-    // console.log(file);
     if (!file) {
-      throw new Error("No file uploaded");
+      throw new Error("No file provided");
     }
-    // Get the current file's directory using __dirname
-    const filePath = path.join(
-      __dirname,
-      "../../public",
-      "temp",
-      file.filename
-    );
-    // console.log(filePath);
-    // console.log(file.filename);
-    // console.log(file);
-    // Step 2: Upload the file to S3
-    const s3UploadResult = await uploadToS3DisckStorage(filePath, file);
 
-    // Step 3: Unlink (delete) the local file after successful upload
-    fs.unlink(filePath, (err) => {
-      if (err) {
-        console.error("Error deleting file from local storage:", err);
-      }
-    });
+    // For memory storage uploads
+    if (file.buffer) {
+      const result = await uploadToS3(file);
+      return result.Location;
+    }
 
-    // Return the S3 URL
-    return s3UploadResult.Location;
+    // For disk storage uploads
+    const filePath = path.join(__dirname, "../../public/temp", file.filename);
+    const result = await uploadToS3DiskStorage(filePath, file);
+
+    // Clean up local file
+    try {
+      await fs.promises.unlink(filePath);
+    } catch (unlinkError) {
+      console.error("Error deleting local file:", unlinkError);
+      // Continue even if local file deletion fails
+    }
+
+    return result.Location;
   } catch (error) {
-    throw new Error(`File upload error: ${error.message}`);
+    console.error("Error in handleFileUpload:", error);
+    throw error;
   }
 };
 

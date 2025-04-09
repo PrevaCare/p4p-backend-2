@@ -4,63 +4,300 @@ const LabPackage = require("../../../../models/lab/labPackage/addLabPackage.mode
 const {
   labPackageValidationSchema,
 } = require("../../../../validators/lab/labPackage/labPackage.validator");
+const Lab = require("../../../../models/lab/lab.model");
+const City = require("../../../../models/lab/city.model");
 
 const createLabPackage = async (req, res) => {
+  // console.log("createLabPackage called with body:", JSON.stringify(req.body));
+
   try {
-    // Validate request body
-    const { error } = labPackageValidationSchema.validate(req.body);
-    if (error) {
+    // Parse and validate request body
+    const {
+      labId,
+      packageCode,
+      packageName,
+      category,
+      desc,
+      testIncluded,
+      sampleRequired,
+      preparationRequired,
+      gender,
+      ageGroup,
+      cityAvailability,
+    } = req.body;
+
+    // Basic validation
+    if (!labId) {
+      return Response.error(res, 400, AppConstant.FAILED, "Lab ID is required");
+    }
+
+    if (!packageCode) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        error.message || "Validation failed!"
+        "Package code is required"
       );
     }
 
-    const { lab, category, testName } = req.body;
-    const lowerCaseCategory = category.toLowerCase();
-
-    // Check if a lab package with the same lab, category and test name already exists
-    const existingLabPackage = await LabPackage.findOne({
-      lab,
-      category: lowerCaseCategory,
-      testName,
-    });
-
-    if (existingLabPackage) {
+    if (!packageName) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "A lab package with this lab, category and test name already exists!"
+        "Package name is required"
       );
     }
 
-    // Create a new LabPackage instance
-    const newLabPackage = new LabPackage({
-      ...req.body,
-      category: lowerCaseCategory,
+    if (!category) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Category is required"
+      );
+    }
+
+    if (
+      !testIncluded ||
+      !Array.isArray(testIncluded) ||
+      testIncluded.length === 0
+    ) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "At least one test must be included in the package"
+      );
+    }
+
+    // Check if lab exists
+    const lab = await Lab.findById(labId);
+    if (!lab) {
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
+    }
+
+    // Check if package code already exists
+    const existingPackage = await LabPackage.findOne({ packageCode });
+    if (existingPackage) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "A package with this package code already exists"
+      );
+    }
+
+    // Process cityAvailability data
+    const processedCityAvailability = [];
+
+    if (cityAvailability && cityAvailability.length > 0) {
+      // Get lab's available cities
+      const labCities = new Map();
+      if (lab.availableCities && lab.availableCities.length > 0) {
+        lab.availableCities.forEach((city) => {
+          if (city.cityId) {
+            labCities.set(city.cityId.toString(), {
+              isActive: city.isActive,
+              cityName: city.cityName,
+              pinCode: city.pinCode,
+            });
+          }
+        });
+      }
+
+      // Process each city
+      for (const cityData of cityAvailability) {
+        // Validate city ID
+        if (!cityData.cityId) {
+          return Response.error(
+            res,
+            400,
+            AppConstant.FAILED,
+            "City ID is required for all city availability entries"
+          );
+        }
+
+        // Check if lab delivers to this city
+        if (!labCities.has(cityData.cityId.toString())) {
+          const city = await City.findById(cityData.cityId);
+          const cityName = city ? city.cityName : "Unknown";
+
+          return Response.error(
+            res,
+            400,
+            AppConstant.FAILED,
+            `This lab doesn't deliver to ${cityName} (ID: ${cityData.cityId}). Please update the lab's available cities first.`
+          );
+        }
+
+        // Get city details if needed
+        if (!cityData.cityName || !cityData.pinCode) {
+          const city = await City.findById(cityData.cityId);
+          if (!city) {
+            return Response.error(
+              res,
+              404,
+              AppConstant.FAILED,
+              `City with ID ${cityData.cityId} not found`
+            );
+          }
+
+          // Auto-fill city details
+          cityData.cityName = cityData.cityName || city.cityName;
+          cityData.pinCode = cityData.pinCode || city.pincode;
+        }
+
+        // Validate required pricing fields
+        const requiredFields = [
+          { field: "billingRate", name: "Billing rate" },
+          { field: "partnerRate", name: "Partner rate" },
+          { field: "prevaCarePrice", name: "PrevaCare price" },
+          { field: "discountPercentage", name: "Discount percentage" },
+        ];
+
+        for (const { field, name } of requiredFields) {
+          if (
+            cityData[field] === undefined ||
+            cityData[field] === null ||
+            cityData[field] === ""
+          ) {
+            return Response.error(
+              res,
+              400,
+              AppConstant.FAILED,
+              `${name} is required for city ${cityData.cityName}`
+            );
+          }
+
+          // Ensure numeric values
+          cityData[field] = parseFloat(cityData[field]);
+          if (isNaN(cityData[field])) {
+            return Response.error(
+              res,
+              400,
+              AppConstant.FAILED,
+              `${name} must be a valid number for city ${cityData.cityName}`
+            );
+          }
+        }
+
+        // Set default values for optional fields
+        cityData.homeCollectionCharge =
+          cityData.homeCollectionCharge !== undefined
+            ? parseFloat(cityData.homeCollectionCharge)
+            : 0;
+
+        // If homeCollectionAvailable is not provided, set it based on homeCollectionCharge
+        if (cityData.homeCollectionAvailable === undefined) {
+          cityData.homeCollectionAvailable = cityData.homeCollectionCharge > 0;
+        } else {
+          cityData.homeCollectionAvailable = Boolean(
+            cityData.homeCollectionAvailable
+          );
+        }
+
+        // Set isActive to true by default
+        cityData.isActive =
+          cityData.isActive !== undefined ? Boolean(cityData.isActive) : true;
+
+        // Add to processed array
+        processedCityAvailability.push({
+          cityId: cityData.cityId,
+          cityName: cityData.cityName,
+          pinCode: cityData.pinCode,
+          billingRate: cityData.billingRate,
+          partnerRate: cityData.partnerRate,
+          prevaCarePrice: cityData.prevaCarePrice,
+          discountPercentage: cityData.discountPercentage,
+          homeCollectionCharge: cityData.homeCollectionCharge,
+          homeCollectionAvailable: cityData.homeCollectionAvailable,
+          isActive: cityData.isActive,
+        });
+      }
+    }
+
+    // Process test included data
+    const processedTestIncluded = testIncluded.map((test) => {
+      if (typeof test === "string") {
+        // If test is just a string, convert to object format
+        return { test, parameters: [] };
+      } else if (typeof test === "object") {
+        // Ensure test has the required 'test' field
+        if (!test.test) {
+          throw new Error(
+            'Each test must have a "test" field with the test name'
+          );
+        }
+        // Ensure parameters is an array
+        return {
+          test: test.test,
+          parameters: Array.isArray(test.parameters) ? test.parameters : [],
+        };
+      }
     });
 
-    const savedLabPackage = await newLabPackage.save();
+    // Create new lab package
+    const newPackage = new LabPackage({
+      labId,
+      packageCode,
+      packageName,
+      category: category.toLowerCase(),
+      desc: desc || "",
+      testIncluded: processedTestIncluded,
+      sampleRequired: Array.isArray(sampleRequired) ? sampleRequired : [],
+      preparationRequired: Array.isArray(preparationRequired)
+        ? preparationRequired
+        : [],
+      gender: gender || "both",
+      ageGroup: ageGroup || "all age group",
+      cityAvailability: processedCityAvailability,
+    });
+
+    const savedPackage = await newPackage.save();
+
     return Response.success(
       res,
-      savedLabPackage,
+      savedPackage,
       201,
-      "Lab package created successfully!"
+      "Lab package created successfully"
     );
   } catch (err) {
+    console.error("Error creating lab package:", err);
+
+    // Handle Mongoose validation errors
+    if (err.name === "ValidationError") {
+      const errors = Object.values(err.errors).map((e) => e.message);
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        `Validation error: ${errors.join(", ")}`
+      );
+    }
+
+    // Handle duplicate key errors
+    if (err.code === 11000) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "A package with the same package code already exists"
+      );
+    }
+
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      err.message || "Internal server error!"
+      err.message || "Internal server error"
     );
   }
 };
 
 const updateLabPackage = async (req, res) => {
+  console.log("updateLabPackage called with body:", JSON.stringify(req.body));
+
   try {
     const { packageId } = req.params;
     if (!packageId) {
@@ -72,44 +309,9 @@ const updateLabPackage = async (req, res) => {
       );
     }
 
-    // Validate request body
-    const { error } = labPackageValidationSchema.validate(req.body);
-    if (error) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        error.message || "Validation failed!"
-      );
-    }
-
-    // If category is being updated, convert to lowercase
-    if (req.body.category) {
-      req.body.category = req.body.category.toLowerCase();
-    }
-
-    // Check if updating would create a duplicate
-    if (req.body.testName || req.body.category || req.body.lab) {
-      const existingPackage = await LabPackage.findOne({
-        _id: { $ne: packageId },
-        lab: req.body.lab || undefined,
-        category: req.body.category || undefined,
-        testName: req.body.testName || undefined,
-      });
-
-      if (existingPackage) {
-        return Response.error(
-          res,
-          400,
-          AppConstant.FAILED,
-          "A lab package with these details already exists!"
-        );
-      }
-    }
-
-    // First fetch the existing package
-    const existingPackage = await LabPackage.findById(packageId);
-    if (!existingPackage) {
+    // Check if package exists
+    const existingLabPackage = await LabPackage.findById(packageId);
+    if (!existingLabPackage) {
       return Response.error(
         res,
         404,
@@ -118,17 +320,181 @@ const updateLabPackage = async (req, res) => {
       );
     }
 
-    // Update the package using findByIdAndUpdate to avoid the schema validation for packageName
-    // This approach directly updates only the fields provided in req.body
+    // If category is being updated, convert to lowercase
+    if (req.body.category) {
+      req.body.category = req.body.category.toLowerCase();
+    }
+
+    // Check for unique constraint violations
+    if (req.body.packageCode || req.body.labId) {
+      // Create query to find potential duplicates
+      const query = { _id: { $ne: packageId } }; // Not the current package
+
+      if (req.body.packageCode) {
+        query.packageCode = req.body.packageCode;
+      }
+
+      if (req.body.labId) {
+        query.labId = req.body.labId;
+      }
+
+      // Check if a package with the same code/labId exists
+      const existingPackage = await LabPackage.findOne(query);
+
+      if (existingPackage) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "Package Code and LabId cannot be updated!"
+        );
+      }
+    }
+
+    // Process cityAvailability if included in the update
+    if (req.body.cityAvailability && Array.isArray(req.body.cityAvailability)) {
+      // Get lab details
+      const labId = req.body.labId || existingLabPackage.labId;
+      const lab = await Lab.findById(labId);
+
+      if (!lab) {
+        return Response.error(res, 404, AppConstant.FAILED, "Lab not found!");
+      }
+
+      // Get lab's available cities
+      const labCities = new Map();
+      if (lab.availableCities && lab.availableCities.length > 0) {
+        lab.availableCities.forEach((city) => {
+          if (city.cityId) {
+            labCities.set(city.cityId.toString(), {
+              isActive: city.isActive,
+              cityName: city.cityName,
+              pinCode: city.pinCode,
+            });
+          }
+        });
+      }
+
+      // Validate each city in cityAvailability
+      for (const cityData of req.body.cityAvailability) {
+        if (!cityData.cityId) {
+          return Response.error(
+            res,
+            400,
+            AppConstant.FAILED,
+            "City ID is required for all city availability entries"
+          );
+        }
+
+        // Check if lab delivers to this city
+        if (!labCities.has(cityData.cityId.toString())) {
+          const city = await City.findById(cityData.cityId);
+          const cityName = city ? city.cityName : "Unknown";
+
+          return Response.error(
+            res,
+            400,
+            AppConstant.FAILED,
+            `This lab doesn't deliver to ${cityName} (ID: ${cityData.cityId}). Please update the lab's available cities first.`
+          );
+        }
+
+        // Get city details if needed
+        if (!cityData.cityName || !cityData.pinCode) {
+          const city = await City.findById(cityData.cityId);
+          if (!city) {
+            return Response.error(
+              res,
+              404,
+              AppConstant.FAILED,
+              `City with ID ${cityData.cityId} not found`
+            );
+          }
+
+          // Auto-fill city details
+          cityData.cityName = cityData.cityName || city.cityName;
+          cityData.pinCode = cityData.pinCode || city.pincode;
+        }
+
+        // Validate required pricing fields
+        const requiredFields = [
+          { field: "billingRate", name: "Billing rate" },
+          { field: "partnerRate", name: "Partner rate" },
+          { field: "prevaCarePrice", name: "PrevaCare price" },
+          { field: "discountPercentage", name: "Discount percentage" },
+        ];
+
+        for (const { field, name } of requiredFields) {
+          if (
+            cityData[field] === undefined ||
+            cityData[field] === null ||
+            cityData[field] === ""
+          ) {
+            return Response.error(
+              res,
+              400,
+              AppConstant.FAILED,
+              `${name} is required for city ${cityData.cityName}`
+            );
+          }
+
+          // Ensure numeric values
+          cityData[field] = parseFloat(cityData[field]);
+          if (isNaN(cityData[field])) {
+            return Response.error(
+              res,
+              400,
+              AppConstant.FAILED,
+              `${name} must be a valid number for city ${cityData.cityName}`
+            );
+          }
+        }
+
+        // Set default values for optional fields
+        if (cityData.homeCollectionCharge !== undefined) {
+          cityData.homeCollectionCharge = parseFloat(
+            cityData.homeCollectionCharge
+          );
+        }
+
+        if (
+          cityData.homeCollectionAvailable === undefined &&
+          cityData.homeCollectionCharge !== undefined
+        ) {
+          cityData.homeCollectionAvailable = cityData.homeCollectionCharge > 0;
+        }
+      }
+    }
+
+    // Process testIncluded data if included in the update
+    if (req.body.testIncluded && Array.isArray(req.body.testIncluded)) {
+      req.body.testIncluded = req.body.testIncluded.map((test) => {
+        if (typeof test === "string") {
+          // If test is just a string, convert to object format
+          return { test, parameters: [] };
+        } else if (typeof test === "object") {
+          // Ensure test has the required 'test' field
+          if (!test.test) {
+            throw new Error(
+              'Each test must have a "test" field with the test name'
+            );
+          }
+          // Ensure parameters is an array
+          return {
+            test: test.test,
+            parameters: Array.isArray(test.parameters) ? test.parameters : [],
+          };
+        }
+        return test;
+      });
+    }
+
+    // Update the package
     const updatedPackage = await LabPackage.findByIdAndUpdate(
       packageId,
       { $set: req.body },
       { new: true }
     );
-
-    // If there's still an issue with the packageName field being null in the database,
-    // we need to handle it at the database level, not in the API
-    // Consider running a separate migration to fix any null packageName values
 
     return Response.success(
       res,
@@ -137,15 +503,26 @@ const updateLabPackage = async (req, res) => {
       "Lab package updated successfully!"
     );
   } catch (err) {
-    console.error("Update lab package error:", err);
+    console.error("Error updating lab package:", err);
 
-    // Handle duplicate key errors specifically
+    // Handle validation errors
+    if (err.name === "ValidationError") {
+      const errors = Object.values(err.errors).map((e) => e.message);
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        `Validation error: ${errors.join(", ")}`
+      );
+    }
+
+    // Handle duplicate key errors
     if (err.code === 11000) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "Duplicate key error: Another package with the same unique field already exists."
+        "Package Code and LabId must be unique!"
       );
     }
 

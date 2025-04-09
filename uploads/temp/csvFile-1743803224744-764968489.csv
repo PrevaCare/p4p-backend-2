@@ -1,0 +1,11 @@
+Test Name,Test Code,Category,Description,Age Group,Gender,Samples Required,Preparation Required,Location_place_name,Location_pincode,Billing Rate,Partner Rate,PrevaCare Price,Discount Price,Home Collection Charges
+Complete Blood Count,CBC001,Hematology,Full blood profile analysis,all age group,both,Blood Sample,"Fasting for 8 hours, No alcohol for 24 hours",Mumbai,400001,800,500,750,650,100
+Liver Function Test,LFT001,Biochemistry,Comprehensive liver panel,all age group,both,Blood Sample,Fasting for 12 hours,Delhi,110001,1200,750,1100,950,150
+Thyroid Profile,THY001,Endocrinology,"Tests for T3, T4, and TSH levels",all age group,both,Blood Sample,No special preparation required,Bangalore,560001,1500,900,1400,1200,100
+Vitamin D Test,VIT001,Nutrition,Measures 25-hydroxyvitamin D levels,all age group,both,Blood Sample,No special preparation required,Chennai,600001,2000,1200,1800,1600,150
+HbA1c Test,DIA001,Diabetes,Glycated hemoglobin test,all age group,both,Blood Sample,No fasting required,Hyderabad,500001,1000,600,900,800,100
+Lipid Profile,LIP001,Cardiology,Tests for cholesterol and triglycerides,all age group,both,Blood Sample,Fasting for 12 hours,Pune,411001,1200,700,1100,950,120
+Kidney Function Test,KFT001,Nephrology,Tests for urea and creatinine levels,all age group,both,Blood Sample and Urine Sample,Light meal before test,Kolkata,700001,1500,850,1400,1250,150
+COVID-19 RT-PCR,COV001,Infectious Disease,Detection of SARS-CoV-2 RNA,all age group,both,Nasopharyngeal Swab,No special preparation required,Ahmedabad,380001,2500,1800,2300,2100,200
+PSA Test,PSA001,Oncology,Prostate-specific antigen test,above 40,male,Blood Sample,No sexual activity for 48 hours,,500032,2000,1300,1800,1600,150
+Pap Smear,PAP001,Gynecology,Cervical cancer screening,18-65,female,Cervical Sample,No sexual activity for 48 hours,Mumbai,400001,2200,1500,2000,1800,0

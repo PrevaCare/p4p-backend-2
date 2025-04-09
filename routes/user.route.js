@@ -36,61 +36,34 @@ const {
   verifyAndDoctor,
 } = require("../middlewares/jwt/verifyToken");
 const { upload } = require("../middlewares/uploads/multerConfig.js");
+
+// Admin registration with multiple file uploads
+const adminUploadFields = [
+  { name: "logo", maxCount: 1 },
+  { name: "medicalRegistrationProof", maxCount: 1 },
+  { name: "medicalDegreeProof", maxCount: 1 },
+  { name: "profileImg", maxCount: 1 },
+  { name: "pregnancyData[ultrasoundScan]", maxCount: 1 },
+  { name: "pregnancyData[otherReport]", maxCount: 1 },
+  { name: "pregnancyData[trimesterScreening]", maxCount: 1 },
+  { name: "currentReport", maxCount: 3 },
+];
+
 router.post(
   "/admin/register",
-  upload.fields([
-    { name: "logo", maxCount: 1 },
-    { name: "medicalRegistrationProof", maxCount: 1 },
-    { name: "medicalDegreeProof", maxCount: 1 },
-    { name: "profileImg", maxCount: 1 },
-    { name: "pregnancyData[ultrasoundScan]", maxCount: 1 },
-    { name: "pregnancyData[otherReport]", maxCount: 1 },
-    { name: "pregnancyData[trimesterScreening]", maxCount: 1 },
-    { name: "currentReport", maxCount: 3 },
-  ]),
-
-  // verifySuperAdmin,
+  upload.fields(adminUploadFields),
   verifyToken,
   register
 );
 
-// individual user register
+// Individual user registration
 router.post(
   "/individual/user/register",
   upload.fields([{ name: "profileImg", maxCount: 1 }]),
-  verifyToken, // -- here instead check whether registering user is individual user.
+  verifyToken,
   register
 );
-// router.post(
-//   "/admin/corporate/register",
-//   // upload.fields([{ name: "logo", maxCount: 1 }]),
 
-//   // upload.fields([{ name: "medicalRegistrationProof", maxCount: 1 }]),
-//   // upload.fields([{ name: "medicalDegreeProof", maxCount: 1 }]),
-
-//   // verifySuperAdmin,
-//   register
-// );
-// router.post(
-//   "/admin/doctor/register",
-//   upload.fields([
-//     { name: "medicalRegistrationProof", maxCount: 1 },
-//     { name: "medicalDegreeProof", maxCount: 1 },
-//   ]),
-// upload.fields([{ name: "medicalDegreeProof", maxCount: 1 }]),
-
-// verifySuperAdmin,
-//   register
-// );
-// router.post(
-//   "/admin/register",
-//   upload.fields([{ name: "logo", maxCount: 1 }]),
-//   upload.fields([{ name: "medicalRegistrationProof", maxCount: 1 }]),
-//   // upload.fields([{ name: "medicalDegreeProof", maxCount: 1 }]),
-
-//   // verifySuperAdmin,
-//   register
-// );
 router.post("/admin/login", login);
 router.post("/admin/logout", verifyAndAuthoriseToken, logout);
 router.post(
