@@ -48,9 +48,18 @@ const cityAvailabilitySchema = new mongoose.Schema({
 
 // Pre-save hook to set homeCollectionAvailable based on homeCollectionCharge
 cityAvailabilitySchema.pre("save", function (next) {
-  if (this.homeCollectionCharge > 0) {
+  console.log(
+    `City pre-save hook: cityId=${this.cityId}, homeCollectionCharge=${this.homeCollectionCharge}, homeCollectionAvailable=${this.homeCollectionAvailable}`
+  );
+
+  // Only auto-set homeCollectionAvailable if it wasn't explicitly set to false
+  if (this.homeCollectionCharge > 0 && this.homeCollectionAvailable !== false) {
     this.homeCollectionAvailable = true;
+    console.log(
+      `Setting homeCollectionAvailable=true based on charge=${this.homeCollectionCharge}`
+    );
   }
+
   next();
 });
 
@@ -105,5 +114,30 @@ const individualLabTestSchema = new mongoose.Schema(
 
 // Create a compound unique index on testCode and labId
 individualLabTestSchema.index({ testCode: 1, lab: 1 }, { unique: true });
+
+// Add document-level pre-save hook for debugging
+individualLabTestSchema.pre("save", function (next) {
+  console.log(
+    `Saving test: testCode=${this.testCode}, testName=${this.testName}`
+  );
+  console.log(`Test has ${this.cityAvailability?.length || 0} cities`);
+
+  // Log a sample of the first city if available
+  if (this.cityAvailability && this.cityAvailability.length > 0) {
+    const sampleCity = this.cityAvailability[0];
+    console.log("Sample city data:", {
+      cityId: sampleCity.cityId,
+      billingRate: sampleCity.billingRate,
+      partnerRate: sampleCity.partnerRate,
+      prevaCarePrice: sampleCity.prevaCarePrice,
+      discountPercentage: sampleCity.discountPercentage,
+      homeCollectionCharge: sampleCity.homeCollectionCharge,
+      homeCollectionAvailable: sampleCity.homeCollectionAvailable,
+      isActive: sampleCity.isActive,
+    });
+  }
+
+  next();
+});
 
 module.exports = mongoose.model("IndividualLabTest", individualLabTestSchema);

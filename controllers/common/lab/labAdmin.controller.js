@@ -342,6 +342,7 @@ const findOrCreateCity = async (cityName, pincode) => {
 const importLabTests = async (req, res) => {
   try {
     const { labId } = req.body;
+    console.log("Starting importLabTests with labId:", labId);
 
     // Validate required fields
     if (!labId) {
@@ -375,6 +376,7 @@ const importLabTests = async (req, res) => {
 
     // Parse CSV file
     const csvData = await parseCSV(req.file.path);
+    console.log(`Parsed ${csvData.length} rows from CSV file`);
 
     // Group rows by test code
     const testGroups = new Map();
@@ -387,6 +389,7 @@ const importLabTests = async (req, res) => {
       }
       testGroups.get(testCode).push(row);
     }
+    console.log(`Grouped into ${testGroups.size} unique test codes`);
 
     // Initialize results tracking
     const results = {
@@ -402,6 +405,9 @@ const importLabTests = async (req, res) => {
     // Process each test group
     for (const [testCode, testRows] of testGroups) {
       try {
+        console.log(
+          `Processing test code: ${testCode} with ${testRows.length} rows`
+        );
         const firstRow = testRows[0];
         const cityAvailability = [];
 
@@ -412,6 +418,9 @@ const importLabTests = async (req, res) => {
             const pincode = row["Location_pincode"];
 
             if (!cityName || !pincode) {
+              console.log(
+                `Skipping row for test ${testCode} - missing city name or pincode`
+              );
               continue;
             }
 
@@ -422,6 +431,7 @@ const importLabTests = async (req, res) => {
             });
 
             if (!city) {
+              console.log(`Creating new city: ${cityName} (${pincode})`);
               city = await City.create({
                 cityName: cityName.toLowerCase().trim(),
                 pincode: pincode.trim(),
@@ -440,22 +450,35 @@ const importLabTests = async (req, res) => {
                 : 0;
 
             // Parse home collection availability and charge
-            const homeCollectionValue = row["Home Collection Available"];
+            const homeCollectionValue =
+              row["Home Collection Available"] ||
+              row["Home Collection available"];
             const homeCollectionCharge = parseFloat(
-              row["Home Collection Charge"] || 0
+              row["Home Collection Charge"] ||
+                row["Home Collection Charges"] ||
+                0
             );
 
-            cityAvailability.push({
+            const cityData = {
               cityId: city._id,
               isAvailable: true,
               isActive: true,
-              labSellingPrice: parseFloat(row["Billing Rate"] || 0),
-              offeredPriceToPrevaCare: parseFloat(row["Partner Rate"] || 0),
+              billingRate: parseFloat(row["Billing Rate"] || 0), // Match schema field name
+              partnerRate: parseFloat(row["Partner Rate"] || 0), // Match schema field name
               prevaCarePrice: prevaCarePrice,
               discountPercentage: discountPercentage,
               homeCollectionCharge: homeCollectionCharge,
-              homeCollectionAvailable: homeCollectionValue === "TRUE",
-            });
+              homeCollectionAvailable:
+                homeCollectionValue === "TRUE" ||
+                homeCollectionValue === "Yes" ||
+                homeCollectionValue === true,
+            };
+
+            console.log(
+              `Adding city availability for ${cityName} (${pincode}):`,
+              JSON.stringify(cityData)
+            );
+            cityAvailability.push(cityData);
           } catch (error) {
             console.error(
               `Error processing city for test ${testCode}: ${error.message}`
@@ -467,6 +490,7 @@ const importLabTests = async (req, res) => {
         }
 
         if (cityAvailability.length === 0) {
+          console.log(`Skipping test ${testCode} - no valid cities`);
           results.skipped++;
           continue;
         }
@@ -475,7 +499,7 @@ const importLabTests = async (req, res) => {
           testName: firstRow["Test Name"],
           testCode: testCode,
           category: firstRow["Category"]?.toLowerCase() || "general",
-          description: firstRow["Description"] || "",
+          desc: firstRow["Description"] || "", // Match schema field name
           ageGroup: firstRow["Age Group"] || "all age group",
           gender: firstRow["Gender"] || "both",
           lab: labId,
@@ -488,6 +512,16 @@ const importLabTests = async (req, res) => {
           cityAvailability: cityAvailability,
           isActive: true,
         };
+
+        console.log(
+          `Test data prepared for ${testCode}:`,
+          JSON.stringify({
+            testName: testData.testName,
+            testCode: testData.testCode,
+            category: testData.category,
+            citiesCount: testData.cityAvailability.length,
+          })
+        );
 
         // Add to bulk operation
         bulkOps.push({
@@ -509,9 +543,11 @@ const importLabTests = async (req, res) => {
     // Execute bulk operation
     if (bulkOps.length > 0) {
       try {
+        console.log(`Executing bulk operation for ${bulkOps.length} tests`);
         const bulkResult = await IndividualLabTest.bulkWrite(bulkOps, {
           ordered: false,
         });
+        console.log("Bulk operation result:", JSON.stringify(bulkResult));
         results.imported = bulkResult.upsertedCount || 0;
         results.updated = bulkResult.modifiedCount || 0;
       } catch (error) {
@@ -525,6 +561,9 @@ const importLabTests = async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
 
+    console.log(
+      `Import completed: imported=${results.imported}, updated=${results.updated}, skipped=${results.skipped}`
+    );
     return Response.success(
       res,
       {
@@ -1050,7 +1089,25 @@ const updateLabPartnerCityStatus = async (req, res) => {
 const updateTestAvailabilityInCity = async (req, res) => {
   try {
     const { labpartnerId, testId } = req.params;
-    const cityUpdates = req.body;
+    let cityUpdates = req.body;
+
+    console.log(
+      "Update request received:",
+      JSON.stringify(
+        {
+          labpartnerId,
+          testId,
+          body: cityUpdates,
+        },
+        null,
+        2
+      )
+    );
+
+    // Convert single object to array for consistent processing
+    if (!Array.isArray(cityUpdates)) {
+      cityUpdates = [cityUpdates];
+    }
 
     // Validate required fields
     if (!labpartnerId || !testId) {
@@ -1062,12 +1119,12 @@ const updateTestAvailabilityInCity = async (req, res) => {
       );
     }
 
-    if (!Array.isArray(cityUpdates) || cityUpdates.length === 0) {
+    if (cityUpdates.length === 0) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "cityUpdates array is required and must not be empty"
+        "cityUpdates data is required and must not be empty"
       );
     }
 
@@ -1090,11 +1147,11 @@ const updateTestAvailabilityInCity = async (req, res) => {
       );
     }
 
-    // Find the test
+    // Find the test with populated city data
     const testDoc = await IndividualLabTest.findOne({
       _id: testId,
       lab: labpartnerId,
-    });
+    }).populate("cityAvailability.cityId");
 
     if (!testDoc) {
       return Response.error(
@@ -1104,6 +1161,23 @@ const updateTestAvailabilityInCity = async (req, res) => {
         "Test not found for this lab partner"
       );
     }
+
+    console.log(
+      `Found test: ${testDoc.testName} (${testDoc.testCode}) with ${
+        testDoc.cityAvailability?.length || 0
+      } cities`
+    );
+
+    // Debug: Print all cities to verify reactivation city is found
+    console.log("All cities in test before processing:");
+    testDoc.cityAvailability.forEach((city, i) => {
+      const cityId = city.cityId._id || city.cityId;
+      console.log(
+        `City ${i}: ID=${cityId}, name=${
+          city.cityId.cityName || "Unknown"
+        }, isActive=${city.isActive}`
+      );
+    });
 
     // Initialize results tracking
     const results = {
@@ -1119,59 +1193,28 @@ const updateTestAvailabilityInCity = async (req, res) => {
     // Process each city update
     for (const update of cityUpdates) {
       try {
-        const {
-          cityId,
-          pinCode,
-          status,
-          availability,
-          labSellingPrice,
-          offeredPriceToPrevaCare,
-          prevaCarePrice,
-          discountPercentage,
-          homeCollectionCharge,
-          homeCollectionAvailable,
-        } = update;
+        console.log(`Processing update:`, JSON.stringify(update, null, 2));
 
-        // Determine if we're just updating status or full availability
-        const isStatusOnlyUpdate =
-          status !== undefined &&
-          !availability &&
-          !labSellingPrice &&
-          !offeredPriceToPrevaCare;
-        const isAvailable =
-          status !== undefined ? Boolean(status) : Boolean(availability);
+        const { cityId, pinCode, status, homeCollectionAvailable } = update;
 
-        // If setting city to available, require pricing fields
-        if (isAvailable) {
-          if (
-            !labSellingPrice ||
-            !offeredPriceToPrevaCare ||
-            !prevaCarePrice ||
-            !discountPercentage
-          ) {
-            results.failed.push({
-              cityId,
-              pinCode,
-              error:
-                "When city is available, all pricing fields are required (labSellingPrice, offeredPriceToPrevaCare, prevaCarePrice, discountPercentage)",
-            });
-            continue;
-          }
-        }
-
+        // Validate required fields
         if (!cityId && !pinCode) {
           results.failed.push({
-            cityId,
-            pinCode,
             error: "Either cityId or pinCode is required",
           });
           continue;
         }
 
-        let cityIndex = -1;
-        let city = null;
+        // Determine update type
+        const isHomeCollectionOnlyUpdate =
+          homeCollectionAvailable !== undefined && status === undefined;
+        const isStatusUpdate = status !== undefined;
 
-        // Find city by ID in the test's cityAvailability
+        // Find the city in cityAvailability array
+        let cityIndex = -1;
+        let foundCity = null;
+
+        // Try to find by cityId
         if (cityId) {
           if (!mongoose.Types.ObjectId.isValid(cityId)) {
             results.failed.push({
@@ -1181,156 +1224,350 @@ const updateTestAvailabilityInCity = async (req, res) => {
             continue;
           }
 
-          cityIndex = testDoc.cityAvailability.findIndex(
-            (city) => city.cityId.toString() === cityId
-          );
+          // Check for the city in the array - with improved debugging
+          console.log(`Searching for city with ID: ${cityId}`);
+          testDoc.cityAvailability.forEach((city, i) => {
+            const cityIdString = city.cityId._id
+              ? city.cityId._id.toString()
+              : city.cityId.toString();
+            console.log(`Comparing with city[${i}]: ${cityIdString}`);
+            if (cityIdString === cityId) {
+              console.log(`Found match at index ${i}`);
+            }
+          });
 
-          // If not found in test, get city info from City collection
+          cityIndex = testDoc.cityAvailability.findIndex((city) => {
+            // Handle both populated and non-populated cityId
+            const cityIdString = city.cityId._id
+              ? city.cityId._id.toString()
+              : city.cityId.toString();
+            return cityIdString === cityId;
+          });
+
+          console.log(`City index found: ${cityIndex}`);
+
           if (cityIndex === -1) {
-            city = await City.findById(cityId);
+            // City not in array, try to find it in the database
+            foundCity = await City.findById(cityId);
+            if (!foundCity) {
+              results.failed.push({
+                cityId,
+                error: "City not found in database",
+              });
+              continue;
+            }
+            console.log(`Found city in database: ${foundCity.cityName}`);
           }
         }
-        // Find city by pinCode
+        // Try to find by pinCode
         else if (pinCode) {
-          cityIndex = testDoc.cityAvailability.findIndex(
-            (city) => city.pinCode === pinCode
-          );
+          cityIndex = testDoc.cityAvailability.findIndex((city) => {
+            if (city.pinCode) {
+              return city.pinCode === pinCode;
+            } else if (city.cityId && city.cityId.pincode) {
+              return city.cityId.pincode === pinCode;
+            }
+            return false;
+          });
 
-          // If not found in test, get city info from City collection
           if (cityIndex === -1) {
-            city = await City.findOne({ pincode: pinCode });
+            // City not in array, try to find it in the database
+            foundCity = await City.findOne({ pincode: pinCode });
+            if (!foundCity) {
+              results.failed.push({
+                pinCode,
+                error: "City not found in database",
+              });
+              continue;
+            }
           }
         }
 
-        // If city not found anywhere
-        if (cityIndex === -1 && !city) {
-          results.failed.push({
-            cityId,
-            pinCode,
-            error: "City not found",
-          });
-          continue;
-        }
+        // Handle status update (activate or deactivate)
+        if (isStatusUpdate) {
+          const isActive = Boolean(status);
 
-        // If we found the city in the database but not in the test
-        if (cityIndex === -1 && city) {
-          // Create a new city entry with required fields
-          const newCity = {
-            cityId: city._id,
-            cityName: city.cityName,
-            pinCode: city.pincode,
-            isActive: isAvailable,
-            billingRate: parseFloat(labSellingPrice || 0),
-            partnerRate: parseFloat(offeredPriceToPrevaCare || 0),
-            prevaCarePrice: parseFloat(prevaCarePrice || 0),
-            discountPercentage: parseFloat(discountPercentage || 0),
-            homeCollectionCharge: parseFloat(homeCollectionCharge || 0),
-            homeCollectionAvailable:
-              homeCollectionAvailable ??
-              parseFloat(homeCollectionCharge || 0) > 0,
-          };
+          // If setting to active, validate pricing fields
+          if (isActive && cityIndex === -1) {
+            // Adding new city or reactivating a non-existing city
+            const {
+              labSellingPrice,
+              offeredPriceToPrevaCare,
+              prevaCarePrice,
+              discountPercentage,
+            } = update;
 
-          // Only add if we have required pricing information
-          if (isAvailable && (!labSellingPrice || !offeredPriceToPrevaCare)) {
-            results.failed.push({
-              cityId,
-              pinCode,
-              error:
-                "For available cities, billing rate and partner rate are required",
+            if (
+              !labSellingPrice ||
+              !offeredPriceToPrevaCare ||
+              !prevaCarePrice ||
+              !discountPercentage
+            ) {
+              results.failed.push({
+                cityId: foundCity._id,
+                error:
+                  "When adding a city, all pricing fields are required (labSellingPrice, offeredPriceToPrevaCare, prevaCarePrice, discountPercentage)",
+              });
+              continue;
+            }
+
+            // Add the new city to the array
+            const homeCollectionCharge = update.homeCollectionCharge || 0;
+
+            // Create new city entry
+            const newCity = {
+              cityId: foundCity._id,
+              isAvailable: true,
+              isActive: true,
+              billingRate: parseFloat(labSellingPrice),
+              partnerRate: parseFloat(offeredPriceToPrevaCare),
+              prevaCarePrice: parseFloat(prevaCarePrice),
+              discountPercentage: parseFloat(discountPercentage),
+              homeCollectionCharge: parseFloat(homeCollectionCharge),
+              homeCollectionAvailable:
+                update.homeCollectionAvailable !== undefined
+                  ? Boolean(update.homeCollectionAvailable)
+                  : parseFloat(homeCollectionCharge) > 0,
+            };
+
+            console.log(
+              `Adding new city: ${foundCity.cityName} with status=${isActive}`
+            );
+            testDoc.cityAvailability.push(newCity);
+
+            results.updated.push({
+              cityId: foundCity._id,
+              cityName: foundCity.cityName,
+              pinCode: foundCity.pincode,
+              status: isActive,
+              message: "City added successfully",
             });
-            continue;
-          }
+          } else if (isActive && cityIndex >= 0) {
+            // Reactivating existing city
+            const {
+              labSellingPrice,
+              offeredPriceToPrevaCare,
+              prevaCarePrice,
+              discountPercentage,
+            } = update;
 
-          testDoc.cityAvailability.push(newCity);
+            if (
+              !labSellingPrice ||
+              !offeredPriceToPrevaCare ||
+              !prevaCarePrice ||
+              !discountPercentage
+            ) {
+              results.failed.push({
+                cityId: cityId || testDoc.cityAvailability[cityIndex].cityId,
+                error:
+                  "When reactivating a city, all pricing fields are required",
+              });
+              continue;
+            }
 
-          results.updated.push({
-            cityId: city._id,
-            cityName: city.cityName,
-            pinCode: city.pincode,
-            status: isAvailable,
-            price: {
-              billingRate: newCity.billingRate,
-              partnerRate: newCity.partnerRate,
-              prevaCarePrice: newCity.prevaCarePrice,
-              discountPercentage: newCity.discountPercentage,
-            },
-          });
-          continue;
-        }
+            // Get city info for logs and response
+            const cityObject = testDoc.cityAvailability[cityIndex].cityId;
+            console.log("Found city object:", JSON.stringify(cityObject));
 
-        // Update existing city in test
-        if (!isAvailable) {
-          // If setting to inactive, just update status
-          testDoc.cityAvailability[cityIndex].isActive = false;
-        } else {
-          // Update all fields - validate required values
-          if (!labSellingPrice || !offeredPriceToPrevaCare) {
-            results.failed.push({
-              cityId: testDoc.cityAvailability[cityIndex].cityId,
-              pinCode: testDoc.cityAvailability[cityIndex].pinCode,
-              error:
-                "For available cities, billing rate and partner rate are required",
-            });
-            continue;
-          }
+            const cityName = cityObject.cityName || "Unknown";
+            const cityPincode = cityObject.pincode || "Unknown";
+            const cityIdValue = cityObject._id || cityObject;
 
-          testDoc.cityAvailability[cityIndex].isActive = true;
-          testDoc.cityAvailability[cityIndex].billingRate =
-            parseFloat(labSellingPrice);
-          testDoc.cityAvailability[cityIndex].partnerRate = parseFloat(
-            offeredPriceToPrevaCare
-          );
+            console.log(`Reactivating city: ${cityName} (index ${cityIndex})`);
 
-          if (prevaCarePrice !== undefined)
+            // Before update
+            console.log(
+              "City before update:",
+              JSON.stringify(testDoc.cityAvailability[cityIndex])
+            );
+
+            // Update the city data - explicitly update each field
+            testDoc.cityAvailability[cityIndex].isActive = true;
+            testDoc.cityAvailability[cityIndex].isAvailable = true;
+            testDoc.cityAvailability[cityIndex].billingRate =
+              parseFloat(labSellingPrice);
+            testDoc.cityAvailability[cityIndex].partnerRate = parseFloat(
+              offeredPriceToPrevaCare
+            );
             testDoc.cityAvailability[cityIndex].prevaCarePrice =
               parseFloat(prevaCarePrice);
-
-          if (discountPercentage !== undefined)
             testDoc.cityAvailability[cityIndex].discountPercentage =
               parseFloat(discountPercentage);
 
-          if (homeCollectionCharge !== undefined) {
-            testDoc.cityAvailability[cityIndex].homeCollectionCharge =
-              parseFloat(homeCollectionCharge);
-            if (homeCollectionAvailable === undefined) {
-              testDoc.cityAvailability[cityIndex].homeCollectionAvailable =
-                parseFloat(homeCollectionCharge) > 0;
+            if (update.homeCollectionCharge !== undefined) {
+              testDoc.cityAvailability[cityIndex].homeCollectionCharge =
+                parseFloat(update.homeCollectionCharge);
             }
-          }
 
-          if (homeCollectionAvailable !== undefined) {
-            testDoc.cityAvailability[cityIndex].homeCollectionAvailable =
-              Boolean(homeCollectionAvailable);
+            if (update.homeCollectionAvailable !== undefined) {
+              testDoc.cityAvailability[cityIndex].homeCollectionAvailable =
+                Boolean(update.homeCollectionAvailable);
+            }
+
+            // After update
+            console.log(
+              "City after update:",
+              JSON.stringify(testDoc.cityAvailability[cityIndex])
+            );
+
+            // Add to results
+            results.updated.push({
+              cityId: cityIdValue,
+              cityName: cityName,
+              pinCode: cityPincode,
+              status: true,
+              message: "City reactivated and updated successfully",
+            });
+          } else if (!isActive && cityIndex >= 0) {
+            // Deactivating existing city - JUST CHANGE isActive and isAvailable flags
+            // Get city info before making changes
+            const cityObject = testDoc.cityAvailability[cityIndex].cityId;
+            const cityName = cityObject.cityName || "Unknown";
+            const cityPincode = cityObject.pincode || "Unknown";
+            const cityIdValue = cityObject._id || cityObject;
+
+            console.log(
+              `Deactivating city: ${cityName} (index ${cityIndex}) - PRESERVING ALL PRICING DATA`
+            );
+
+            // Log the city before deactivation for debugging
+            console.log(
+              "City before deactivation:",
+              JSON.stringify(
+                {
+                  cityId: cityIdValue,
+                  isActive: testDoc.cityAvailability[cityIndex].isActive,
+                  isAvailable: testDoc.cityAvailability[cityIndex].isAvailable,
+                  billingRate: testDoc.cityAvailability[cityIndex].billingRate,
+                  partnerRate: testDoc.cityAvailability[cityIndex].partnerRate,
+                },
+                null,
+                2
+              )
+            );
+
+            // Update only these two flags, preserve all other data
+            testDoc.cityAvailability[cityIndex].isActive = false;
+            testDoc.cityAvailability[cityIndex].isAvailable = false;
+
+            // Log the city after deactivation to confirm data is preserved
+            console.log(
+              "City after deactivation:",
+              JSON.stringify(
+                {
+                  cityId: cityIdValue,
+                  isActive: testDoc.cityAvailability[cityIndex].isActive,
+                  isAvailable: testDoc.cityAvailability[cityIndex].isAvailable,
+                  billingRate: testDoc.cityAvailability[cityIndex].billingRate,
+                  partnerRate: testDoc.cityAvailability[cityIndex].partnerRate,
+                },
+                null,
+                2
+              )
+            );
+
+            results.updated.push({
+              cityId: cityIdValue,
+              cityName: cityName,
+              pinCode: cityPincode,
+              status: false,
+              message: "City deactivated successfully",
+            });
+          } else if (!isActive && cityIndex === -1) {
+            // City not in array, can't deactivate
+            results.failed.push({
+              cityId: cityId || (foundCity && foundCity._id),
+              pinCode: pinCode,
+              error: "Cannot deactivate a city that is not in the test",
+            });
           }
         }
+        // Handle homeCollectionAvailable update only
+        else if (isHomeCollectionOnlyUpdate && cityIndex >= 0) {
+          console.log(
+            `Updating homeCollectionAvailable=${homeCollectionAvailable} for city at index ${cityIndex}`
+          );
 
-        results.updated.push({
-          cityId: testDoc.cityAvailability[cityIndex].cityId,
-          cityName: testDoc.cityAvailability[cityIndex].cityName,
-          pinCode: testDoc.cityAvailability[cityIndex].pinCode,
-          status: testDoc.cityAvailability[cityIndex].isActive,
-          price: {
-            billingRate: testDoc.cityAvailability[cityIndex].billingRate,
-            partnerRate: testDoc.cityAvailability[cityIndex].partnerRate,
-            prevaCarePrice: testDoc.cityAvailability[cityIndex].prevaCarePrice,
-            discountPercentage:
-              testDoc.cityAvailability[cityIndex].discountPercentage,
-          },
-        });
+          testDoc.cityAvailability[cityIndex].homeCollectionAvailable = Boolean(
+            homeCollectionAvailable
+          );
+
+          const cityObject = testDoc.cityAvailability[cityIndex].cityId;
+          const cityName = cityObject.cityName || "Unknown";
+          const cityPincode = cityObject.pincode || "Unknown";
+
+          results.updated.push({
+            cityId:
+              testDoc.cityAvailability[cityIndex].cityId._id ||
+              testDoc.cityAvailability[cityIndex].cityId,
+            cityName: cityName,
+            pinCode: cityPincode,
+            status: testDoc.cityAvailability[cityIndex].isActive,
+            homeCollectionAvailable:
+              testDoc.cityAvailability[cityIndex].homeCollectionAvailable,
+            message: "Home collection availability updated",
+          });
+        } else if (isHomeCollectionOnlyUpdate && cityIndex === -1) {
+          results.failed.push({
+            cityId: cityId || (foundCity && foundCity._id),
+            pinCode: pinCode,
+            error:
+              "Cannot update home collection for a city that is not in the test",
+          });
+        }
       } catch (error) {
         console.error("Error processing city update:", error);
         results.failed.push({
-          cityId: update.cityId,
-          pinCode: update.pinCode,
           error: error.message,
         });
       }
     }
 
-    // Save the updated test if there were any successful updates
+    // Before saving, log the final cityAvailability array with all cities
+    console.log(
+      `Final cityAvailability array (${testDoc.cityAvailability.length} cities):`
+    );
+
+    // Log each city to ensure all cities are still present, including inactive ones
+    testDoc.cityAvailability.forEach((city, index) => {
+      const cityIdValue = city.cityId._id || city.cityId;
+      console.log(
+        `City ${index}: ID=${cityIdValue}, isActive=${city.isActive}, isAvailable=${city.isAvailable}, billingRate=${city.billingRate}, partnerRate=${city.partnerRate}, prevaCarePrice=${city.prevaCarePrice}`
+      );
+    });
+
+    // Only save if there are updates
     if (results.updated.length > 0) {
-      await testDoc.save();
+      // Important: Make sure to use the correct Mongoose save method to preserve the cityAvailability array
+      const savedDoc = await testDoc.save({ validateModifiedOnly: true });
+
+      // Verify all cities are present after save
+      console.log(
+        `After save: Total cities = ${savedDoc.cityAvailability.length}`
+      );
+
+      // Log each city after save to verify data is correctly saved
+      savedDoc.cityAvailability.forEach((city, index) => {
+        const cityIdValue = city.cityId._id || city.cityId;
+        console.log(
+          `Post-save City ${index}: ID=${cityIdValue}, isActive=${city.isActive}, isAvailable=${city.isAvailable}, billingRate=${city.billingRate}`
+        );
+      });
     }
+
+    // Include detailed information about all cities in the response for debugging
+    const cityDetails = testDoc.cityAvailability.map((city) => {
+      const cityObj = city.cityId;
+      return {
+        cityId: cityObj._id || cityObj,
+        cityName: cityObj.cityName || "Unknown",
+        isActive: city.isActive,
+        isAvailable: city.isAvailable,
+        billingRate: city.billingRate,
+        partnerRate: city.partnerRate,
+        prevaCarePrice: city.prevaCarePrice,
+      };
+    });
 
     return Response.success(
       res,
@@ -1343,6 +1580,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
         },
         updatedCities: results.updated,
         failedUpdates: results.failed,
+        cityCount: testDoc.cityAvailability.length,
+        cityDetails: cityDetails, // Add this for debugging
       },
       200,
       `Successfully updated ${results.updated.length} cities, failed to update ${results.failed.length} cities`

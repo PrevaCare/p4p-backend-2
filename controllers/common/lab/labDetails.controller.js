@@ -37,23 +37,27 @@ const getTestDetails = async (req, res) => {
 
     // Format city availability data
     if (testObject.cityAvailability && testObject.cityAvailability.length > 0) {
-      testObject.cityAvailability = testObject.cityAvailability
-        .filter((city) => city.isActive && city.isAvailable)
-        .map((city) => ({
-          ...city,
-          cityDetails: {
-            _id: city.cityId._id,
-            cityName: city.cityId.cityName,
-            pincode: city.cityId.pincode,
-          },
-          // Add simplified pricing for front-end use
-          price: city.prevaCarePrice,
-          sellingPrice: city.billingRate,
-          discount: city.discountPercentage,
-          homeCollectionCharge: city.homeCollectionCharge,
-          homeCollectionAvailable: city.homeCollectionAvailable,
-        }));
+      testObject.cityAvailability = testObject.cityAvailability.map((city) => ({
+        ...city,
+        cityDetails: {
+          _id: city.cityId._id,
+          cityName: city.cityId.cityName,
+          pincode: city.cityId.pincode,
+        },
+        // Add simplified pricing for front-end use
+        price: city.prevaCarePrice,
+        sellingPrice: city.billingRate,
+        discount: city.discountPercentage,
+        homeCollectionCharge: city.homeCollectionCharge,
+        homeCollectionAvailable: city.homeCollectionAvailable,
+      }));
     }
+
+    console.log(
+      `Returning test with ${
+        testObject.cityAvailability?.length || 0
+      } cities (including inactive ones)`
+    );
 
     return Response.success(
       res,
