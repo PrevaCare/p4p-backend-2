@@ -2,7 +2,8 @@ const AppConstant = require("../../../../utils/AppConstant");
 const Response = require("../../../../utils/Response");
 const LabPackage = require("../../../../models/lab/labPackage/addLabPackage.model");
 const LapPackage = require("../../../../models/lab/labPackage/addLabPackage.model");
-const Lab = require("../../../../models/lab/lab.model")
+const Lab = require("../../../../models/lab/lab.model");
+const mongoose = require("mongoose");
 
 const getAllCategoryOfPackageOfParticularLab = async (req, res) => {
   try {
@@ -72,46 +73,92 @@ const getAllTestOfParticularCategoryOfPackageOfParticularLab = async (
   }
 };
 
-//
-const getSingleLabPackageById = async (req, res) => {
+const getSingleLabPackageDetailsById = async (req, res) => {
   try {
     const { packageId } = req.body;
-    if (!packageId) {
+    const { labId } = req.params;
+
+    // Strict validation for required fields
+    if (!packageId || packageId.trim() === "") {
       return Response.error(
         res,
-        404,
+        400,
         AppConstant.FAILED,
-        "packageId is missing !"
+        "packageId is required!"
       );
     }
 
-    const existingPackage = await LapPackage.findById(packageId);
+    if (!labId || labId.trim() === "") {
+      return Response.error(res, 400, AppConstant.FAILED, "labId is required!");
+    }
+
+    // Validate MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(packageId)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid packageId format"
+      );
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(labId)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid labId format"
+      );
+    }
+
+    // Convert string IDs to ObjectIds
+    const packageObjectId = new mongoose.Types.ObjectId(packageId);
+    const labObjectId = new mongoose.Types.ObjectId(labId);
+
+    console.log("Searching for package with:", {
+      packageId: packageObjectId,
+      labId: labObjectId,
+    });
+
+    // Find the package with both packageId and labId
+    const existingPackage = await LabPackage.findOne({
+      _id: packageObjectId,
+      labId: labObjectId,
+    })
+      .populate({
+        path: "labId",
+        model: "Lab",
+        select: "-__v",
+      })
+      .populate({
+        path: "cityAvailability.cityId",
+        model: "City",
+        select: "-__v",
+      });
+
+    console.log("Found package:", existingPackage);
+
     if (!existingPackage) {
       return Response.error(
         res,
         404,
         AppConstant.FAILED,
-        "No package found with given packageId"
+        "No package found with given packageId and labId"
       );
     }
 
-    // check if package exist and well-formed
-    if (
-      !existingPackage.packages ||
-      !Array.isArray(existingPackage.packages) ||
-      existingPackage.packages.length === 0
-    ) {
-      existingPackage.packages = [];
-    }
-
-    // Return success response
+    // Return success response with package details
     return Response.success(
       res,
       existingPackage,
       200,
-      "package found with given package Id !"
+      "Package details found successfully!"
     );
   } catch (err) {
+    console.error("Error in getSingleLabPackageDetailsById:", err);
+    if (err.name === "CastError") {
+      return Response.error(res, 400, AppConstant.FAILED, "Invalid ID format");
+    }
     return Response.error(
       res,
       500,
@@ -204,21 +251,19 @@ const deleteLabPackageById = async (req, res) => {
   }
 };
 
-const mongoose = require('mongoose');
-
 // Controller for searching lab packages by city name
 const searchLabPackages = async (req, res) => {
   try {
     const {
-      name,           // testName search
-      category,       // category search
-      ageGroup,      // ageGroup search
-      gender,         // gender search
-      minPrice,      // minimum prevaCarePrice
-      maxPrice,      // maximum prevaCarePrice
-      city,           // city name for availability search\
+      name, // testName search
+      category, // category search
+      ageGroup, // ageGroup search
+      gender, // gender search
+      minPrice, // minimum prevaCarePrice
+      maxPrice, // maximum prevaCarePrice
+      city, // city name for availability search\
       zipCode,
-      home_collection // filter by home collection included packages
+      home_collection, // filter by home collection included packages
     } = req.body;
 
     // Build the search query object
@@ -226,25 +271,25 @@ const searchLabPackages = async (req, res) => {
 
     // Add filters based on provided parameters
     if (name) {
-      query.testName = { $regex: new RegExp(name, 'i') }; // Case-insensitive search
+      query.testName = { $regex: new RegExp(name, "i") }; // Case-insensitive search
     }
 
     if (category) {
-      query.category = { $regex: new RegExp(category, 'i') };
+      query.category = { $regex: new RegExp(category, "i") };
     }
 
     if (ageGroup) {
-      query.ageGroup = { $regex: new RegExp(ageGroup, 'i') };
+      query.ageGroup = { $regex: new RegExp(ageGroup, "i") };
     }
 
     if (gender) {
       // Handle gender search (both, male, female)
-      if (gender.toLowerCase() === 'both') {
+      if (gender.toLowerCase() === "both") {
         // If searching for 'both', find packages for both or either gender
-        query.gender = { $in: ['both', 'male', 'female'] };
+        query.gender = { $in: ["both", "male", "female"] };
       } else {
         // If searching for specific gender, find packages for that gender or 'both'
-        query.gender = { $in: [gender.toLowerCase(), 'both'] };
+        query.gender = { $in: [gender.toLowerCase(), "both"] };
       }
     }
 
@@ -263,11 +308,11 @@ const searchLabPackages = async (req, res) => {
 
     // Add city filter if city parameter was provided
     if (city) {
-      query["cityAvailability.city"] = { $regex: new RegExp(city, 'i') };
+      query["cityAvailability.city"] = { $regex: new RegExp(city, "i") };
     }
 
     if (zipCode) {
-      query["cityAvailability.zipCode"] = { $regex: new RegExp(zipCode, 'i') };
+      query["cityAvailability.zipCode"] = { $regex: new RegExp(zipCode, "i") };
     }
 
     // Handle home collection filter
@@ -282,7 +327,7 @@ const searchLabPackages = async (req, res) => {
 
     // Find lab packages with populated lab reference
     const labPackages = await LabPackage.find(query)
-      .populate('lab', 'labName logo')  // Populate lab information
+      .populate("lab", "labName logo") // Populate lab information
       .skip(skip)
       .limit(limit)
       .sort({ testName: 1 });
@@ -297,14 +342,14 @@ const searchLabPackages = async (req, res) => {
       total: totalPackages,
       totalPages: Math.ceil(totalPackages / limit),
       currentPage: page,
-      data: labPackages
+      data: labPackages,
     });
   } catch (error) {
     console.error("Error searching lab packages:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -317,13 +362,13 @@ const getPackagesByCategory = async (req, res) => {
     if (!category) {
       return res.status(400).json({
         success: false,
-        message: "Category parameter is required"
+        message: "Category parameter is required",
       });
     }
 
     // Build the search query with case-insensitive category search
     const query = {
-      category: { $regex: new RegExp(category, 'i') }
+      category: { $regex: new RegExp(category, "i") },
     };
 
     // Handle pagination
@@ -347,15 +392,14 @@ const getPackagesByCategory = async (req, res) => {
       total: totalTests,
       totalPages: Math.ceil(totalTests / limit),
       currentPage: page,
-      data: tests
+      data: tests,
     });
-
   } catch (error) {
     console.error("Error fetching tests by category:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -368,7 +412,7 @@ const getAllPackagesOfParticularLab = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(labId)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid lab ID format'
+        message: "Invalid lab ID format",
       });
     }
 
@@ -377,7 +421,7 @@ const getAllPackagesOfParticularLab = async (req, res) => {
     if (!lab) {
       return res.status(404).json({
         success: false,
-        message: 'Lab not found'
+        message: "Lab not found",
       });
     }
     const labIdobj = new mongoose.Types.ObjectId(labId);
@@ -386,34 +430,33 @@ const getAllPackagesOfParticularLab = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: packages.length,
-      data: packages
+      data: packages,
     });
-
   } catch (error) {
-    console.error('Error fetching lab Packages:', error);
+    console.error("Error fetching lab Packages:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
-}
+};
 
 const getPackagesByCategoryOfPaticularLab = async (req, res) => {
   try {
-    const { labId,category } = req.params;
+    const { labId, category } = req.params;
 
     // Validate labId is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(labId)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid lab ID format'
+        message: "Invalid lab ID format",
       });
     }
-    if(!category){
+    if (!category) {
       return res.status(400).json({
         success: false,
-        message: 'category is required'
+        message: "category is required",
       });
     }
 
@@ -422,32 +465,34 @@ const getPackagesByCategoryOfPaticularLab = async (req, res) => {
     if (!lab) {
       return res.status(404).json({
         success: false,
-        message: 'Lab not found'
+        message: "Lab not found",
       });
     }
     const labIdobj = new mongoose.Types.ObjectId(labId);
     console.log(labIdobj);
-    const packages = await LabPackage.find({ lab: labIdobj, category: { $regex: new RegExp(category, 'i') } });
+    const packages = await LabPackage.find({
+      lab: labIdobj,
+      category: { $regex: new RegExp(category, "i") },
+    });
     return res.status(200).json({
       success: true,
       count: packages.length,
-      data: packages
+      data: packages,
     });
-
   } catch (error) {
-    console.error('Error fetching lab Packages:', error);
+    console.error("Error fetching lab Packages:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
-}
+};
 
 module.exports = {
   getAllCategoryOfPackageOfParticularLab,
   getAllTestOfParticularCategoryOfPackageOfParticularLab,
-  getSingleLabPackageById,
+  getSingleLabPackageDetailsById,
   deleteLabPackageById,
   updateLabPackageById,
   searchLabPackages,

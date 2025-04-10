@@ -27,7 +27,7 @@ const {
 const {
   getAllCategoryOfPackageOfParticularLab,
   getAllTestOfParticularCategoryOfPackageOfParticularLab,
-  getSingleLabPackageById,
+  getSingleLabPackageDetailsById,
   updateLabPackageById,
   deleteLabPackageById,
   searchLabPackages,
@@ -165,12 +165,40 @@ router.get(
   // checkPermissions("READ", "Employee"),
   getPackagesByCategory
 );
-// lab package -- get category only
-router.post(
-  "/admin/lab/pacakge-single",
+
+// Add this validation middleware
+const validatePackageDetailsRequest = (req, res, next) => {
+  const { packageId, labId } = req.body;
+
+  if (!packageId || packageId.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "packageId is required",
+    });
+  }
+
+  if (!labId || labId.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "labId is required",
+    });
+  }
+
+  next();
+};
+
+// Update the package-single route
+// router.post(
+//   "/admin/lab/package-single",
+//   verifyToken,
+//   // validatePackageDetailsRequest,
+//   getSingleLabPackageDetailsById
+// );
+router.get(
+  "/admin/lab/:labId/singlepackageinfo",
   verifyToken,
-  // checkPermissions("READ", "Employee"),
-  getSingleLabPackageById
+  // validatePackageDetailsRequest,
+  getSingleLabPackageDetailsById
 );
 
 // Individual lab test routes
