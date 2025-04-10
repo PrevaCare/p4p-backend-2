@@ -13,9 +13,9 @@ const getAllCategoryOfPackageOfParticularLab = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "labId is missing !");
     }
 
-    const allCategories = await LabPackage.find({ lab: labId }).select(
-      "_id category"
-    );
+    const allCategories = await LabPackage.find({
+      labId: new mongoose.Types.ObjectId(labId),
+    }).select("_id category");
 
     const uniqueCategories = [];
     const seenCategories = new Set();
