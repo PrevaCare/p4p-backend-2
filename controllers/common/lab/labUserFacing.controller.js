@@ -292,12 +292,7 @@ const getLabPackagesByCategory = async (req, res) => {
     }
 
     // Get all packages for this lab in the specified category with populated city details
-    const packages = await LabPackage.find({ labId: labId, category })
-      .select(
-        "packageCode packageName category description testIncluded cityAvailability"
-      )
-      .populate("cityAvailability.cityId")
-      .lean();
+    const packages = await LabPackage.find({ labId: labId, category }).lean();
 
     // Format the response
     const formattedPackages = packages.map((pkg) => {

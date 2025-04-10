@@ -85,7 +85,7 @@ const getSingleLabPackageById = async (req, res) => {
       );
     }
 
-    const existingPackage = await LapPackage.findById(packageId);
+    const existingPackage = await LabPackage.findById(packageId);
     if (!existingPackage) {
       return Response.error(
         res,
