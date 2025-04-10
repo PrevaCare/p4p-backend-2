@@ -13,6 +13,7 @@ const {
   getTestsByCategory,
   getAllTestOfParticularLab,
   getTestByCategoryOfPaticularLab,
+  getAllCategoriesOfTestsOfParticularLab,
   updateIndividualLabTest,
   deleteIndividualLabTest,
 } = require("../../../controllers/common/lab/individualLabTest/individualLabTest.controller.js");
@@ -263,6 +264,13 @@ router.get(
   verifyToken,
   // checkPermissions("CREATE", "Employee"),
   getPackagesByCategoryOfPaticularLab
+);
+
+// Get all categories of tests for a particular lab
+router.post(
+  "/admin/lab/test/categories",
+  verifyToken,
+  getAllCategoriesOfTestsOfParticularLab
 );
 
 module.exports = router;

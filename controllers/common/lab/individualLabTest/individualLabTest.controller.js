@@ -427,6 +427,51 @@ const getTestByCategoryOfPaticularLab = async (req, res) => {
   }
 };
 
+const getAllCategoriesOfTestsOfParticularLab = async (req, res) => {
+  try {
+    const { labId } = req.body;
+    if (!labId) {
+      return Response.error(res, 404, AppConstant.FAILED, "labId is missing !");
+    }
+
+    // Find all tests for the given lab
+    const allTests = await IndividualLabTest.find({
+      lab: new mongoose.Types.ObjectId(labId),
+      isActive: true, // Only get active tests
+    }).select("_id category");
+
+    // Get unique categories
+    const uniqueCategories = [];
+    const seenCategories = new Set();
+
+    allTests.forEach((item) => {
+      if (!seenCategories.has(item.category)) {
+        seenCategories.add(item.category);
+        uniqueCategories.push({
+          _id: item._id,
+          category: item.category,
+        });
+      }
+    });
+
+    // Return success response
+    return Response.success(
+      res,
+      uniqueCategories,
+      200,
+      "All categories of lab tests found successfully!"
+    );
+  } catch (err) {
+    console.error("Error in getAllCategoriesOfTestsOfParticularLab:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
+  }
+};
+
 module.exports = {
   createIndividualLabTest,
   updateIndividualLabTest,
@@ -435,4 +480,5 @@ module.exports = {
   getTestsByCategory,
   getAllTestOfParticularLab,
   getTestByCategoryOfPaticularLab,
+  getAllCategoriesOfTestsOfParticularLab,
 };
