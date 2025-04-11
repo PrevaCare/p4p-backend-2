@@ -77,7 +77,7 @@ const getSingleLabPackageDetailsById = async (req, res) => {
   try {
     const { packageId } = req.query;
     const { labId } = req.params;
-
+    console.log(packageId, labId);
     // Strict validation for required fields
     if (!packageId || packageId.trim() === "") {
       return Response.error(

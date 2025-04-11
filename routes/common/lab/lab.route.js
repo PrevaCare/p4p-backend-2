@@ -170,7 +170,7 @@ router.get(
 // Add this validation middleware
 const validatePackageDetailsRequest = (req, res, next) => {
   const { packageId, labId } = req.body;
-
+  console.log(packageId, labId);
   if (!packageId || packageId.trim() === "") {
     return res.status(400).json({
       success: false,

@@ -92,120 +92,23 @@ const createLabPackage = async (req, res) => {
     const processedCityAvailability = [];
 
     if (cityAvailability && cityAvailability.length > 0) {
-      // Get lab's available cities
-      const labCities = new Map();
-      if (lab.availableCities && lab.availableCities.length > 0) {
-        lab.availableCities.forEach((city) => {
-          if (city.cityId) {
-            labCities.set(city.cityId.toString(), {
-              isActive: city.isActive,
-              cityName: city.cityName,
-              pinCode: city.pinCode,
-            });
-          }
-        });
-      }
-
-      // Process each city
       for (const cityData of cityAvailability) {
-        // Validate city ID
-        if (!cityData.cityId) {
-          return Response.error(
-            res,
-            400,
-            AppConstant.FAILED,
-            "City ID is required for all city availability entries"
-          );
+        let city = await City.findOne({ pincode: cityData.pinCode });
+
+        // If city does not exist, create it
+        if (!city) {
+          city = new City({
+            cityName: cityData.cityName,
+            pincode: cityData.pinCode,
+          });
+          await city.save(); // Save the new city to the database
         }
-
-        // Check if lab delivers to this city
-        if (!labCities.has(cityData.cityId.toString())) {
-          const city = await City.findById(cityData.cityId);
-          const cityName = city ? city.cityName : "Unknown";
-
-          return Response.error(
-            res,
-            400,
-            AppConstant.FAILED,
-            `This lab doesn't deliver to ${cityName} (ID: ${cityData.cityId}). Please update the lab's available cities first.`
-          );
-        }
-
-        // Get city details if needed
-        if (!cityData.cityName || !cityData.pinCode) {
-          const city = await City.findById(cityData.cityId);
-          if (!city) {
-            return Response.error(
-              res,
-              404,
-              AppConstant.FAILED,
-              `City with ID ${cityData.cityId} not found`
-            );
-          }
-
-          // Auto-fill city details
-          cityData.cityName = cityData.cityName || city.cityName;
-          cityData.pinCode = cityData.pinCode || city.pincode;
-        }
-
-        // Validate required pricing fields
-        const requiredFields = [
-          { field: "billingRate", name: "Billing rate" },
-          { field: "partnerRate", name: "Partner rate" },
-          { field: "prevaCarePrice", name: "PrevaCare price" },
-          { field: "discountPercentage", name: "Discount percentage" },
-        ];
-
-        for (const { field, name } of requiredFields) {
-          if (
-            cityData[field] === undefined ||
-            cityData[field] === null ||
-            cityData[field] === ""
-          ) {
-            return Response.error(
-              res,
-              400,
-              AppConstant.FAILED,
-              `${name} is required for city ${cityData.cityName}`
-            );
-          }
-
-          // Ensure numeric values
-          cityData[field] = parseFloat(cityData[field]);
-          if (isNaN(cityData[field])) {
-            return Response.error(
-              res,
-              400,
-              AppConstant.FAILED,
-              `${name} must be a valid number for city ${cityData.cityName}`
-            );
-          }
-        }
-
-        // Set default values for optional fields
-        cityData.homeCollectionCharge =
-          cityData.homeCollectionCharge !== undefined
-            ? parseFloat(cityData.homeCollectionCharge)
-            : 0;
-
-        // If homeCollectionAvailable is not provided, set it based on homeCollectionCharge
-        if (cityData.homeCollectionAvailable === undefined) {
-          cityData.homeCollectionAvailable = cityData.homeCollectionCharge > 0;
-        } else {
-          cityData.homeCollectionAvailable = Boolean(
-            cityData.homeCollectionAvailable
-          );
-        }
-
-        // Set isActive to true by default
-        cityData.isActive =
-          cityData.isActive !== undefined ? Boolean(cityData.isActive) : true;
-
-        // Add to processed array
+        console.log("city", city);
+        // Add city details to processedCityAvailability
         processedCityAvailability.push({
-          cityId: cityData.cityId,
-          cityName: cityData.cityName,
-          pinCode: cityData.pinCode,
+          cityId: city._id, // Use the city ID
+          cityName: city.cityName,
+          pinCode: city.pincode,
           billingRate: cityData.billingRate,
           partnerRate: cityData.partnerRate,
           prevaCarePrice: cityData.prevaCarePrice,
