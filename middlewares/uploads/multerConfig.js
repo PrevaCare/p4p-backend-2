@@ -38,7 +38,15 @@ const pdfUpload = multer({
   },
 });
 
-module.exports = { upload, pdfUpload };
+// New multer instance for any file format
+const anyFileUpload = multer({
+  storage: storage, // You can change this to diskStorage if needed
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB max file size for any file
+  },
+});
+
+module.exports = { upload, pdfUpload, anyFileUpload };
 
 // const tempUploadDir = path.join(__dirname, "../../public", "tempUpload");
 // const upload = multer({ storage: storage });

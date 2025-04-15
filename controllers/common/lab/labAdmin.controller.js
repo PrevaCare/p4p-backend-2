@@ -908,7 +908,7 @@ const updateLabPartnerCityStatus = async (req, res) => {
         "Invalid Partner ID format"
       );
     }
-
+    console.log("cityId", cityId);
     // Ensure cityId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(cityId)) {
       return Response.error(

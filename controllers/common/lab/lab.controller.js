@@ -33,6 +33,7 @@ const createLab = async (req, res) => {
 
     // Get the logo file from the array
     const logo = req.files.logo[0];
+    console.log("data", req.body);
 
     // Upload logo to AWS S3
     const uploadedLogo = await uploadToS3(logo);
@@ -88,11 +89,23 @@ const createLab = async (req, res) => {
           console.log("Skipping invalid city data:", cityData);
           continue;
         }
-
-        let city = await City.findOne({
-          cityName: normalizedCityName,
-          state: normalizedState,
-        });
+        let city;
+        if (cityData.zipCode) {
+          city = await City.findOne({
+            cityName: normalizedCityName,
+            state: normalizedState,
+            pincode: cityData.zipCode,
+          });
+        }
+        else {
+          city = await City.findOne({
+            cityName: normalizedCityName,
+            state: normalizedState,
+            pinCode_excluded: cityData.pinCode_excluded || [],
+            regions_excluded: cityData.regions_excluded || [],
+          });
+        }
+        console.log("city", city);
 
         if (city) {
           // Update city if it exists
@@ -116,12 +129,26 @@ const createLab = async (req, res) => {
           }
         } else {
           // Create new city if it doesn't exist
-          city = await City.create({
-            cityName: normalizedCityName,
-            state: normalizedState,
-            pinCodes_excluded: cityData.pinCodes_excluded || [],
-            isActive: true,
-          });
+          console.log("cityData", cityData);
+          if (cityData.zipCode) {
+            city = await City.create({
+              cityName: normalizedCityName,
+              state: normalizedState,
+              pincode: cityData.zipCode,
+              isActive: true,
+            });
+          }
+          else {
+            city = await City.create({
+              cityName: normalizedCityName,
+              state: normalizedState,
+              pinCodes_excluded: cityData.pinCodes_excluded || [],
+              regions_excluded: cityData.regions_excluded || [],
+              isActive: true,
+            });
+          }
+          console.log("city created", city);
+
         }
 
         // Add to available cities
@@ -199,7 +226,7 @@ const createLab = async (req, res) => {
 const updateLab = async (req, res) => {
   try {
     const { labId } = req.params;
-
+    console.log(labId);
     // Check if lab exists
     const existingLab = await Lab.findById(labId);
     if (!existingLab) {

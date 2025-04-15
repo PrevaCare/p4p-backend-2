@@ -90,10 +90,9 @@ const createLabPackage = async (req, res) => {
 
     // Process cityAvailability data
     const processedCityAvailability = [];
-
     if (cityAvailability && cityAvailability.length > 0) {
       for (const cityData of cityAvailability) {
-        let city = await City.findOne({ pincode: cityData.pinCode });
+        let city = await City.findOne({ state: cityData.state });
 
         // If city does not exist, create it
         if (!city) {
@@ -103,11 +102,12 @@ const createLabPackage = async (req, res) => {
           });
           await city.save(); // Save the new city to the database
         }
-        console.log("city", city);
+        console.log("city under backend", city);
         // Add city details to processedCityAvailability
         processedCityAvailability.push({
           cityId: city._id, // Use the city ID
           cityName: city.cityName,
+          state: city.state,
           pinCode: city.pincode,
           billingRate: cityData.billingRate,
           partnerRate: cityData.partnerRate,
@@ -139,7 +139,7 @@ const createLabPackage = async (req, res) => {
         };
       }
     });
-
+    console.log("processedTestIncluded under backend", processedTestIncluded);
     // Create new lab package
     const newPackage = new LabPackage({
       labId,
@@ -157,7 +157,9 @@ const createLabPackage = async (req, res) => {
       cityAvailability: processedCityAvailability,
     });
 
+    console.log("newPackage under backend", newPackage);
     const savedPackage = await newPackage.save();
+    console.log("savedPackage under backend", savedPackage);
 
     return Response.success(
       res,

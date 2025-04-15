@@ -54,8 +54,7 @@ const getTestDetails = async (req, res) => {
     }
 
     console.log(
-      `Returning test with ${
-        testObject.cityAvailability?.length || 0
+      `Returning test with ${testObject.cityAvailability?.length || 0
       } cities (including inactive ones)`
     );
 
@@ -184,11 +183,13 @@ const getLabDetails = async (req, res) => {
     // Format available cities
     if (labDetails.availableCities && labDetails.availableCities.length > 0) {
       labDetails.availableCities = labDetails.availableCities
-        .filter((city) => city.isActive)
         .map((city) => ({
           cityId: city.cityId._id,
           cityName: city.cityId.cityName,
+          state: city.cityId.state,
           pincode: city.cityId.pincode,
+          pinCode_excluded: city.cityId.pinCode_excluded,
+          regions_excluded: city.cityId.regions_excluded,
           isActive: city.isActive,
         }));
     }

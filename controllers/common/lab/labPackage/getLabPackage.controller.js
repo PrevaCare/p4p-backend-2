@@ -27,15 +27,15 @@ const getAllCategoryOfPackageOfParticularLab = async (req, res) => {
     const cacheKey = `lab_package_categories_${labId}`;
     const cachedCategories = cacheManager.get(cacheKey);
 
-    if (cachedCategories) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return Response.success(
-        res,
-        cachedCategories,
-        200,
-        "All Category of Lab packages found successfully (cached)!"
-      );
-    }
+    // if (cachedCategories) {
+    //   console.log(`Cache hit for ${cacheKey}`);
+    //   return Response.success(
+    //     res,
+    //     cachedCategories,
+    //     200,
+    //     "All Category of Lab packages found successfully (cached)!"
+    //   );
+    // }
 
     console.log(`Cache miss for ${cacheKey}, fetching from database`);
 

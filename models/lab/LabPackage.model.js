@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const testIncludedSchema = new mongoose.Schema({
-  tests: { type: [String], required: [true, "test is required!"] },
+  test: { type: String, required: [true, "test is required!"] },
   parameters: [String],
 });
 
