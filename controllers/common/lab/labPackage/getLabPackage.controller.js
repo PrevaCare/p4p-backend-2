@@ -143,9 +143,9 @@ const getAllTestOfParticularCategoryOfPackageOfParticularLab = async (
 
 const getSingleLabPackageDetailsById = async (req, res) => {
   try {
-    const { packageId } = req.body;
+    const { packageId } = req.query;
     const { labId } = req.params;
-
+    console.log(packageId, labId);
     // Strict validation for required fields
     if (!packageId || packageId.trim() === "") {
       return Response.error(
@@ -193,11 +193,6 @@ const getSingleLabPackageDetailsById = async (req, res) => {
       _id: packageObjectId,
       labId: labObjectId,
     })
-      .populate({
-        path: "labId",
-        model: "Lab",
-        select: "-__v",
-      })
       .populate({
         path: "cityAvailability.cityId",
         model: "City",
