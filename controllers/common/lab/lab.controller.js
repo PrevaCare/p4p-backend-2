@@ -7,6 +7,7 @@ const {
   labValidationSchema,
   updateLabValidationSchema,
 } = require("../../../validators/lab/lab.validator");
+const mongoose = require("mongoose");
 
 const createLab = async (req, res) => {
   try {
@@ -33,17 +34,6 @@ const createLab = async (req, res) => {
     // Get the logo file from the array
     const logo = req.files.logo[0];
 
-    // Validate request body against schema
-    const { error } = labValidationSchema.validate(req.body);
-    if (error) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        error.message || "Validation failed"
-      );
-    }
-
     // Upload logo to AWS S3
     const uploadedLogo = await uploadToS3(logo);
     if (!uploadedLogo) {
@@ -56,45 +46,92 @@ const createLab = async (req, res) => {
     }
 
     // Process cities
-    const cityOperatedIn = req.body.cityOperatedIn || [];
-    const availableCities = [];
+    const availableCitiesInput = req.body.availableCities || [];
+    const processedCities = [];
+
+    console.log("Input availableCities:", JSON.stringify(availableCitiesInput));
 
     // Create or reuse cities
-    for (const cityData of cityOperatedIn) {
+    for (const cityData of availableCitiesInput) {
       try {
-        const normalizedCityName = cityData.cityName.toLowerCase().trim();
-        const normalizedPincode = cityData.zipCode.trim();
+        const normalizedCityName = cityData.cityName
+          ? cityData.cityName.toLowerCase().trim()
+          : "";
+        const normalizedState = cityData.state
+          ? cityData.state.toLowerCase().trim()
+          : "";
 
-        // Try to find existing city by pincode
-        let city = await City.findOne({ pincode: normalizedPincode });
+        // Handle existing cityId case
+        if (
+          cityData.cityId &&
+          mongoose.Types.ObjectId.isValid(cityData.cityId)
+        ) {
+          // Check if city with this ID exists
+          const existingCity = await City.findById(cityData.cityId);
+          if (existingCity) {
+            // Use the existing city
+            processedCities.push({
+              cityId: existingCity._id,
+              cityName: existingCity.cityName,
+              state: existingCity.state,
+              pinCodes_excluded: cityData.pinCodes_excluded || [],
+              regions_excluded: cityData.regions_excluded || [],
+              isActive:
+                cityData.isActive !== undefined ? cityData.isActive : true,
+            });
+            continue;
+          }
+        }
+
+        // If no valid cityId or city not found, proceed with name/state lookup
+        if (!normalizedCityName || !normalizedState) {
+          console.log("Skipping invalid city data:", cityData);
+          continue;
+        }
+
+        let city = await City.findOne({
+          cityName: normalizedCityName,
+          state: normalizedState,
+        });
 
         if (city) {
           // Update city if it exists
-          city = await City.findOneAndUpdate(
-            { pincode: normalizedPincode },
-            {
-              $set: {
+          const pinCodes_excluded = cityData.pinCodes_excluded || [];
+          if (pinCodes_excluded.length > 0) {
+            city = await City.findOneAndUpdate(
+              {
                 cityName: normalizedCityName,
-                isActive: true,
+                state: normalizedState,
               },
-            },
-            { new: true }
-          );
+              {
+                $set: {
+                  isActive: true,
+                },
+                $addToSet: {
+                  pinCodes_excluded: { $each: pinCodes_excluded },
+                },
+              },
+              { new: true }
+            );
+          }
         } else {
           // Create new city if it doesn't exist
           city = await City.create({
             cityName: normalizedCityName,
-            pincode: normalizedPincode,
+            state: normalizedState,
+            pinCodes_excluded: cityData.pinCodes_excluded || [],
             isActive: true,
           });
         }
 
         // Add to available cities
-        availableCities.push({
+        processedCities.push({
           cityId: city._id,
           cityName: city.cityName,
-          pinCode: city.pincode,
-          isActive: true,
+          state: city.state,
+          pinCodes_excluded: cityData.pinCodes_excluded || [],
+          regions_excluded: cityData.regions_excluded || [],
+          isActive: cityData.isActive !== undefined ? cityData.isActive : true,
         });
       } catch (cityError) {
         console.error("Error processing city:", cityError);
@@ -107,8 +144,10 @@ const createLab = async (req, res) => {
       }
     }
 
-    // Create new lab with validated data
-    const newLab = new Lab({
+    console.log("Processed cities:", JSON.stringify(processedCities));
+
+    // Create lab data object
+    const labData = {
       logo: uploadedLogo.Location,
       labName: req.body.labName,
       labPersonName: req.body.labPersonName,
@@ -121,16 +160,29 @@ const createLab = async (req, res) => {
         zipCode: req.body.address.zipCode,
       },
       accountsDetail: req.body.accountsDetail || {},
-      availableCities,
-    });
+    };
 
-    // Save lab to database
+    // Create new lab with basic data first, then update with cities
+    const newLab = new Lab(labData);
     const savedLab = await newLab.save();
+    console.log("Lab saved with ID:", savedLab._id);
 
-    // Populate city details in response
+    // Now update with cities in a separate operation
+    if (processedCities.length > 0) {
+      console.log("Updating lab with cities...");
+      await Lab.findByIdAndUpdate(
+        savedLab._id,
+        { $set: { availableCities: processedCities } },
+        { new: true }
+      );
+    }
+
+    // Fetch the updated lab with cities
     const populatedLab = await Lab.findById(savedLab._id)
       .populate("availableCities.cityId")
       .exec();
+
+    console.log("Final lab document:", JSON.stringify(populatedLab));
 
     return Response.success(res, populatedLab, 201, "Lab created successfully");
   } catch (err) {
@@ -176,33 +228,67 @@ const updateLab = async (req, res) => {
 
     // Process cities if provided
     let availableCities = existingLab.availableCities;
-    if (req.body.cityOperatedIn) {
+    if (req.body.availableCities) {
       availableCities = [];
-      for (const cityData of req.body.cityOperatedIn) {
+      for (const cityData of req.body.availableCities) {
         try {
-          const normalizedCityName = cityData.cityName.toLowerCase().trim();
-          const normalizedPincode = cityData.zipCode.trim();
+          // Handle existing cityId case
+          if (
+            cityData.cityId &&
+            mongoose.Types.ObjectId.isValid(cityData.cityId)
+          ) {
+            // Check if city with this ID exists
+            const existingCity = await City.findById(cityData.cityId);
+            if (existingCity) {
+              // Use the existing city
+              availableCities.push({
+                cityId: existingCity._id,
+                cityName: existingCity.cityName,
+                state: existingCity.state,
+                pinCodes_excluded: cityData.pinCodes_excluded || [],
+                regions_excluded: cityData.regions_excluded || [],
+                isActive:
+                  cityData.isActive !== undefined ? cityData.isActive : true,
+              });
+              continue;
+            }
+          }
 
-          // Try to find existing city by pincode
-          let city = await City.findOne({ pincode: normalizedPincode });
+          const normalizedCityName = cityData.cityName.toLowerCase().trim();
+          const normalizedState = cityData.state.toLowerCase().trim();
+
+          // If no valid cityId or city not found, proceed with name/state lookup
+          let city = await City.findOne({
+            cityName: normalizedCityName,
+            state: normalizedState,
+          });
 
           if (city) {
             // Update city if it exists
-            city = await City.findOneAndUpdate(
-              { pincode: normalizedPincode },
-              {
-                $set: {
+            const pinCodes_excluded = cityData.pinCodes_excluded || [];
+            if (pinCodes_excluded.length > 0) {
+              city = await City.findOneAndUpdate(
+                {
                   cityName: normalizedCityName,
-                  isActive: true,
+                  state: normalizedState,
                 },
-              },
-              { new: true }
-            );
+                {
+                  $set: {
+                    isActive: true,
+                  },
+                  $addToSet: {
+                    pinCodes_excluded: { $each: pinCodes_excluded },
+                  },
+                },
+                { new: true }
+              );
+            }
           } else {
             // Create new city if it doesn't exist
             city = await City.create({
               cityName: normalizedCityName,
-              pincode: normalizedPincode,
+              state: normalizedState,
+              pinCodes_excluded: cityData.pinCodes_excluded || [],
               isActive: true,
             });
           }
@@ -211,8 +297,11 @@ const updateLab = async (req, res) => {
           availableCities.push({
             cityId: city._id,
             cityName: city.cityName,
-            pinCode: city.pincode,
-            isActive: true,
+            state: city.state,
+            pinCodes_excluded: cityData.pinCodes_excluded || [],
+            regions_excluded: cityData.regions_excluded || [],
+            isActive:
+              cityData.isActive !== undefined ? cityData.isActive : true,
           });
         } catch (cityError) {
           console.error("Error processing city:", cityError);
@@ -269,61 +358,118 @@ const getAllLabs = async (req, res) => {
     );
   }
 };
-// get single lab by id
-const getLabById = async (req, res) => {
+
+// Get single lab by id
+const getLabDetailsById = async (req, res) => {
   try {
-    const { labId } = req.body;
-    console.log(labId)
+    const { labId } = req.params;
+
+    console.log("Requested lab ID:", labId);
+
     if (!labId) {
-      return Response.error(res, 404, AppConstant.FAILED, "labId is missing !");
+      return Response.error(res, 400, AppConstant.FAILED, "Lab ID is required");
     }
 
-    const existingLab = await Lab.findOne({ _id: labId });
-    if (!existingLab) {
+    // Validate labId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(labId)) {
+      console.error(`Invalid Lab ID format: ${labId}`);
       return Response.error(
         res,
-        404,
+        400,
         AppConstant.FAILED,
-        "lab not found with given labId !"
+        "Invalid Lab ID format"
       );
     }
-    return Response.success(res, existingLab, 200, "lab found with id !");
+
+    // Find lab by ID and populate city details
+    const lab = await Lab.findById(labId).populate("availableCities.cityId");
+
+    if (!lab) {
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
+    }
+
+    // Count tests and packages for this lab (if those collections exist)
+    let testsCount = 0;
+    let packagesCount = 0;
+
+    try {
+      if (mongoose.model("IndividualLabTest")) {
+        testsCount = await mongoose
+          .model("IndividualLabTest")
+          .countDocuments({ lab: labId });
+      }
+    } catch (err) {
+      console.log("IndividualLabTest model not found, skipping count");
+    }
+
+    try {
+      if (mongoose.model("LabPackage")) {
+        packagesCount = await mongoose
+          .model("LabPackage")
+          .countDocuments({ labId: labId });
+      }
+    } catch (err) {
+      console.log("LabPackage model not found, skipping count");
+    }
+
+    // Format the lab details
+    const labDetails = lab.toObject();
+
+    // Add counts to the response
+    labDetails.testsCount = testsCount;
+    labDetails.packagesCount = packagesCount;
+
+    return Response.success(
+      res,
+      labDetails,
+      200,
+      "Lab details retrieved successfully"
+    );
   } catch (err) {
+    console.error("Error in getLabDetailsById:", err);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      err.message || "Internal server error!"
+      err.message || "Internal server error"
     );
   }
 };
 
 const getLabsByLocation = async (req, res) => {
   try {
-    const { city, pinCode } = req.method === "GET" ? req.query : req.body;
+    const { cityName, state } = req.body;
 
-    if (!city && !pinCode) {
+    if (!cityName && !state) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "City name or zipCode is required"
+        "City name, state is required"
       );
     }
 
     let cityQuery = {};
-    if (pinCode && city) {
-      cityQuery.pincode = pinCode;
-    } else if (pinCode) {
-      cityQuery.pincode = pinCode;
-    } else if (city) {
-      cityQuery.cityName = { $regex: new RegExp(city, "i") };
+
+    // Build query based on provided parameters
+    if (cityName && state) {
+      // If both city and state are provided, search for exact match
+      cityQuery = {
+        cityName: cityName.toLowerCase(),
+        state: state.toLowerCase(),
+      };
+    } else if (cityName) {
+      // If only city is provided, search using regex for flexible matching
+      cityQuery.cityName = { $regex: new RegExp(cityName, "i") };
+    } else if (state) {
+      // If only state is provided, search by state
+      cityQuery.state = { $regex: new RegExp(state, "i") };
     }
 
-    console.log("cityQuery search completed: ", cityQuery);
+    console.log("cityQuery search criteria:", cityQuery);
 
     const matchingCities = await City.find(cityQuery);
-    console.log("matchingCities: ", matchingCities);
+    console.log("matchingCities found:", matchingCities.length);
 
     if (matchingCities.length === 0) {
       return Response.error(
@@ -341,9 +487,12 @@ const getLabsByLocation = async (req, res) => {
       "availableCities.isActive": true,
     }).populate("availableCities.cityId");
 
-    console.log("labs: ", labs);
+    // Filter out labs that might have pinCode exclusion if pinCode was provided
+    let filteredLabs = labs;
 
-    if (labs.length === 0) {
+    console.log("labs found:", filteredLabs.length);
+
+    if (filteredLabs.length === 0) {
       return Response.error(
         res,
         404,
@@ -354,7 +503,7 @@ const getLabsByLocation = async (req, res) => {
 
     return Response.success(
       res,
-      labs,
+      filteredLabs,
       200,
       "Labs found with the given criteria"
     );
@@ -388,7 +537,7 @@ const getAllCities = async (req, res) => {
 module.exports = {
   createLab,
   getAllLabs,
-  getLabById,
+  getLabDetailsById,
   updateLab,
   getLabsByLocation,
   getAllCities,

@@ -4,6 +4,7 @@ const IndividualLabTest = require("../../../../models/lab/individualLabTest.mode
 const Lab = require("../../../../models/lab/lab.model");
 const City = require("../../../../models/lab/city.model");
 const mongoose = require("mongoose");
+const cacheManager = require("../../../../utils/cacheManager");
 const {
   individualLabTestValidationSchema,
 } = require("../../../../validators/lab/individualLabTest.validator");
@@ -14,7 +15,38 @@ const {
  */
 const createIndividualLabTest = async (req, res) => {
   try {
-    // Validate request body
+    const { lab, category, testName, testCode, cityAvailability } = req.body;
+
+    // Pre-validation checks to provide more specific error messages
+    if (!testName || testName.trim() === "") {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Test name is required XYZ."
+      );
+    }
+
+    if (!lab) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Lab ID is required."
+      );
+    }
+
+    if (!testCode) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Test code is required."
+      );
+    }
+    console.log(req.body);
+
+    // Now validate the entire request body
     const { error } = individualLabTestValidationSchema.validate(req.body);
     if (error) {
       return Response.error(
@@ -25,7 +57,6 @@ const createIndividualLabTest = async (req, res) => {
       );
     }
 
-    const { lab, category, testName, testCode } = req.body;
     const lowerCaseCategory = category.toLowerCase();
 
     // Check if lab exists
@@ -49,11 +80,54 @@ const createIndividualLabTest = async (req, res) => {
       );
     }
 
-    // Create a new IndividualLabTest instance
-    const newTest = new IndividualLabTest({
+    // Process city availability - Convert pinCodes to cityIds
+    const updatedCityAvailability = [];
+
+    if (Array.isArray(cityAvailability) && cityAvailability.length > 0) {
+      for (const city of cityAvailability) {
+        const { cityName, pinCode } = city;
+
+        if (!cityName || !pinCode) {
+          return Response.error(
+            res,
+            400,
+            AppConstant.FAILED,
+            "City name and pinCode are required for all cities"
+          );
+        }
+
+        // Find city by pincode
+        const cityDoc = await City.findOne({
+          pincode: pinCode,
+          cityName: { $regex: new RegExp(cityName, "i") },
+        });
+
+        if (!cityDoc) {
+          return Response.error(
+            res,
+            400,
+            AppConstant.FAILED,
+            `City '${cityName}' with pincode '${pinCode}' not found!`
+          );
+        }
+
+        // Add city to the availability array with the correct cityId
+        updatedCityAvailability.push({
+          ...city,
+          cityId: cityDoc._id,
+        });
+      }
+    }
+
+    // Create the modified request body
+    const modifiedBody = {
       ...req.body,
       category: lowerCaseCategory,
-    });
+      cityAvailability: updatedCityAvailability,
+    };
+
+    // Create a new IndividualLabTest instance with the updated city availability
+    const newTest = new IndividualLabTest(modifiedBody);
 
     const savedTest = await newTest.save();
 
@@ -67,6 +141,7 @@ const createIndividualLabTest = async (req, res) => {
       "Lab test created successfully!"
     );
   } catch (err) {
+    console.error("Error creating lab test:", err);
     return Response.error(
       res,
       500,
@@ -338,6 +413,10 @@ const getTestsByCategory = async (req, res) => {
 const getAllTestOfParticularLab = async (req, res) => {
   try {
     const { labId } = req.params;
+    // Add pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
     if (!mongoose.Types.ObjectId.isValid(labId)) {
       return Response.error(
@@ -348,18 +427,38 @@ const getAllTestOfParticularLab = async (req, res) => {
       );
     }
 
-    const lab = await Lab.findById(labId);
+    // Check if lab exists with minimal projection
+    const lab = await Lab.findById(labId, "_id labName");
     if (!lab) {
       return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
 
+    // Use projection to select only needed fields
+    // Use lean() for better performance
     const tests = await IndividualLabTest.find({ lab: labId })
-      .populate("cityAvailability.cityId")
+      .select(
+        "testCode testName category sampleRequired preparationRequired cityAvailability"
+      )
+      .populate("cityAvailability.cityId", "cityName pincode")
+      .lean()
+      .skip(skip)
+      .limit(limit)
       .sort({ testName: 1 });
+
+    // Get total count for pagination info
+    const totalTests = await IndividualLabTest.countDocuments({ lab: labId });
 
     return Response.success(
       res,
-      { tests },
+      {
+        tests,
+        pagination: {
+          total: totalTests,
+          totalPages: Math.ceil(totalTests / limit),
+          currentPage: page,
+          perPage: limit,
+        },
+      },
       200,
       "Tests retrieved successfully"
     );
@@ -380,6 +479,10 @@ const getAllTestOfParticularLab = async (req, res) => {
 const getTestByCategoryOfPaticularLab = async (req, res) => {
   try {
     const { labId, category } = req.params;
+    // Add pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
     if (!mongoose.Types.ObjectId.isValid(labId)) {
       return Response.error(
@@ -399,21 +502,44 @@ const getTestByCategoryOfPaticularLab = async (req, res) => {
       );
     }
 
-    const lab = await Lab.findById(labId);
+    // Check if lab exists with minimal projection
+    const lab = await Lab.findById(labId, "_id labName");
     if (!lab) {
       return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
 
-    const tests = await IndividualLabTest.find({
+    // Build query with case-insensitive category search
+    const query = {
       lab: labId,
       category: { $regex: new RegExp(category, "i") },
-    })
-      .populate("cityAvailability.cityId")
+    };
+
+    // Use projection to select only needed fields
+    // Use lean() for better performance
+    const tests = await IndividualLabTest.find(query)
+      .select(
+        "testCode testName category sampleRequired preparationRequired cityAvailability"
+      )
+      .populate("cityAvailability.cityId", "cityName pincode")
+      .lean()
+      .skip(skip)
+      .limit(limit)
       .sort({ testName: 1 });
+
+    // Get total count for pagination info
+    const totalTests = await IndividualLabTest.countDocuments(query);
 
     return Response.success(
       res,
-      { tests },
+      {
+        tests,
+        pagination: {
+          total: totalTests,
+          totalPages: Math.ceil(totalTests / limit),
+          currentPage: page,
+          perPage: limit,
+        },
+      },
       200,
       "Tests retrieved successfully"
     );
@@ -434,30 +560,51 @@ const getAllCategoriesOfTestsOfParticularLab = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "labId is missing !");
     }
 
-    // Find all tests for the given lab
-    const allTests = await IndividualLabTest.find({
-      lab: new mongoose.Types.ObjectId(labId),
-      isActive: true, // Only get active tests
-    }).select("_id category");
+    if (!mongoose.Types.ObjectId.isValid(labId)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid lab ID format"
+      );
+    }
 
-    // Get unique categories
-    const uniqueCategories = [];
-    const seenCategories = new Set();
+    // Check cache first
+    const cacheKey = `lab_categories_${labId}`;
+    const cachedCategories = cacheManager.get(cacheKey);
 
-    allTests.forEach((item) => {
-      if (!seenCategories.has(item.category)) {
-        seenCategories.add(item.category);
-        uniqueCategories.push({
-          _id: item._id,
-          category: item.category,
-        });
-      }
-    });
+    if (cachedCategories) {
+      console.log(`Cache hit for ${cacheKey}`);
+      return Response.success(
+        res,
+        cachedCategories,
+        200,
+        "All categories of lab tests found successfully (cached)!"
+      );
+    }
+
+    console.log(`Cache miss for ${cacheKey}, fetching from database`);
+
+    // Use MongoDB aggregation for better performance
+    const categories = await IndividualLabTest.aggregate([
+      {
+        $match: {
+          lab: new mongoose.Types.ObjectId(labId),
+          isActive: true,
+        },
+      },
+      { $group: { _id: "$category" } },
+      { $project: { _id: 0, category: "$_id" } },
+      { $sort: { category: 1 } },
+    ]);
+
+    // Store in cache for 30 minutes
+    cacheManager.set(cacheKey, categories, 30 * 60);
 
     // Return success response
     return Response.success(
       res,
-      uniqueCategories,
+      categories,
       200,
       "All categories of lab tests found successfully!"
     );

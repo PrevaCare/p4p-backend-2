@@ -16,6 +16,13 @@ const existingPatientLabReportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Create indexes for frequently queried fields
+existingPatientLabReportSchema.index({ user: 1 });
+existingPatientLabReportSchema.index({ testName: 1 });
+existingPatientLabReportSchema.index({ labName: 1 });
+existingPatientLabReportSchema.index({ doctorName: 1 });
+existingPatientLabReportSchema.index({ createdAt: -1 }); // For sorting by date
+
 module.exports = mongoose.model(
   "ExistingPatientLabReport",
   existingPatientLabReportSchema

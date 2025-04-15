@@ -7,7 +7,7 @@ const {
   updatePackageAvailabilityInCity,
 } = require("../../../controllers/common/lab/labAdmin.controller.js");
 const {
-  getLabById,
+  getLabDetailsById,
 } = require("../../../controllers/common/lab/lab.controller.js");
 const { csvUpload } = require("../../../utils/csvParser.js");
 const {
@@ -20,12 +20,12 @@ const {
  * GET /admin/lab/:labId
  * Requirements: Auth token
  */
-router.post(
-  "/admin/lab/:labId",
-  verifyToken,
-  checkPermissions("READ", "Employee"),
-  getLabById
-);
+// router.post(
+//   "/admin/lab/:labId",
+//   verifyToken,
+//   checkPermissions("READ", "Employee"),
+//   getLabDetailsById
+// );
 
 /**
  * Import tests from CSV for a lab partner
@@ -54,12 +54,13 @@ router.post(
 );
 
 /**
- * Enable/disable multiple cities for a lab partner
- * PATCH /admin/lab-partner/:partnerId/cities/change-status
- * Requirements: Auth token, Partner ID, Array of city updates
+ * Enable/disable a city for a lab partner
+ * PATCH /admin/lab-partner/:partnerId/city/:cityId/change-status
+ * Requirements: Auth token, Partner ID, City ID, Status (boolean)
+ * Body format: { status: boolean }
  */
 router.patch(
-  "/admin/lab-partner/:partnerId/cities/change-status",
+  "/admin/lab-partner/:partnerId/city/:cityId/change-status",
   verifyToken,
   checkPermissions("UPDATE", "Employee"),
   updateLabPartnerCityStatus

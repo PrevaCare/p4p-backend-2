@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const testIncludedSchema = new mongoose.Schema({
-  test: { type: String, required: [true, "test is required!"] },
+  tests: { type: [String], required: [true, "test is required!"] },
   parameters: [String],
 });
 
@@ -16,9 +16,21 @@ const cityAvailabilitySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  pinCode: {
+  state: {
     type: String,
     required: true,
+  },
+  pinCodes_excluded: {
+    type: [String],
+    default: [],
+  },
+  regions_excluded: {
+    type: [String],
+    default: [],
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
   },
   billingRate: {
     type: Number,
@@ -44,18 +56,6 @@ const cityAvailabilitySchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-});
-
-// Pre-save hook to set homeCollectionAvailable based on homeCollectionCharge
-cityAvailabilitySchema.pre("save", function (next) {
-  if (this.homeCollectionCharge > 0) {
-    this.homeCollectionAvailable = true;
-  }
-  next();
 });
 
 // lab schema
@@ -95,7 +95,41 @@ const labPackage = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Pre-save hook to set homeCollectionAvailable based on homeCollectionCharge
+cityAvailabilitySchema.pre("save", function (next) {
+  // Only auto-set homeCollectionAvailable if it wasn't explicitly set to false
+  if (this.homeCollectionCharge > 0 && this.homeCollectionAvailable !== false) {
+    this.homeCollectionAvailable = true;
+  }
+  next();
+});
+
 // Create a compound unique index on packageCode and labId
 labPackage.index({ packageCode: 1, labId: 1 }, { unique: true });
+
+// Add document-level pre-save hook for debugging
+labPackage.pre("save", function (next) {
+  console.log(
+    `Saving package: packageCode=${this.packageCode}, packageName=${this.packageName}`
+  );
+  console.log(`Package has ${this.cityAvailability?.length || 0} cities`);
+
+  // Log a sample of the first city if available
+  if (this.cityAvailability && this.cityAvailability.length > 0) {
+    const sampleCity = this.cityAvailability[0];
+    console.log("Sample city data:", {
+      cityId: sampleCity.cityId,
+      billingRate: sampleCity.billingRate,
+      partnerRate: sampleCity.partnerRate,
+      prevaCarePrice: sampleCity.prevaCarePrice,
+      discountPercentage: sampleCity.discountPercentage,
+      homeCollectionCharge: sampleCity.homeCollectionCharge,
+      homeCollectionAvailable: sampleCity.homeCollectionAvailable,
+      isActive: sampleCity.isActive,
+    });
+  }
+
+  next();
+});
 
 module.exports = mongoose.model("LabPackage", labPackage);

@@ -3,7 +3,7 @@ const path = require("path");
 const mongoose = require("mongoose");
 const Lab = require("../../../models/lab/lab.model");
 const IndividualLabTest = require("../../../models/lab/individualLabTest.model");
-const LabPackage = require("../../../models/lab/labPackage/addLabPackage.model");
+const LabPackage = require("../../../models/lab/LabPackage.model");
 const {
   parseCSV,
   validateAndTransformCSVData,
@@ -315,22 +315,40 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
  * Helper function to find or create a city
  */
 const findOrCreateCity = async (cityName, pincode) => {
-  try {
-    let city = await City.findOne({
-      cityName: cityName.trim().toLowerCase(),
-      pincode: pincode.trim(),
-    });
+  if (!cityName) {
+    throw new Error("City name is required");
+  }
 
-    if (!city) {
+  const normalizedCityName = cityName.toLowerCase().trim();
+
+  try {
+    // Find city by name
+    let city = await City.findOne({ cityName: normalizedCityName });
+
+    if (city) {
+      // Update pinCodes_excluded if pincode is provided
+      if (pincode) {
+        city = await City.findOneAndUpdate(
+          { cityName: normalizedCityName },
+          {
+            $addToSet: {
+              pinCodes_excluded: pincode.trim(),
+            },
+          },
+          { new: true }
+        );
+      }
+    } else {
+      // Create new city
       city = await City.create({
-        cityName: cityName.trim().toLowerCase(),
-        pincode: pincode.trim(),
+        cityName: normalizedCityName,
+        pinCodes_excluded: pincode ? [pincode.trim()] : [],
       });
     }
 
-    return city._id;
+    return city;
   } catch (error) {
-    console.error(`Error finding/creating city: ${error.message}`);
+    console.error(`Error finding/creating city ${cityName}:`, error);
     throw error;
   }
 };
@@ -862,8 +880,8 @@ const importLabPackages = async (req, res) => {
  */
 const updateLabPartnerCityStatus = async (req, res) => {
   try {
-    const { partnerId } = req.params;
-    const { cityUpdates } = req.body;
+    const { partnerId, cityId } = req.params;
+    const { status } = req.body;
 
     // Validate required fields
     if (!partnerId) {
@@ -875,13 +893,12 @@ const updateLabPartnerCityStatus = async (req, res) => {
       );
     }
 
-    if (!Array.isArray(cityUpdates) || cityUpdates.length === 0) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        "cityUpdates array is required and must not be empty"
-      );
+    if (!cityId) {
+      return Response.error(res, 400, AppConstant.FAILED, "cityId is required");
+    }
+
+    if (status === undefined || status === null) {
+      return Response.error(res, 400, AppConstant.FAILED, "Status is required");
     }
 
     // Ensure partnerId is a valid ObjectId
@@ -891,6 +908,16 @@ const updateLabPartnerCityStatus = async (req, res) => {
         400,
         AppConstant.FAILED,
         "Invalid Partner ID format"
+      );
+    }
+
+    // Ensure cityId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(cityId)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid City ID format"
       );
     }
 
@@ -905,179 +932,64 @@ const updateLabPartnerCityStatus = async (req, res) => {
       );
     }
 
-    // Initialize results tracking
-    const results = {
-      updated: [],
-      failed: [],
-    };
-
     // Log the lab partner data for debugging
     console.log("Lab partner found:", partnerId);
     console.log(
-      "Available cities:",
+      "Available cities count:",
       labPartner.availableCities ? labPartner.availableCities.length : 0
     );
 
-    // Ensure availableCities exists
-    if (!labPartner.availableCities) {
-      labPartner.availableCities = [];
+    if (
+      !labPartner.availableCities ||
+      labPartner.availableCities.length === 0
+    ) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Lab partner has no available cities"
+      );
     }
 
-    // Process each city update
-    for (const update of cityUpdates) {
-      try {
-        const { cityId, pinCode, status } = update;
-
-        if (!cityId && !pinCode) {
-          results.failed.push({
-            cityId,
-            pinCode,
-            error: "Either cityId or pinCode is required",
-          });
-          continue;
-        }
-
-        if (status === undefined || status === null) {
-          results.failed.push({
-            cityId,
-            pinCode,
-            error: "Status is required",
-          });
-          continue;
-        }
-
-        let cityIndex = -1;
-
-        // Find city by ID
-        if (cityId) {
-          if (!mongoose.Types.ObjectId.isValid(cityId)) {
-            results.failed.push({
-              cityId,
-              error: "Invalid City ID format",
-            });
-            continue;
-          }
-
-          // Check for exact string match
-          cityIndex = labPartner.availableCities.findIndex(
-            (city) => city._id.toString() === cityId
-          );
-        }
-        // Find city by pinCode (check all variations of property names)
-        else if (pinCode) {
-          cityIndex = labPartner.availableCities.findIndex(
-            (city) =>
-              (city.pincode && city.pincode === pinCode) ||
-              (city.pinCode && city.pinCode === pinCode) ||
-              (city.PinCode && city.PinCode === pinCode)
-          );
-
-          // Log the search results for debugging
-          console.log(
-            `Searching for pinCode ${pinCode}, found at index: ${cityIndex}`
-          );
-          if (cityIndex >= 0) {
-            console.log("Match found:", labPartner.availableCities[cityIndex]);
-          }
-        }
-
-        if (cityIndex === -1) {
-          // Check if the city exists in the Cities collection, but not linked to this lab
-          if (cityId && mongoose.Types.ObjectId.isValid(cityId)) {
-            const city = await City.findById(cityId);
-            if (city) {
-              // Add this city to the lab partner
-              labPartner.availableCities.push({
-                _id: city._id,
-                cityId: city._id, // Required by schema validation
-                cityName: city.cityName,
-                pinCode: city.pincode, // Use pinCode (case sensitive) as required by schema
-                PinCode: city.pincode, // Also keep PinCode for backward compatibility
-                isActive: Boolean(status),
-              });
-
-              results.updated.push({
-                cityId: city._id,
-                cityName: city.cityName,
-                pinCode: city.pincode,
-                status: Boolean(status),
-              });
-              continue;
-            }
-          } else if (pinCode) {
-            const city = await City.findOne({ pincode: pinCode });
-            if (city) {
-              // Add this city to the lab partner
-              labPartner.availableCities.push({
-                _id: city._id,
-                cityId: city._id, // Required by schema validation
-                cityName: city.cityName,
-                pinCode: city.pincode, // Use pinCode (case sensitive) as required by schema
-                PinCode: city.pincode, // Also keep PinCode for backward compatibility
-                isActive: Boolean(status),
-              });
-
-              results.updated.push({
-                cityId: city._id,
-                cityName: city.cityName,
-                pinCode: city.pincode,
-                status: Boolean(status),
-              });
-              continue;
-            }
-          }
-
-          // City not found at all
-          results.failed.push({
-            cityId,
-            pinCode,
-            error: "City not found for this lab partner",
-          });
-          continue;
-        }
-
-        // Update the city's status
-        labPartner.availableCities[cityIndex].isActive = Boolean(status);
-
-        results.updated.push({
-          cityId: labPartner.availableCities[cityIndex]._id,
-          cityName: labPartner.availableCities[cityIndex].cityName,
-          pinCode:
-            labPartner.availableCities[cityIndex].PinCode ||
-            labPartner.availableCities[cityIndex].pincode,
-          status: Boolean(status),
-        });
-      } catch (error) {
-        results.failed.push({
-          cityId: update.cityId,
-          pinCode: update.pinCode,
-          error: error.message,
-        });
+    // Check if the city exists in the lab's available cities
+    let cityFound = false;
+    for (const city of labPartner.availableCities) {
+      if (city.cityId && city.cityId.toString() === cityId) {
+        city.isActive = status;
+        cityFound = true;
+        break;
       }
     }
 
-    // Save the updated lab partner if there were any successful updates
-    if (results.updated.length > 0) {
-      await labPartner.save();
+    if (!cityFound) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "City not found in lab partner's available cities"
+      );
     }
+
+    // Save the updated lab partner
+    await labPartner.save();
 
     return Response.success(
       res,
       {
-        labPartner: labPartner._id,
-        updatedCities: results.updated,
-        failedUpdates: results.failed,
+        message: "City status updated successfully",
+        partnerId,
+        cityId,
+        status,
       },
-      200,
-      `Successfully updated ${results.updated.length} cities, failed to update ${results.failed.length} cities`
+      200
     );
-  } catch (err) {
-    console.error("Error in updateLabPartnerCityStatus:", err);
+  } catch (error) {
+    console.error("Error updating city status:", error);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      err.message || "Internal server error"
+      error.message || "Internal server error"
     );
   }
 };

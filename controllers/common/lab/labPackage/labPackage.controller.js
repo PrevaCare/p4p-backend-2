@@ -1,6 +1,6 @@
 const AppConstant = require("../../../../utils/AppConstant");
 const Response = require("../../../../utils/Response");
-const LabPackage = require("../../../../models/lab/labPackage/addLabPackage.model");
+const LabPackage = require("../../../../models/lab/LabPackage.model");
 const {
   labPackageValidationSchema,
 } = require("../../../../validators/lab/labPackage/labPackage.validator");

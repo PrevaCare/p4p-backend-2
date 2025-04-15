@@ -19,11 +19,18 @@ const {
   verifyToken,
 } = require("../../../../middlewares/jwt/permission.js");
 const { upload } = require("../../../../middlewares/uploads/multerConfig.js");
+const {
+  searchRateLimit,
+  retrievalRateLimit,
+  modificationRateLimit,
+  uploadRateLimit,
+} = require("../../../../helper/rateLimitOnRoute/labApiRateLimit.route");
 
 router.post(
   "/app/lab-report",
   verifyToken,
   checkPermissions("CREATE", "Employee"),
+  uploadRateLimit,
   createExistingPatientLabReport
 );
 router.post(
@@ -34,17 +41,16 @@ router.post(
   ]),
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
+  uploadRateLimit,
   createlabReport
 );
 
 router.post(
   "/admin/report",
-  upload.fields([
-    { name: "logo", maxCount: 1 },
-    { name: "labReportFile" },
-  ]),
+  upload.fields([{ name: "logo", maxCount: 1 }, { name: "labReportFile" }]),
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
+  uploadRateLimit,
   createReport
 );
 
@@ -52,7 +58,8 @@ router.get(
   "/admin/reports/:userId",
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
-  getReportsByUser,
+  retrievalRateLimit,
+  getReportsByUser
 );
 
 //
@@ -60,12 +67,14 @@ router.get(
   "/admin/lab-reports",
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
+  retrievalRateLimit,
   getBothLabReportOfAllUsers
 );
 router.get(
   "/admin/lab-reports-p4p",
   verifyToken,
   checkPermissions("READ", "Employee"), // admin and doctor
+  retrievalRateLimit,
   getAllLabReportFromP4p
 );
 

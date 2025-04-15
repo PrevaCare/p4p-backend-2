@@ -6,12 +6,20 @@ const citySchema = new mongoose.Schema(
       type: String,
       required: [true, "City name is required"],
       trim: true,
+      // unique: true,
     },
-    pincode: {
+    state: {
       type: String,
-      required: [true, "Pincode is required"],
+      required: [true, "State is required"],
       trim: true,
-      unique: true,
+    },
+    pinCodes_excluded: {
+      type: [String],
+      default: [],
+    },
+    regions_excluded: {
+      type: [String],
+      default: [],
     },
     createdAt: {
       type: Date,
@@ -27,29 +35,26 @@ const citySchema = new mongoose.Schema(
   }
 );
 
-// Pre-save middleware to normalize city name and pincode
+const normalise = (doc) => {
+  if (doc.cityName) doc.cityName = doc.cityName.toLowerCase().trim();
+  if (doc.state) doc.state = doc.state.toLowerCase().trim();
+  return doc;
+};
+
 citySchema.pre("save", function (next) {
-  if (this.cityName) {
-    this.cityName = this.cityName.toLowerCase().trim();
-  }
-  if (this.pincode) {
-    this.pincode = this.pincode.trim();
-  }
+  normalise(this);
   next();
 });
 
-// Pre-update middleware to normalize city name and pincode
 citySchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate();
-  if (update.$set) {
-    if (update.$set.cityName) {
-      update.$set.cityName = update.$set.cityName.toLowerCase().trim();
-    }
-    if (update.$set.pincode) {
-      update.$set.pincode = update.$set.pincode.trim();
-    }
-  }
+  if (update.$set) normalise(update.$set);
   next();
 });
+
+citySchema.index(
+  { cityName: 1, state: 1 },
+  { unique: true, collation: { locale: "en", strength: 2 } }
+);
 
 module.exports = mongoose.model("City", citySchema);

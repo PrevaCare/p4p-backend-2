@@ -24,13 +24,21 @@ const availableCitySchema = new mongoose.Schema({
     ref: "City",
     required: true,
   },
+  state: {
+    type: String,
+    required: true,
+  },
   cityName: {
     type: String,
     required: true,
   },
-  pinCode: {
-    type: String,
-    required: true,
+  pinCodes_excluded: {
+    type: [String],
+    default: [],
+  },
+  regions_excluded: {
+    type: [String],
+    default: [],
   },
   isActive: {
     type: Boolean,
@@ -68,95 +76,83 @@ const labSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Function to convert city names to lowercase
-const convertCityNamesToLowercase = function (cities) {
-  if (cities && Array.isArray(cities)) {
-    return cities.map((city) => ({
-      ...city,
-      cityName: city.cityName ? city.cityName.toLowerCase() : city.cityName,
-    }));
-  }
-  return cities;
+const normaliseCities = (arr) => {
+  return Array.isArray(arr)
+    ? arr.map((c) => ({
+        ...c,
+        cityName:
+          typeof c.cityName === "string"
+            ? c.cityName.toLowerCase()
+            : c.cityName,
+        state: typeof c.state === "string" ? c.state.toLowerCase() : c.state,
+      }))
+    : arr;
 };
 
 // Pre-save hook for new documents
 labSchema.pre("save", function (next) {
-  if (this.cityOperatedIn) {
-    this.cityOperatedIn = convertCityNamesToLowercase(this.cityOperatedIn);
-  }
-
-  // Also convert available cities to lowercase
-  if (this.availableCities) {
-    this.availableCities = convertCityNamesToLowercase(this.availableCities);
-  }
-
-  next();
-});
-
-// Pre-update hooks for different update operations
-labSchema.pre(["updateOne", "findOneAndUpdate", "updateMany"], function (next) {
-  const update = this.getUpdate();
-
-  // Handle direct updates to cityOperatedIn
-  if (update.cityOperatedIn) {
-    update.cityOperatedIn = convertCityNamesToLowercase(update.cityOperatedIn);
-  }
-
-  // Handle direct updates to availableCities
-  if (update.availableCities) {
-    update.availableCities = convertCityNamesToLowercase(
-      update.availableCities
+  try {
+    console.log(
+      "Pre-save hook, availableCities before:",
+      JSON.stringify(this.availableCities)
     );
+    if (this.availableCities && Array.isArray(this.availableCities)) {
+      this.availableCities = normaliseCities(this.availableCities);
+    }
+    console.log(
+      "Pre-save hook, availableCities after:",
+      JSON.stringify(this.availableCities)
+    );
+    next();
+  } catch (error) {
+    console.error("Error in pre-save hook:", error);
+    next(error);
   }
-
-  // Handle updates using $set
-  if (update.$set) {
-    if (update.$set.cityOperatedIn) {
-      update.$set.cityOperatedIn = convertCityNamesToLowercase(
-        update.$set.cityOperatedIn
-      );
-    }
-
-    if (update.$set.availableCities) {
-      update.$set.availableCities = convertCityNamesToLowercase(
-        update.$set.availableCities
-      );
-    }
-  }
-
-  // Handle updates using $push with single item
-  if (update.$push) {
-    if (update.$push.cityOperatedIn) {
-      const city = update.$push.cityOperatedIn;
-      if (city.cityName) {
-        city.cityName = city.cityName.toLowerCase();
-      }
-    }
-
-    if (update.$push.availableCities) {
-      const city = update.$push.availableCities;
-      if (city.cityName) {
-        city.cityName = city.cityName.toLowerCase();
-      }
-    }
-  }
-
-  // Handle updates using $push with $each
-  if (update.$push) {
-    if (update.$push.cityOperatedIn && update.$push.cityOperatedIn.$each) {
-      update.$push.cityOperatedIn.$each = convertCityNamesToLowercase(
-        update.$push.cityOperatedIn.$each
-      );
-    }
-
-    if (update.$push.availableCities && update.$push.availableCities.$each) {
-      update.$push.availableCities.$each = convertCityNamesToLowercase(
-        update.$push.availableCities.$each
-      );
-    }
-  }
-
-  next();
 });
+
+// Pre-update hook for existing documents
+labSchema.pre(["findOneAndUpdate", "updateOne", "updateMany"], function (next) {
+  try {
+    const u = this.getUpdate();
+    console.log("Pre-update hook, update object:", JSON.stringify(u));
+
+    const handle = (key) => {
+      if (u[key]) {
+        console.log(`Normalizing ${key} directly:`, JSON.stringify(u[key]));
+        u[key] = normaliseCities(u[key]);
+      }
+      if (u.$set && u.$set[key]) {
+        console.log(`Normalizing $set.${key}:`, JSON.stringify(u.$set[key]));
+        u.$set[key] = normaliseCities(u.$set[key]);
+      }
+      if (u.$push && u.$push[key]) {
+        if (u.$push[key].$each) {
+          console.log(
+            `Normalizing $push.${key}.$each:`,
+            JSON.stringify(u.$push[key].$each)
+          );
+          u.$push[key].$each = normaliseCities(u.$push[key].$each);
+        } else {
+          console.log(
+            `Normalizing $push.${key} directly:`,
+            JSON.stringify([u.$push[key]])
+          );
+          u.$push[key] = normaliseCities([u.$push[key]])[0];
+        }
+      }
+    };
+
+    handle("availableCities");
+    console.log("After normalization, update object:", JSON.stringify(u));
+    next();
+  } catch (error) {
+    console.error("Error in pre-update hook:", error);
+    next(error);
+  }
+});
+
+labSchema.index({ labName: 1 });
+labSchema.index({ "availableCities.cityName": 1 });
+labSchema.index({ "availableCities.cityName": 1, "availableCities.state": 1 });
 
 module.exports = mongoose.model("Lab", labSchema);

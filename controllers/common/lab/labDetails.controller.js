@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Lab = require("../../../models/lab/lab.model");
 const IndividualLabTest = require("../../../models/lab/individualLabTest.model");
-const LabPackage = require("../../../models/lab/labPackage/addLabPackage.model");
+const LabPackage = require("../../../models/lab/LabPackage.model");
 const City = require("../../../models/lab/city.model");
 const AppConstant = require("../../../utils/AppConstant");
 const Response = require("../../../utils/Response");
@@ -275,9 +275,9 @@ const getTestsByLocation = async (req, res) => {
       );
     }
 
-    // Find the city in our database
+    // Find the city in our database - now only search by cityName
     const cityDoc = await City.findOne({
-      $or: [{ cityName: city?.toLowerCase() }, { pincode: pincode }],
+      cityName: city?.toLowerCase(),
     });
 
     if (!cityDoc) {
@@ -322,7 +322,7 @@ const getTestsByLocation = async (req, res) => {
           cityDetails: {
             _id: cityDoc._id,
             cityName: cityDoc.cityName,
-            pincode: cityDoc.pincode,
+            pinCode_excluded: cityDoc.pinCode_excluded,
           },
         },
       };
@@ -362,9 +362,9 @@ const getPackagesByLocation = async (req, res) => {
       );
     }
 
-    // Find the city in our database
+    // Find the city in our database - now only search by cityName
     const cityDoc = await City.findOne({
-      $or: [{ cityName: city?.toLowerCase() }, { pincode: pincode }],
+      cityName: city?.toLowerCase(),
     });
 
     if (!cityDoc) {
@@ -408,7 +408,7 @@ const getPackagesByLocation = async (req, res) => {
           cityDetails: {
             _id: cityDoc._id,
             cityName: cityDoc.cityName,
-            pincode: cityDoc.pincode,
+            pinCode_excluded: cityDoc.pinCode_excluded,
           },
         },
       };

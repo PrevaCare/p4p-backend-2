@@ -38,6 +38,9 @@ const app = express();
 dotenv.config();
 const port = process.env.PORT;
 
+// Import performance monitoring middleware
+const apiPerformanceMonitor = require("./middlewares/performance/apiPerformanceMonitor");
+
 // swagger
 // const swaggerUI = require("swagger-ui-express");
 // const swaggerJsDoc = require("swagger-jsdoc");
@@ -46,9 +49,19 @@ const port = process.env.PORT;
 
 // db connection
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI, {
+    // Add MongoDB connection optimization options
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    maxPoolSize: 10, // Adjust based on your server capacity
+    serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  })
   .then(() => console.log("db connection is successfull !"))
   .catch((err) => console.log("db connection error: " + err));
+
+// Apply performance monitoring middleware
+app.use(apiPerformanceMonitor);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

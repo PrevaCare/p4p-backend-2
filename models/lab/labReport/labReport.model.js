@@ -40,4 +40,13 @@ const labReportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Create indexes for frequently queried fields
+labReportSchema.index({ user: 1 });
+labReportSchema.index({ lab: 1 });
+labReportSchema.index({ doctor: 1 });
+labReportSchema.index({ category: 1 });
+labReportSchema.index({ testName: 1 });
+labReportSchema.index({ documentType: 1 });
+labReportSchema.index({ createdAt: -1 }); // For sorting by date
+
 module.exports = mongoose.model("LabReport", labReportSchema);

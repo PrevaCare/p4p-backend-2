@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Lab = require("../../../models/lab/lab.model");
 const IndividualLabTest = require("../../../models/lab/individualLabTest.model");
-const LabPackage = require("../../../models/lab/labPackage/addLabPackage.model");
+const LabPackage = require("../../../models/lab/LabPackage.model");
 const City = require("../../../models/lab/city.model");
 const AppConstant = require("../../../utils/AppConstant");
 const Response = require("../../../utils/Response");
@@ -377,7 +377,14 @@ const getLabHomeCollection = async (req, res) => {
         "cityAvailability.cityId": new mongoose.Types.ObjectId(cityId),
       };
     } else if (pinCode) {
-      cityCondition = { "cityAvailability.pinCode": pinCode };
+      // Lookup the city by pinCodes_excluded
+      const city = await City.findOne({ pinCodes_excluded: pinCode });
+      if (city) {
+        cityCondition = { "cityAvailability.cityId": city._id };
+      } else {
+        // If no city found with this pinCode in the excluded list, use the legacy query
+        cityCondition = { "cityAvailability.pinCode": pinCode };
+      }
     }
 
     // Find all individual tests for this lab with home collection

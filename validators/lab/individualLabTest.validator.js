@@ -27,8 +27,8 @@ const individualLabTestValidationSchema = Joi.object({
     "any.required": "Category is required.",
   }),
   testName: Joi.string().trim().required().messages({
-    "string.empty": "Test name is required.",
-    "any.required": "Test name is required.",
+    "string.empty": "Test name is required ABC.",
+    "any.required": "Test name is required ABC.",
   }),
   testIncluded: testIncludedSchema,
   sampleRequired: Joi.array().items(Joi.string()).optional().messages({

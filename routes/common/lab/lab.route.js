@@ -1,8 +1,15 @@
 const router = require("express").Router();
 const {
-  validateLabData,
+  validateAddLabData,
   validateLabUpdateData,
 } = require("../../../middlewares/validation/labValidation");
+
+const {
+  searchRateLimit,
+  retrievalRateLimit,
+  modificationRateLimit,
+  uploadRateLimit,
+} = require("../../../helper/rateLimitOnRoute/labApiRateLimit.route");
 
 const {
   deleteLabById,
@@ -20,7 +27,7 @@ const {
 const {
   createLab,
   getAllLabs,
-  getLabById,
+  getLabDetailsById,
   updateLab,
   getLabsByLocation,
   getAllCities,
@@ -55,21 +62,21 @@ const { upload } = require("../../../middlewares/uploads/multerConfig.js");
 
 // Create new lab
 router.post(
-  "/admin/lab",
+  "/admin/lab/create",
   verifyToken,
   checkPermissions("CREATE", "Employee"),
   upload.fields([{ name: "logo", maxCount: 1 }]),
-  // validateLabData,
+  validateAddLabData,
   createLab
 );
 
 // Update existing lab
-router.patch(
-  "/admin/lab/:labId",
+router.put(
+  "/admin/lab/:labId/update",
   verifyToken,
   checkPermissions("UPDATE", "Employee"),
   upload.fields([{ name: "logo", maxCount: 1 }]),
-  // validateLabUpdateData,
+  validateLabUpdateData,
   updateLab
 );
 
@@ -82,16 +89,16 @@ router.get(
 );
 
 // Get lab by ID
-router.post(
-  "/admin/lab/:labId",
-  verifyToken,
-  checkPermissions("READ", "Employee"),
-  getLabById
-);
+// router.get(
+//   "/admin/lab/:labId",
+//   verifyToken,
+//   checkPermissions("READ", "Employee"),
+//   getLabDetailsById
+// );
 
 // Get labs by location
-router.post(
-  "/admin/labs/location",
+router.get(
+  "/admin/labs/by-location",
   verifyToken,
   checkPermissions("READ", "Employee"),
   getLabsByLocation
@@ -99,7 +106,7 @@ router.post(
 
 // Delete lab
 router.delete(
-  "/admin/lab/:labId",
+  "/admin/lab/:labId/delete",
   verifyToken,
   verifyAndSuperAdmin,
   deleteLabById
@@ -207,6 +214,7 @@ router.post(
   "/admin/lab/test/create",
   verifyToken,
   checkPermissions("CREATE", "Employee"),
+  modificationRateLimit,
   createIndividualLabTest
 );
 
@@ -228,6 +236,7 @@ router.post(
   "/admin/tests/search",
   verifyToken,
   checkPermissions("READ", "Employee"),
+  searchRateLimit,
   searchIndividualLabTest
 );
 
@@ -235,6 +244,7 @@ router.get(
   "/admin/tests/byCategory",
   verifyToken,
   checkPermissions("READ", "Employee"),
+  retrievalRateLimit,
   getTestsByCategory
 );
 
@@ -242,6 +252,7 @@ router.get(
   "/admin/labs/:labId/tests",
   verifyToken,
   checkPermissions("READ", "Employee"),
+  retrievalRateLimit,
   getAllTestOfParticularLab
 );
 
@@ -249,6 +260,7 @@ router.get(
   "/admin/labs/:labId/test/by-category/:category",
   verifyToken,
   checkPermissions("READ", "Employee"),
+  retrievalRateLimit,
   getTestByCategoryOfPaticularLab
 );
 
@@ -256,6 +268,7 @@ router.get(
   "/admin/labs/:labId/packages",
   verifyToken,
   // checkPermissions("CREATE", "Employee"),
+  retrievalRateLimit,
   getAllPackagesOfParticularLab
 );
 
@@ -263,6 +276,7 @@ router.get(
   "/admin/labs/:labId/packages/by-category/:category",
   verifyToken,
   // checkPermissions("CREATE", "Employee"),
+  retrievalRateLimit,
   getPackagesByCategoryOfPaticularLab
 );
 
@@ -271,6 +285,14 @@ router.post(
   "/admin/lab/test/categories",
   verifyToken,
   getAllCategoriesOfTestsOfParticularLab
+);
+
+// Get detailed lab information by ID
+router.get(
+  "/admin/lab/:labId/details",
+  verifyToken,
+  checkPermissions("READ", "Employee"),
+  getLabDetailsById
 );
 
 module.exports = router;
