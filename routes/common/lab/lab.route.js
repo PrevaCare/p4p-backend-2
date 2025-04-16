@@ -42,6 +42,7 @@ const {
   getPackagesByCategory,
   getAllPackagesOfParticularLab,
   getPackagesByCategoryOfPaticularLab,
+  getAllPackagesOfLab,
 } = require("../../../controllers/common/lab/labPackage/getLabPackage.controller.js");
 const {
   createLabPackage,
@@ -293,6 +294,15 @@ router.get(
   verifyToken,
   checkPermissions("READ", "Employee"),
   getLabDetailsById
+);
+
+// Get all packages for a lab
+router.get(
+  "/admin/lab/packages",
+  verifyToken,
+  checkPermissions("READ", "Employee"),
+  retrievalRateLimit,
+  getAllPackagesOfLab
 );
 
 module.exports = router;

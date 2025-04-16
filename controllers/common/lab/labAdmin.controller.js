@@ -209,14 +209,14 @@ const parseAndValidateCityArrays = (item) => {
     : [];
   const homeCollectionCharges = item["Home Collection Charges"]
     ? item["Home Collection Charges"]
-      .split(",")
-      .map((charge) => parseFloat(charge.trim()) || 0)
+        .split(",")
+        .map((charge) => parseFloat(charge.trim()) || 0)
     : [];
   const homeCollectionAvailable = item["Home Collection available"]
     ? item["Home Collection available"].split(",").map((avail) => {
-      const val = avail.trim().toLowerCase();
-      return val === "true" || val === "yes" || val === "1";
-    })
+        const val = avail.trim().toLowerCase();
+        return val === "true" || val === "yes" || val === "1";
+      })
     : [];
 
   // Validate array lengths
@@ -262,7 +262,8 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
 
   if (!isValid) {
     console.warn(
-      `Invalid city data format in ${isPackage ? "package" : "test"} row: ${item[isPackage ? "Package Code" : "Test Code"]
+      `Invalid city data format in ${isPackage ? "package" : "test"} row: ${
+        item[isPackage ? "Package Code" : "Test Code"]
       }`
     );
     return cityAvailability;
@@ -276,7 +277,7 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
     const existingCity = labPartner.availableCities?.find(
       (city) =>
         city.cityName.toLowerCase().trim() ===
-        cityNames[i].toLowerCase().trim() && city.PinCode === pincodes[i]
+          cityNames[i].toLowerCase().trim() && city.PinCode === pincodes[i]
     );
 
     if (existingCity) {
@@ -286,8 +287,8 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
       const discountPercentage =
         prevaCarePrice > 0
           ? Math.round(
-            ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
-          )
+              ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+            )
           : 0;
 
       cityAvailability.push({
@@ -462,8 +463,8 @@ const importLabTests = async (req, res) => {
             const discountPercentage =
               prevaCarePrice > 0
                 ? Math.round(
-                  ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
-                )
+                    ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+                  )
                 : 0;
 
             // Parse home collection availability and charge
@@ -472,8 +473,8 @@ const importLabTests = async (req, res) => {
               row["Home Collection available"];
             const homeCollectionCharge = parseFloat(
               row["Home Collection Charge"] ||
-              row["Home Collection Charges"] ||
-              0
+                row["Home Collection Charges"] ||
+                0
             );
 
             const cityData = {
@@ -664,7 +665,8 @@ const importLabPackages = async (req, res) => {
     }
 
     console.log(
-      `Grouped ${csvData.length} rows into ${Object.keys(packageGroups).length
+      `Grouped ${csvData.length} rows into ${
+        Object.keys(packageGroups).length
       } packages`
     );
 
@@ -709,7 +711,7 @@ const importLabPackages = async (req, res) => {
 
             let city = await City.findOne({
               cityName: cityName.toLowerCase(),
-              pinCode: pincode
+              pinCode: pincode,
             });
 
             if (!city) {
@@ -729,8 +731,8 @@ const importLabPackages = async (req, res) => {
             const discountPercentage =
               prevaCarePrice > 0
                 ? Math.round(
-                  ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
-                )
+                    ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+                  )
                 : 0;
 
             // Add this city to the availability array
@@ -769,13 +771,13 @@ const importLabPackages = async (req, res) => {
         // Parse tests included
         const testsIncluded = firstRow["Tests Included"]
           ? firstRow["Tests Included"]
-            .split(",")
-            .map((test) => test.trim())
-            .filter((test) => test)
-            .map((test) => ({
-              test: test,
-              parameters: [],
-            }))
+              .split(",")
+              .map((test) => test.trim())
+              .filter((test) => test)
+              .map((test) => ({
+                test: test,
+                parameters: [],
+              }))
           : [];
 
         console.log("Raw package data for:", {
@@ -1073,7 +1075,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
     }
 
     console.log(
-      `Found test: ${testDoc.testName} (${testDoc.testCode}) with ${testDoc.cityAvailability?.length || 0
+      `Found test: ${testDoc.testName} (${testDoc.testCode}) with ${
+        testDoc.cityAvailability?.length || 0
       } cities`
     );
 
@@ -1082,7 +1085,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
     testDoc.cityAvailability.forEach((city, i) => {
       const cityId = city.cityId._id || city.cityId;
       console.log(
-        `City ${i}: ID=${cityId}, name=${city.cityId.cityName || "Unknown"
+        `City ${i}: ID=${cityId}, name=${
+          city.cityId.cityName || "Unknown"
         }, isActive=${city.isActive}`
       );
     });
@@ -1515,35 +1519,30 @@ const updateTestAvailabilityInCity = async (req, res) => {
  */
 const updatePackageAvailabilityInCity = async (req, res) => {
   try {
-    const { labpartnerId, packageId } = req.params;
-    const cityUpdates = req.body;
+    const { labId, packageId, cityId } = req.params;
+    const updateData = req.body;
+    console.log("labId", labId);
+    console.log("packageId", packageId);
+    console.log("cityId", cityId);
+    console.log("updateData", updateData);
 
-    // Validate required fields
-    if (!labpartnerId || !packageId) {
+    // Validate required IDs
+    if (!labId || !packageId || !cityId) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "Lab Partner ID and Package ID are required"
+        "labId, packageId and cityId are required"
       );
     }
 
-    if (!Array.isArray(cityUpdates) || cityUpdates.length === 0) {
+    // Validate ID formats
+    if (!mongoose.Types.ObjectId.isValid(labId)) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "cityUpdates array is required and must not be empty"
-      );
-    }
-
-    // Validate IDs
-    if (!mongoose.Types.ObjectId.isValid(labpartnerId)) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        "Invalid Lab Partner ID format"
+        "Invalid labId format"
       );
     }
 
@@ -1552,14 +1551,29 @@ const updatePackageAvailabilityInCity = async (req, res) => {
         res,
         400,
         AppConstant.FAILED,
-        "Invalid Package ID format"
+        "Invalid packageId format"
       );
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(cityId)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid cityId format"
+      );
+    }
+
+    // Find the lab
+    const lab = await Lab.findById(labId);
+    if (!lab) {
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
 
     // Find the package
     const packageDoc = await LabPackage.findOne({
       _id: packageId,
-      labId: labpartnerId,
+      labId: labId,
     });
 
     if (!packageDoc) {
@@ -1567,253 +1581,152 @@ const updatePackageAvailabilityInCity = async (req, res) => {
         res,
         404,
         AppConstant.FAILED,
-        "Package not found for this lab partner"
+        "Package not found for this lab"
       );
     }
 
-    // Initialize results tracking
-    const results = {
-      updated: [],
-      failed: [],
-    };
-
-    // Ensure cityAvailability exists
-    if (!packageDoc.cityAvailability) {
-      packageDoc.cityAvailability = [];
+    // Find the city
+    const city = await City.findById(cityId);
+    if (!city) {
+      return Response.error(res, 404, AppConstant.FAILED, "City not found");
     }
 
-    // Process each city update
-    for (const update of cityUpdates) {
-      try {
-        const {
-          cityId,
-          pinCode,
-          status,
-          availability,
-          labSellingPrice,
-          offeredPriceToPrevaCare,
-          prevaCarePrice,
-          discountPercentage,
-          homeCollectionCharge,
-          homeCollectionAvailable,
-        } = update;
+    // Check if this city is in the lab's available cities
+    const isCityAvailableInLab = lab.availableCities.some(
+      (availableCity) => availableCity.cityId.toString() === cityId
+    );
 
-        // Determine if we're just updating status or full availability
-        const isStatusOnlyUpdate = status !== undefined && !availability;
-        const isAvailable =
-          status !== undefined ? Boolean(status) : Boolean(availability);
+    if (!isCityAvailableInLab) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "This city is not available for this lab"
+      );
+    }
 
-        // For status-only updates, we don't need all pricing fields
-        if (!isStatusOnlyUpdate && isAvailable) {
-          // Validate required fields for full availability updates
-          if (
-            !labSellingPrice ||
-            !offeredPriceToPrevaCare ||
-            !prevaCarePrice ||
-            !discountPercentage
-          ) {
-            results.failed.push({
-              cityId,
-              pinCode,
-              error:
-                "When package is available, all pricing fields are required (labSellingPrice, offeredPriceToPrevaCare, prevaCarePrice, discountPercentage)",
-            });
-            continue;
-          }
-        }
+    // Find if city already exists in package's cityAvailability
+    const cityIndex = packageDoc.cityAvailability.findIndex(
+      (city) => city.cityId.toString() === cityId
+    );
 
-        if (!cityId && !pinCode) {
-          results.failed.push({
-            cityId,
-            pinCode,
-            error: "Either cityId or pinCode is required",
-          });
-          continue;
-        }
+    // Extract fields from update data
+    const {
+      isActive,
+      billingRate,
+      partnerRate,
+      prevaCarePrice,
+      discountPercentage,
+      homeCollectionCharge,
+      homeCollectionAvailable,
+      pinCodes_excluded,
+      regions_excluded,
+    } = updateData;
 
-        let cityIndex = -1;
-        let city = null;
+    // If isActive is true, validate all required pricing fields
+    if (isActive === true) {
+      if (!billingRate) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "billingRate is required when isActive is true"
+        );
+      }
 
-        // Find city by ID in the package's cityAvailability
-        if (cityId) {
-          if (!mongoose.Types.ObjectId.isValid(cityId)) {
-            results.failed.push({
-              cityId,
-              error: "Invalid City ID format",
-            });
-            continue;
-          }
+      if (!partnerRate) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "partnerRate is required when isActive is true"
+        );
+      }
 
-          cityIndex = packageDoc.cityAvailability.findIndex(
-            (city) => city.cityId.toString() === cityId
-          );
+      if (!prevaCarePrice) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "prevaCarePrice is required when isActive is true"
+        );
+      }
 
-          // If not found in package, get city info from City collection
-          if (cityIndex === -1) {
-            city = await City.findById(cityId);
-          }
-        }
-        // Find city by pinCode
-        else if (pinCode) {
-          cityIndex = packageDoc.cityAvailability.findIndex(
-            (city) => city.pinCode === pinCode
-          );
-
-          // If not found in package, get city info from City collection
-          if (cityIndex === -1) {
-            city = await City.findOne({ pincode: pinCode });
-          }
-        }
-
-        // If city not found anywhere
-        if (cityIndex === -1 && !city) {
-          results.failed.push({
-            cityId,
-            pinCode,
-            error: "City not found",
-          });
-          continue;
-        }
-
-        // If we found the city in the database but not in the package
-        if (cityIndex === -1 && city) {
-          // For status-only updates, we need default pricing values
-          const newCity = {
-            cityId: city._id,
-            cityName: city.cityName,
-            pinCode: city.pincode,
-            isActive: isAvailable,
-            billingRate: parseFloat(labSellingPrice || 0),
-            partnerRate: parseFloat(offeredPriceToPrevaCare || 0),
-            prevaCarePrice: parseFloat(prevaCarePrice || 0),
-            discountPercentage: parseFloat(discountPercentage || 0),
-            homeCollectionCharge: parseFloat(homeCollectionCharge || 0),
-            homeCollectionAvailable:
-              homeCollectionAvailable ??
-              parseFloat(homeCollectionCharge || 0) > 0,
-          };
-
-          // Only add city if we have full pricing information or it's a status-only update
-          if (
-            isStatusOnlyUpdate ||
-            (labSellingPrice &&
-              offeredPriceToPrevaCare &&
-              prevaCarePrice &&
-              discountPercentage)
-          ) {
-            packageDoc.cityAvailability.push(newCity);
-
-            results.updated.push({
-              cityId: city._id,
-              cityName: city.cityName,
-              pinCode: city.pincode,
-              status: isAvailable,
-              price: isStatusOnlyUpdate
-                ? null
-                : {
-                  billingRate: newCity.billingRate,
-                  partnerRate: newCity.partnerRate,
-                  prevaCarePrice: newCity.prevaCarePrice,
-                  discountPercentage: newCity.discountPercentage,
-                },
-            });
-          } else {
-            results.failed.push({
-              cityId,
-              pinCode,
-              error: "Missing pricing information for new city",
-            });
-          }
-          continue;
-        }
-
-        // Update existing city in package
-        if (isStatusOnlyUpdate) {
-          // Just update the status
-          packageDoc.cityAvailability[cityIndex].isActive = isAvailable;
-        } else {
-          // Update all fields
-          packageDoc.cityAvailability[cityIndex].isActive = isAvailable;
-
-          if (labSellingPrice !== undefined)
-            packageDoc.cityAvailability[cityIndex].billingRate =
-              parseFloat(labSellingPrice);
-
-          if (offeredPriceToPrevaCare !== undefined)
-            packageDoc.cityAvailability[cityIndex].partnerRate = parseFloat(
-              offeredPriceToPrevaCare
-            );
-
-          if (prevaCarePrice !== undefined)
-            packageDoc.cityAvailability[cityIndex].prevaCarePrice =
-              parseFloat(prevaCarePrice);
-
-          if (discountPercentage !== undefined)
-            packageDoc.cityAvailability[cityIndex].discountPercentage =
-              parseFloat(discountPercentage);
-
-          if (homeCollectionCharge !== undefined) {
-            packageDoc.cityAvailability[cityIndex].homeCollectionCharge =
-              parseFloat(homeCollectionCharge);
-            if (homeCollectionAvailable === undefined) {
-              packageDoc.cityAvailability[cityIndex].homeCollectionAvailable =
-                parseFloat(homeCollectionCharge) > 0;
-            }
-          }
-
-          if (homeCollectionAvailable !== undefined) {
-            packageDoc.cityAvailability[cityIndex].homeCollectionAvailable =
-              Boolean(homeCollectionAvailable);
-          }
-        }
-
-        results.updated.push({
-          cityId: packageDoc.cityAvailability[cityIndex].cityId,
-          cityName: packageDoc.cityAvailability[cityIndex].cityName,
-          pinCode: packageDoc.cityAvailability[cityIndex].pinCode,
-          status: packageDoc.cityAvailability[cityIndex].isActive,
-          price: isStatusOnlyUpdate
-            ? null
-            : {
-              billingRate: packageDoc.cityAvailability[cityIndex].billingRate,
-              partnerRate: packageDoc.cityAvailability[cityIndex].partnerRate,
-              prevaCarePrice:
-                packageDoc.cityAvailability[cityIndex].prevaCarePrice,
-              discountPercentage:
-                packageDoc.cityAvailability[cityIndex].discountPercentage,
-            },
-        });
-      } catch (error) {
-        console.error("Error processing city update:", error);
-        results.failed.push({
-          cityId: update.cityId,
-          pinCode: update.pinCode,
-          error: error.message,
-        });
+      if (discountPercentage === undefined && discountPercentage !== 0) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "discountPercentage is required when isActive is true"
+        );
       }
     }
 
-    // Save the updated package if there were any successful updates
-    if (results.updated.length > 0) {
-      await packageDoc.save();
+    // Prepare city data
+    const cityData = {
+      cityId: city._id,
+      cityName: city.cityName,
+      state: city.state,
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+      pinCodes_excluded: pinCodes_excluded || [],
+      regions_excluded: regions_excluded || [],
+    };
+
+    // Only add pricing fields if isActive is true
+    if (isActive !== false) {
+      cityData.billingRate = parseFloat(billingRate || 0);
+      cityData.partnerRate = parseFloat(partnerRate || 0);
+      cityData.prevaCarePrice = parseFloat(prevaCarePrice || 0);
+      cityData.discountPercentage = parseFloat(discountPercentage || 0);
+      cityData.homeCollectionCharge = parseFloat(homeCollectionCharge || 0);
+
+      // Set homeCollectionAvailable based on provided value or homeCollectionCharge
+      cityData.homeCollectionAvailable =
+        homeCollectionAvailable !== undefined
+          ? Boolean(homeCollectionAvailable)
+          : parseFloat(homeCollectionCharge || 0) > 0;
     }
+
+    // Update or add city availability
+    if (cityIndex !== -1) {
+      // Update existing city
+      if (isActive === false) {
+        // If setting to inactive, only update isActive field
+        packageDoc.cityAvailability[cityIndex].isActive = false;
+      } else {
+        // Otherwise update all fields
+        Object.assign(packageDoc.cityAvailability[cityIndex], cityData);
+      }
+    } else {
+      // Add new city
+      packageDoc.cityAvailability.push(cityData);
+    }
+
+    // Save the updated package
+    await packageDoc.save();
 
     return Response.success(
       res,
       {
-        labPartner: labpartnerId,
-        package: {
-          _id: packageDoc._id,
-          name: packageDoc.packageName,
+        package: packageDoc,
+        updatedCity: {
+          cityId: city._id,
+          cityName: city.cityName,
+          state: city.state,
+          isActive: cityData.isActive,
+          billingRate: cityData.billingRate,
+          partnerRate: cityData.partnerRate,
+          prevaCarePrice: cityData.prevaCarePrice,
+          discountPercentage: cityData.discountPercentage,
+          homeCollectionCharge: cityData.homeCollectionCharge,
+          homeCollectionAvailable: cityData.homeCollectionAvailable,
         },
-        updatedCities: results.updated,
-        failedUpdates: results.failed,
       },
       200,
-      `Successfully updated ${results.updated.length} cities, failed to update ${results.failed.length} cities`
+      `Successfully updated city availability for package`
     );
   } catch (err) {
-    console.error("Error in updatePackageAvailabilityInCities:", err);
+    console.error("Error in updatePackageAvailabilityInCity:", err);
     return Response.error(
       res,
       500,

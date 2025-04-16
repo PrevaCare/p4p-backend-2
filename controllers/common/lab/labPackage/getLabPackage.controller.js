@@ -6,12 +6,17 @@ const Lab = require("../../../../models/lab/lab.model");
 const mongoose = require("mongoose");
 const cacheManager = require("../../../../utils/cacheManager");
 
+/**
+ * Get all package categories for a specific lab
+ * @route POST /admin/lab/pacakge/categories
+ */
 const getAllCategoryOfPackageOfParticularLab = async (req, res) => {
   try {
-    // Validate request body
     const { labId } = req.body;
+
+    // Validate labId
     if (!labId) {
-      return Response.error(res, 404, AppConstant.FAILED, "labId is missing !");
+      return Response.error(res, 400, AppConstant.FAILED, "Lab ID is required");
     }
 
     if (!mongoose.Types.ObjectId.isValid(labId)) {
@@ -19,55 +24,32 @@ const getAllCategoryOfPackageOfParticularLab = async (req, res) => {
         res,
         400,
         AppConstant.FAILED,
-        "Invalid lab ID format"
+        "Invalid Lab ID format"
       );
     }
 
-    // Check cache first
-    const cacheKey = `lab_package_categories_${labId}`;
-    const cachedCategories = cacheManager.get(cacheKey);
-
-    if (cachedCategories) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return Response.success(
-        res,
-        cachedCategories,
-        200,
-        "All Category of Lab packages found successfully (cached)!"
-      );
+    // Check if lab exists
+    const labExists = await Lab.exists({ _id: labId });
+    if (!labExists) {
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
 
-    console.log(`Cache miss for ${cacheKey}, fetching from database`);
+    // Get distinct categories for this lab
+    const categories = await LabPackage.distinct("category", { labId });
 
-    // Use MongoDB aggregation for better performance
-    const categories = await LabPackage.aggregate([
-      {
-        $match: {
-          labId: new mongoose.Types.ObjectId(labId),
-        },
-      },
-      { $group: { _id: "$category" } },
-      { $project: { _id: 0, category: "$_id" } },
-      { $sort: { category: 1 } },
-    ]);
-
-    // Store in cache for 30 minutes
-    cacheManager.set(cacheKey, categories, 30 * 60);
-
-    // Return success response
     return Response.success(
       res,
-      categories,
+      { categories },
       200,
-      "All Category of Lab packages found successfully !"
+      "Package categories retrieved successfully"
     );
   } catch (err) {
-    // Handle any errors
+    console.error("Error in getAllCategoryOfPackageOfParticularLab:", err);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      err.message || "Internal server error!"
+      err.message || "Internal server error"
     );
   }
 };
@@ -143,7 +125,7 @@ const getAllTestOfParticularCategoryOfPackageOfParticularLab = async (
 
 const getSingleLabPackageDetailsById = async (req, res) => {
   try {
-    const { packageId } = req.query;
+    const { packageId } = req.body;
     const { labId } = req.params;
     console.log(packageId, labId);
     // Strict validation for required fields
@@ -192,12 +174,11 @@ const getSingleLabPackageDetailsById = async (req, res) => {
     const existingPackage = await LabPackage.findOne({
       _id: packageObjectId,
       labId: labObjectId,
-    })
-      .populate({
-        path: "cityAvailability.cityId",
-        model: "City",
-        select: "-__v",
-      });
+    }).populate({
+      path: "cityAvailability.cityId",
+      model: "City",
+      select: "-__v",
+    });
 
     console.log("Found package:", existingPackage);
 
@@ -318,23 +299,28 @@ const deleteLabPackageById = async (req, res) => {
 const searchLabPackages = async (req, res) => {
   try {
     const {
-      name, // testName search
+      name, // packageName search
       category, // category search
       ageGroup, // ageGroup search
       gender, // gender search
       minPrice, // minimum prevaCarePrice
       maxPrice, // maximum prevaCarePrice
-      city, // city name for availability search\
-      zipCode,
-      home_collection, // filter by home collection included packages
+      cityName, // city name for availability search
+      state, // state for availability search
+      zipCode, // zipCode filter
+      homeAvailability, // filter by home collection availability
+      isActive, // filter by active status
+      minDiscount, // minimum discount percentage
     } = req.body;
+
+    console.log("Search parameters:", req.body);
 
     // Build the search query object
     const query = {};
 
     // Add filters based on provided parameters
     if (name) {
-      query.testName = { $regex: new RegExp(name, "i") }; // Case-insensitive search
+      query.packageName = { $regex: new RegExp(name, "i") }; // Case-insensitive search for package name
     }
 
     if (category) {
@@ -357,31 +343,75 @@ const searchLabPackages = async (req, res) => {
     }
 
     // Handle price range for prevaCarePrice
-    if (minPrice || maxPrice) {
-      query.prevaCarePrice = {};
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      query["cityAvailability.prevaCarePrice"] = {};
 
-      if (minPrice) {
-        query.prevaCarePrice.$gte = Number(minPrice);
+      if (minPrice !== undefined) {
+        query["cityAvailability.prevaCarePrice"].$gte = Number(minPrice);
       }
 
-      if (maxPrice) {
-        query.prevaCarePrice.$lte = Number(maxPrice);
+      if (maxPrice !== undefined) {
+        query["cityAvailability.prevaCarePrice"].$lte = Number(maxPrice);
       }
     }
 
-    // Add city filter if city parameter was provided
-    if (city) {
-      query["cityAvailability.city"] = { $regex: new RegExp(city, "i") };
+    // Handle minimum discount percentage
+    if (minDiscount !== undefined) {
+      query["cityAvailability.discountPercentage"] = {
+        $gte: Number(minDiscount),
+      };
     }
 
+    // Filter by active status if provided
+    if (isActive !== undefined) {
+      query["cityAvailability.isActive"] = isActive === true;
+    }
+
+    // Add city filters if provided
+    let cityFilters = [];
+
+    if (cityName || state) {
+      // Create a city filter condition
+      let cityFilter = {};
+
+      if (cityName) {
+        const normalizedCityName = cityName.toLowerCase().trim();
+        cityFilter["cityAvailability.cityName"] = {
+          $regex: new RegExp(normalizedCityName, "i"),
+        };
+      }
+
+      if (state) {
+        const normalizedState = state.toLowerCase().trim();
+        cityFilter["cityAvailability.state"] = {
+          $regex: new RegExp(normalizedState, "i"),
+        };
+      }
+
+      cityFilters.push(cityFilter);
+    }
+
+    // Add zipCode filter if provided
     if (zipCode) {
-      query["cityAvailability.zipCode"] = { $regex: new RegExp(zipCode, "i") };
+      // Make sure zipCode is not in the excluded pincodes array
+      cityFilters.push({
+        "cityAvailability.pinCodes_excluded": { $not: { $in: [zipCode] } },
+      });
     }
 
-    // Handle home collection filter
-    if (home_collection !== undefined) {
-      query.homeCollectionChargeIncluded = home_collection === true;
+    // Add home collection availability filter if provided
+    if (homeAvailability !== undefined) {
+      cityFilters.push({
+        "cityAvailability.homeCollectionAvailable": homeAvailability === true,
+      });
     }
+
+    // Add the city filters to the main query if any were created
+    if (cityFilters.length > 0) {
+      query.$and = cityFilters;
+    }
+
+    console.log("Final query:", JSON.stringify(query, null, 2));
 
     // Execute the search query with pagination
     const page = parseInt(req.query.page) || 1;
@@ -390,30 +420,38 @@ const searchLabPackages = async (req, res) => {
 
     // Find lab packages with populated lab reference
     const labPackages = await LabPackage.find(query)
-      .populate("lab", "labName logo") // Populate lab information
+      .populate("labId", "labName logo") // Populate lab information
       .skip(skip)
       .limit(limit)
-      .sort({ testName: 1 });
+      .sort({ packageName: 1 });
 
     // Get total count for pagination info
     const totalPackages = await LabPackage.countDocuments(query);
 
-    // Return response
-    return res.status(200).json({
-      success: true,
-      count: labPackages.length,
-      total: totalPackages,
-      totalPages: Math.ceil(totalPackages / limit),
-      currentPage: page,
-      data: labPackages,
-    });
+    // Return response using the Response utility
+    return Response.success(
+      res,
+      {
+        packages: labPackages,
+        pagination: {
+          count: labPackages.length,
+          total: totalPackages,
+          totalPages: Math.ceil(totalPackages / limit),
+          currentPage: page,
+          perPage: limit,
+        },
+      },
+      200,
+      "Packages retrieved successfully"
+    );
   } catch (error) {
     console.error("Error searching lab packages:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      error.message || "Internal server error"
+    );
   }
 };
 
@@ -597,6 +635,96 @@ const getPackagesByCategoryOfPaticularLab = async (req, res) => {
   }
 };
 
+/**
+ * Get all packages for a specific lab
+ */
+const getAllPackagesOfLab = async (req, res) => {
+  try {
+    const { labId } = req.query;
+    // Add pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Validate labId
+    if (!labId) {
+      return Response.error(res, 400, AppConstant.FAILED, "Lab ID is required");
+    }
+
+    // Validate labId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(labId)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid lab ID format"
+      );
+    }
+
+    // Check if lab exists with minimal projection
+    const lab = await Lab.findById(labId, "_id labName");
+    if (!lab) {
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
+    }
+
+    const labIdObj = new mongoose.Types.ObjectId(labId);
+
+    // Use caching if available
+    const cacheKey = `lab_packages_${labId}_${page}_${limit}`;
+    const cachedData = await cacheManager.get(cacheKey);
+
+    if (cachedData) {
+      return Response.success(
+        res,
+        cachedData,
+        200,
+        "Lab packages retrieved from cache"
+      );
+    }
+
+    // Use projection to select only needed fields
+    const packages = await LabPackage.find({ labId: labIdObj })
+      .select(
+        "packageCode packageName category testIncluded sampleRequired preparationRequired cityAvailability normalPrice"
+      )
+      .skip(skip)
+      .limit(limit)
+      .sort({ packageName: 1 })
+      .lean();
+
+    // Get total count for pagination info
+    const totalPackages = await LabPackage.countDocuments({ labId: labIdObj });
+
+    const responseData = {
+      packages,
+      pagination: {
+        total: totalPackages,
+        totalPages: Math.ceil(totalPackages / limit),
+        currentPage: page,
+        perPage: limit,
+      },
+    };
+
+    // Cache the result
+    await cacheManager.set(cacheKey, responseData, 3600); // Cache for 1 hour
+
+    return Response.success(
+      res,
+      responseData,
+      200,
+      "Lab packages retrieved successfully"
+    );
+  } catch (err) {
+    console.error("Error in getAllPackagesOfLab:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error"
+    );
+  }
+};
+
 module.exports = {
   getAllCategoryOfPackageOfParticularLab,
   getAllTestOfParticularCategoryOfPackageOfParticularLab,
@@ -607,4 +735,5 @@ module.exports = {
   getPackagesByCategory,
   getAllPackagesOfParticularLab,
   getPackagesByCategoryOfPaticularLab,
+  getAllPackagesOfLab,
 };

@@ -92,7 +92,7 @@ router.patch(
  * Note: When availability is true, all pricing fields are required
  */
 router.patch(
-  "/admin/lab-partner/:labpartnerId/packages/:packageId/cities/change-status",
+  "/admin/lab-partner/:labId/packages/:packageId/city/:cityId/change-status",
   verifyToken,
   checkPermissions("UPDATE", "Employee"),
   updatePackageAvailabilityInCity
