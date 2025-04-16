@@ -326,21 +326,22 @@ const createLabPackage = async (req, res) => {
     if (testIncluded && Array.isArray(testIncluded)) {
       processedTestIncluded = testIncluded.map((test) => {
         if (typeof test === "string") {
-          return { tests: [test], parameters: [] };
+          return { test: test, parameters: [] };
         } else if (test.test) {
           return {
-            tests: Array.isArray(test.test) ? test.test : [test.test],
+            test: Array.isArray(test.test) ? test.test : test.test,
             parameters: test.parameters || [],
           };
         } else if (test.tests) {
           return {
-            tests: Array.isArray(test.tests) ? test.tests : [test.tests],
+            test: Array.isArray(test.tests) ? test.tests : test.tests,
             parameters: test.parameters || [],
           };
         }
         return { tests: [], parameters: [] };
       });
     }
+    console.log("processedTestIncluded", processedTestIncluded);
 
     // Create new lab package
     const newLabPackage = new LabPackage({
