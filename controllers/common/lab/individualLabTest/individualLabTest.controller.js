@@ -16,7 +16,7 @@ const {
 const createIndividualLabTest = async (req, res) => {
   try {
     const {
-      lab,
+      labId,
       category,
       testName,
       testCode,
@@ -32,17 +32,17 @@ const createIndividualLabTest = async (req, res) => {
     console.log("Request body for creating lab test:", req.body);
 
     // Basic validation checks
-    if (!lab || !testName || !testCode || !category) {
+    if (!labId || !testName || !testCode || !category) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "Required fields missing: lab, testName, testCode, and category are required"
+        "Required fields missing: labId, testName, testCode, and category are required"
       );
     }
 
     // Validate lab ID
-    if (!mongoose.Types.ObjectId.isValid(lab)) {
+    if (!mongoose.Types.ObjectId.isValid(labId)) {
       return Response.error(
         res,
         400,
@@ -52,7 +52,7 @@ const createIndividualLabTest = async (req, res) => {
     }
 
     // Check if lab exists
-    const labExists = await Lab.findById(lab);
+    const labExists = await Lab.findById(labId);
     if (!labExists) {
       return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
@@ -60,7 +60,7 @@ const createIndividualLabTest = async (req, res) => {
     // Check if a test with the same code already exists for this lab
     const existingTest = await IndividualLabTest.findOne({
       testCode: testCode.trim(),
-      lab,
+      lab: labId,
     });
 
     if (existingTest) {
@@ -174,7 +174,10 @@ const createIndividualLabTest = async (req, res) => {
             continue;
           }
 
-          if (!cityData.discountPercentage && cityData.discountPercentage !== 0) {
+          if (
+            !cityData.discountPercentage &&
+            cityData.discountPercentage !== 0
+          ) {
             errors.push(
               `City-specific discount percentage is required for ${cityDocument.cityName}`
             );
@@ -193,7 +196,9 @@ const createIndividualLabTest = async (req, res) => {
             partnerRate: parseFloat(cityData.partnerRate || 0),
             prevaCarePrice: parseFloat(cityData.prevaCarePrice || 0),
             discountPercentage: parseFloat(cityData.discountPercentage || 0),
-            homeCollectionCharge: parseFloat(cityData.homeCollectionCharge || 0),
+            homeCollectionCharge: parseFloat(
+              cityData.homeCollectionCharge || 0
+            ),
             homeCollectionAvailable:
               cityData.homeCollectionAvailable !== undefined
                 ? Boolean(cityData.homeCollectionAvailable)
@@ -242,7 +247,7 @@ const createIndividualLabTest = async (req, res) => {
 
     // Create new lab test
     const newLabTest = new IndividualLabTest({
-      lab,
+      lab: labId,
       testName: testName.trim(),
       testCode: testCode.trim(),
       desc: desc || "",
@@ -409,12 +414,20 @@ const searchIndividualLabTest = async (req, res) => {
       name,
       category,
       code,
+      ageGroup,
+      gender,
       minPrice,
       maxPrice,
-      city,
+      cityName,
+      state,
       zipCode,
-      home_collection,
+      homeCollectionAvailable,
+      isActive,
+      minDiscount,
+      lab,
     } = req.body;
+
+    console.log("Search parameters for individual lab test:", req.body);
 
     // Build the search query object
     const query = {};
@@ -432,34 +445,127 @@ const searchIndividualLabTest = async (req, res) => {
       query.testCode = { $regex: new RegExp(code, "i") };
     }
 
+    if (ageGroup) {
+      query.ageGroup = { $regex: new RegExp(ageGroup, "i") };
+    }
+
+    if (lab) {
+      query.lab = mongoose.Types.ObjectId.isValid(lab) ? lab : null;
+    }
+
+    if (gender) {
+      // Handle gender search (both, male, female)
+      if (gender.toLowerCase() === "both") {
+        // If searching for 'both', find tests for both or either gender
+        query.gender = { $in: ["both", "male", "female"] };
+      } else {
+        // If searching for specific gender, find tests for that gender or 'both'
+        query.gender = { $in: [gender.toLowerCase(), "both"] };
+      }
+    }
+
     // Handle price range
-    if (minPrice || maxPrice) {
-      query.prevaCarePrice = {};
-      if (minPrice) query.prevaCarePrice.$gte = Number(minPrice);
-      if (maxPrice) query.prevaCarePrice.$lte = Number(maxPrice);
-    }
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      query["cityAvailability.prevaCarePrice"] = {};
 
-    // Handle location search
-    if (city || zipCode) {
-      const cityQuery = {};
-      if (city) {
-        cityQuery.cityName = { $regex: new RegExp(city, "i") };
-      }
-      if (zipCode) {
-        cityQuery.pincode = zipCode;
+      if (minPrice !== undefined) {
+        query["cityAvailability.prevaCarePrice"].$gte = Number(minPrice);
       }
 
-      const cities = await City.find(cityQuery);
-      const cityIds = cities.map((city) => city._id);
-
-      query["cityAvailability.cityId"] = { $in: cityIds };
+      if (maxPrice !== undefined) {
+        query["cityAvailability.prevaCarePrice"].$lte = Number(maxPrice);
+      }
     }
 
-    // Handle home collection filter
-    if (home_collection !== undefined) {
-      query["cityAvailability.homeCollectionAvailable"] =
-        home_collection === "true";
+    // Handle minimum discount percentage
+    if (minDiscount !== undefined) {
+      query["cityAvailability.discountPercentage"] = {
+        $gte: Number(minDiscount),
+      };
     }
+
+    // Filter by active status if provided
+    if (isActive !== undefined) {
+      query["cityAvailability.isActive"] = isActive === true;
+    }
+
+    // Add city filters if provided
+    let cityFilters = [];
+
+    if (cityName || state) {
+      // Create a city filter condition
+      let cityFilter = {};
+
+      if (cityName) {
+        // Find matching cities first
+        const cities = await City.find({
+          cityName: { $regex: new RegExp(cityName, "i") },
+        });
+
+        const cityIds = cities.map((city) => city._id);
+        if (cityIds.length > 0) {
+          cityFilter["cityAvailability.cityId"] = { $in: cityIds };
+        }
+      }
+
+      if (state) {
+        // Find cities in this state
+        const citiesInState = await City.find({
+          state: { $regex: new RegExp(state, "i") },
+        });
+
+        const stateIds = citiesInState.map((city) => city._id);
+        if (stateIds.length > 0) {
+          cityFilter["cityAvailability.cityId"] = { $in: stateIds };
+        }
+      }
+
+      if (Object.keys(cityFilter).length > 0) {
+        cityFilters.push(cityFilter);
+      }
+    }
+
+    // Add zipCode filter if provided
+    if (zipCode) {
+      const citiesWithZipCode = await City.find({ pincode: zipCode });
+      if (citiesWithZipCode.length > 0) {
+        const zipCodeCityIds = citiesWithZipCode.map((city) => city._id);
+        cityFilters.push({
+          "cityAvailability.cityId": { $in: zipCodeCityIds },
+        });
+      } else {
+        // If no cities match this zip code, return empty results
+        return Response.success(
+          res,
+          {
+            tests: [],
+            pagination: {
+              total: 0,
+              totalPages: 0,
+              currentPage: 1,
+              perPage: 10,
+            },
+          },
+          200,
+          "No tests found for the specified zipCode"
+        );
+      }
+    }
+
+    // Add home collection availability filter if provided
+    if (homeCollectionAvailable !== undefined) {
+      cityFilters.push({
+        "cityAvailability.homeCollectionAvailable":
+          homeCollectionAvailable === true,
+      });
+    }
+
+    // Add the city filters to the main query if any were created
+    if (cityFilters.length > 0) {
+      query.$and = cityFilters;
+    }
+
+    console.log("Final query:", JSON.stringify(query, null, 2));
 
     // Execute the search query with pagination
     const page = parseInt(req.query.page) || 1;
@@ -467,7 +573,7 @@ const searchIndividualLabTest = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const tests = await IndividualLabTest.find(query)
-      .populate("lab", "name email phone address logo")
+      .populate("lab", "labName email contactNumber address logo")
       .populate("cityAvailability.cityId")
       .skip(skip)
       .limit(limit)
@@ -481,6 +587,7 @@ const searchIndividualLabTest = async (req, res) => {
       {
         tests,
         pagination: {
+          count: tests.length,
           total: totalTests,
           totalPages: Math.ceil(totalTests / limit),
           currentPage: page,
@@ -491,6 +598,7 @@ const searchIndividualLabTest = async (req, res) => {
       "Tests retrieved successfully"
     );
   } catch (err) {
+    console.error("Error searching individual lab tests:", err);
     return Response.error(
       res,
       500,

@@ -68,7 +68,7 @@ router.patch(
 
 /**
  * Update test availability and pricing for multiple cities
- * PATCH /admin/lab-partner/:labpartnerId/tests/:testId/cities/change-status
+ * PATCH /admin/lab-partner/:labpartnerId/tests/:testId/city/:cityId/change-status
  * Requirements: Auth token, Partner/Test IDs, Array of city updates
  * Body format: Array of objects with:
  * - cityId or pinCode
@@ -77,7 +77,7 @@ router.patch(
  *   prevaCarePrice, discountPercentage, homeCollectionCharge, homeCollectionAvailable
  */
 router.patch(
-  "/admin/lab-partner/:labpartnerId/tests/:testId/cities/change-status",
+  "/admin/lab-partner/:labpartnerId/tests/:testId/city/:cityId/change-status",
   verifyToken,
   checkPermissions("UPDATE", "Employee"),
   updateTestAvailabilityInCity
