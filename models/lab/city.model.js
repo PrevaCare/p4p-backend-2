@@ -13,6 +13,11 @@ const citySchema = new mongoose.Schema(
       required: [true, "State is required"],
       trim: true,
     },
+    pincode: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     pinCodes_excluded: {
       type: [String],
       default: [],

@@ -13,18 +13,17 @@ const {
   getBothLabReportOfAllUsers,
   getAllLabReportFromP4p,
 } = require("../../../../controllers/common/lab/labReport/getLabReport.controller.js");
+const {
+  getPaginatedLabReportsByUserId,
+  getLabReportPdf,
+} = require("../../../../controllers/common/lab/labReport/getPaginatedLabReport.controller.js");
 
 const {
   checkPermissions,
   verifyToken,
 } = require("../../../../middlewares/jwt/permission.js");
-const { upload } = require("../../../../middlewares/uploads/multerConfig.js");
-const {
-  searchRateLimit,
-  retrievalRateLimit,
-  modificationRateLimit,
-  uploadRateLimit,
-} = require("../../../../helper/rateLimitOnRoute/labApiRateLimit.route");
+const { upload, pdfUpload, anyFileUpload } = require("../../../../middlewares/uploads/multerConfig.js");
+const { uploadRateLimit, retrievalRateLimit } = require("../../../../helper/rateLimitOnRoute/labApiRateLimit.route.js");
 
 router.post(
   "/app/lab-report",
@@ -35,7 +34,7 @@ router.post(
 );
 router.post(
   "/admin/lab-report",
-  upload.fields([
+  anyFileUpload.fields([
     { name: "logo", maxCount: 1 },
     { name: "labReportFile", maxCount: 1 },
   ]),
@@ -76,6 +75,19 @@ router.get(
   checkPermissions("READ", "Employee"), // admin and doctor
   retrievalRateLimit,
   getAllLabReportFromP4p
+);
+
+// New routes for paginated lab reports
+router.get(
+  "/admin/lab-reports/:userId",
+  verifyToken,
+  getPaginatedLabReportsByUserId
+);
+
+router.get(
+  "/admin/lab-report/:reportId/pdf",
+  verifyToken,
+  getLabReportPdf
 );
 
 module.exports = router;
