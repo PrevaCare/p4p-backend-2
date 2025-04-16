@@ -13,7 +13,7 @@ const Response = require("../../../utils/Response");
 const getTestDetails = async (req, res) => {
   try {
     const { testCode } = req.params;
-
+    console.log("testCode", testCode);
     if (!testCode) {
       return Response.error(
         res,

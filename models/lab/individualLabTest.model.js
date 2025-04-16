@@ -19,6 +19,10 @@ const cityAvailabilitySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  pincode: {
+    type: String,
+    default: "",
+  },
   pinCodes_excluded: {
     type: [String],
     default: [],
@@ -89,7 +93,7 @@ const individualLabTestSchema = new mongoose.Schema(
       required: [true, "Test name is required!"],
       trim: true,
     },
-    testIncluded: testIncludedSchema,
+    testIncluded: [testIncludedSchema],
     sampleRequired: [String],
     preparationRequired: [String],
     gender: {

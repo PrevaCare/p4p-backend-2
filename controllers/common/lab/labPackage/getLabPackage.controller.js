@@ -36,6 +36,7 @@ const getAllCategoryOfPackageOfParticularLab = async (req, res) => {
 
     // Get distinct categories for this lab
     const categories = await LabPackage.distinct("category", { labId });
+    console.log("categories", categories);
 
     return Response.success(
       res,
@@ -125,7 +126,7 @@ const getAllTestOfParticularCategoryOfPackageOfParticularLab = async (
 
 const getSingleLabPackageDetailsById = async (req, res) => {
   try {
-    const { packageId } = req.body;
+    const { packageId } = req.query;
     const { labId } = req.params;
     console.log(packageId, labId);
     // Strict validation for required fields

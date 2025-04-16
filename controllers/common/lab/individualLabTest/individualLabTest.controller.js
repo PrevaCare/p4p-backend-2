@@ -15,49 +15,41 @@ const {
  */
 const createIndividualLabTest = async (req, res) => {
   try {
-    const { lab, category, testName, testCode, cityAvailability } = req.body;
+    const {
+      lab,
+      category,
+      testName,
+      testCode,
+      desc,
+      testIncluded,
+      sampleRequired,
+      preparationRequired,
+      gender,
+      ageGroup,
+      cityAvailability = [],
+    } = req.body;
 
-    // Pre-validation checks to provide more specific error messages
-    if (!testName || testName.trim() === "") {
+    console.log("Request body for creating lab test:", req.body);
+
+    // Basic validation checks
+    if (!lab || !testName || !testCode || !category) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "Test name is required XYZ."
+        "Required fields missing: lab, testName, testCode, and category are required"
       );
     }
 
-    if (!lab) {
+    // Validate lab ID
+    if (!mongoose.Types.ObjectId.isValid(lab)) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        "Lab ID is required."
+        "Invalid Lab ID format"
       );
     }
-
-    if (!testCode) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        "Test code is required."
-      );
-    }
-    console.log(req.body);
-
-    // Now validate the entire request body
-    const { error } = individualLabTestValidationSchema.validate(req.body);
-    if (error) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        error.message || "Validation failed!"
-      );
-    }
-
-    const lowerCaseCategory = category.toLowerCase();
 
     // Check if lab exists
     const labExists = await Lab.findById(lab);
@@ -65,74 +57,205 @@ const createIndividualLabTest = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
 
-    // Check if a test with the same code already exists
+    // Check if a test with the same code already exists for this lab
     const existingTest = await IndividualLabTest.findOne({
-      testCode,
+      testCode: testCode.trim(),
       lab,
     });
 
     if (existingTest) {
       return Response.error(
         res,
-        400,
+        409,
         AppConstant.FAILED,
         "A test with this code already exists for this lab!"
       );
     }
 
-    // Process city availability - Convert pinCodes to cityIds
-    const updatedCityAvailability = [];
+    // Process city availability
+    const processedCityAvailability = [];
+    const unavailableCities = [];
+    const errors = [];
 
-    if (Array.isArray(cityAvailability) && cityAvailability.length > 0) {
-      for (const city of cityAvailability) {
-        const { cityName, pinCode } = city;
+    if (cityAvailability && cityAvailability.length > 0) {
+      // Get lab's available cities
+      const labAvailableCities = labExists.availableCities || [];
 
-        if (!cityName || !pinCode) {
-          return Response.error(
-            res,
-            400,
-            AppConstant.FAILED,
-            "City name and pinCode are required for all cities"
-          );
+      for (const cityData of cityAvailability) {
+        try {
+          let cityId = cityData.cityId;
+          let cityDocument;
+          let matchingLabCity;
+
+          // Case 1: Direct cityId is provided
+          if (cityId && mongoose.Types.ObjectId.isValid(cityId)) {
+            cityDocument = await City.findById(cityId);
+            if (!cityDocument) {
+              errors.push(`City with ID ${cityId} does not exist`);
+              continue;
+            }
+
+            matchingLabCity = labAvailableCities.find(
+              (city) => city.cityId.toString() === cityId.toString()
+            );
+          }
+          // Case 2: cityName and state are provided
+          else if (cityData.cityName && cityData.state) {
+            const normalizedCityName = cityData.cityName.toLowerCase().trim();
+            const normalizedState = cityData.state.toLowerCase().trim();
+
+            console.log(
+              "Looking for city:",
+              normalizedCityName,
+              normalizedState
+            );
+
+            matchingLabCity = labAvailableCities.find(
+              (city) =>
+                city.cityName.toLowerCase().trim() === normalizedCityName &&
+                city.state.toLowerCase().trim() === normalizedState
+            );
+
+            if (!matchingLabCity) {
+              // Try to find if the city exists in the City collection
+              cityDocument = await City.findOne({
+                cityName: normalizedCityName,
+                state: normalizedState,
+              });
+
+              if (cityDocument) {
+                unavailableCities.push(
+                  `${cityData.cityName}, ${cityData.state}`
+                );
+                continue; // Skip this city as it's not in lab's available cities
+              } else {
+                errors.push(
+                  `City ${cityData.cityName}, ${cityData.state} not found in database`
+                );
+                continue;
+              }
+            } else {
+              cityId = matchingLabCity.cityId;
+              cityDocument = await City.findById(cityId);
+
+              if (!cityDocument) {
+                errors.push(
+                  `City referenced in lab's availableCities does not exist in City collection`
+                );
+                continue;
+              }
+            }
+          } else {
+            errors.push(
+              "Each city must have either a valid cityId or both cityName and state"
+            );
+            continue;
+          }
+
+          // Validate required pricing fields
+          if (!cityData.billingRate) {
+            errors.push(
+              `City-specific lab selling price (billingRate) is required for ${cityDocument.cityName}`
+            );
+            continue;
+          }
+
+          if (!cityData.partnerRate) {
+            errors.push(
+              `City-specific offered price to PrevaCare (partnerRate) is required for ${cityDocument.cityName}`
+            );
+            continue;
+          }
+
+          if (!cityData.prevaCarePrice) {
+            errors.push(
+              `City-specific PrevaCare price (prevaCarePrice) is required for ${cityDocument.cityName}`
+            );
+            continue;
+          }
+
+          if (!cityData.discountPercentage && cityData.discountPercentage !== 0) {
+            errors.push(
+              `City-specific discount percentage is required for ${cityDocument.cityName}`
+            );
+            continue;
+          }
+
+          // Add to processed list with all required fields
+          const cityEntry = {
+            cityId: cityDocument._id,
+            cityName: cityDocument.cityName,
+            state: cityDocument.state,
+            pinCodes_excluded: cityData.pinCodes_excluded || [],
+            regions_excluded: cityData.regions_excluded || [],
+            isActive: cityData.isActive !== false,
+            billingRate: parseFloat(cityData.billingRate || 0),
+            partnerRate: parseFloat(cityData.partnerRate || 0),
+            prevaCarePrice: parseFloat(cityData.prevaCarePrice || 0),
+            discountPercentage: parseFloat(cityData.discountPercentage || 0),
+            homeCollectionCharge: parseFloat(cityData.homeCollectionCharge || 0),
+            homeCollectionAvailable:
+              cityData.homeCollectionAvailable !== undefined
+                ? Boolean(cityData.homeCollectionAvailable)
+                : parseFloat(cityData.homeCollectionCharge || 0) > 0,
+          };
+
+          processedCityAvailability.push(cityEntry);
+        } catch (cityError) {
+          console.error("Error processing city:", cityError);
+          errors.push(`Error processing city: ${cityError.message}`);
         }
-
-        // Find city by pincode
-        const cityDoc = await City.findOne({
-          pincode: pinCode,
-          cityName: { $regex: new RegExp(cityName, "i") },
-        });
-
-        if (!cityDoc) {
-          return Response.error(
-            res,
-            400,
-            AppConstant.FAILED,
-            `City '${cityName}' with pincode '${pinCode}' not found!`
-          );
-        }
-
-        // Add city to the availability array with the correct cityId
-        updatedCityAvailability.push({
-          ...city,
-          cityId: cityDoc._id,
-        });
       }
     }
 
-    // Create the modified request body
-    const modifiedBody = {
-      ...req.body,
-      category: lowerCaseCategory,
-      cityAvailability: updatedCityAvailability,
-    };
+    // Return errors if any
+    if (errors.length > 0) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        `Validation errors: ${errors.join("; ")}`
+      );
+    }
 
-    // Create a new IndividualLabTest instance with the updated city availability
-    const newTest = new IndividualLabTest(modifiedBody);
+    // Return warning if some cities are unavailable
+    if (unavailableCities.length > 0) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        `Your lab does not deliver to these cities: ${unavailableCities.join(
+          ", "
+        )}. Please add these cities to the parent lab first.`
+      );
+    }
 
-    const savedTest = await newTest.save();
+    // Process testIncluded if provided
+    let processedTestIncluded = testIncluded;
+    if (testIncluded && Array.isArray(testIncluded)) {
+      processedTestIncluded = testIncluded.map((test) => ({
+        test: typeof test === "string" ? test : test.test || "",
+        parameters: Array.isArray(test.parameters) ? test.parameters : [],
+      }));
+    }
+    console.log("processedTestIncluded", processedTestIncluded);
 
-    // Update lab's test count
-    await Lab.findByIdAndUpdate(lab, { $inc: { testCount: 1 } });
+    // Create new lab test
+    const newLabTest = new IndividualLabTest({
+      lab,
+      testName: testName.trim(),
+      testCode: testCode.trim(),
+      desc: desc || "",
+      category: category.toLowerCase().trim(),
+      testIncluded: processedTestIncluded,
+      sampleRequired: sampleRequired || [],
+      preparationRequired: preparationRequired || [],
+      gender: gender || "both",
+      ageGroup: ageGroup || "all age group",
+      cityAvailability: processedCityAvailability,
+    });
+
+    const savedTest = await newLabTest.save();
 
     return Response.success(
       res,
@@ -142,6 +265,17 @@ const createIndividualLabTest = async (req, res) => {
     );
   } catch (err) {
     console.error("Error creating lab test:", err);
+
+    // Handle duplicate key error
+    if (err.code === 11000) {
+      return Response.error(
+        res,
+        409,
+        AppConstant.FAILED,
+        "Duplicate entry found"
+      );
+    }
+
     return Response.error(
       res,
       500,
@@ -439,7 +573,7 @@ const getAllTestOfParticularLab = async (req, res) => {
       .select(
         "testCode testName category sampleRequired preparationRequired cityAvailability"
       )
-      .populate("cityAvailability.cityId", "cityName pincode")
+      .populate("cityAvailability.cityId", "cityName state")
       .lean()
       .skip(skip)
       .limit(limit)
@@ -573,17 +707,17 @@ const getAllCategoriesOfTestsOfParticularLab = async (req, res) => {
     const cacheKey = `lab_categories_${labId}`;
     const cachedCategories = cacheManager.get(cacheKey);
 
-    if (cachedCategories) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return Response.success(
-        res,
-        cachedCategories,
-        200,
-        "All categories of lab tests found successfully (cached)!"
-      );
-    }
+    // if (cachedCategories) {
+    //   console.log(`Cache hit for ${cacheKey}`);
+    //   return Response.success(
+    //     res,
+    //     cachedCategories,
+    //     200,
+    //     "All categories of lab tests found successfully (cached)!"
+    //   );
+    // }
 
-    console.log(`Cache miss for ${cacheKey}, fetching from database`);
+    // console.log(`Cache miss for ${cacheKey}, fetching from database`);
 
     // Use MongoDB aggregation for better performance
     const categories = await IndividualLabTest.aggregate([
