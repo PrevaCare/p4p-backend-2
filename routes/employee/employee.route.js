@@ -21,6 +21,9 @@ const {
 } = require("../../controllers/patient/riskAssessments/strokeRiskCalculate.controller");
 const { verifyToken } = require("../../middlewares/jwt/permission");
 const { upload } = require("../../middlewares/uploads/multerConfig");
+const {
+  getUserHealthEngagement,
+} = require("../../controllers/employee/employeeHealthEngagement.controller");
 
 const router = require("express").Router();
 
@@ -101,5 +104,8 @@ router.post(
   upload.fields([{ name: "employees", maxCount: 1 }]),
   addCorporateEmployeesThroughExcel
 );
+
+// <========= user health engagement =========>
+router.post("/user/health-engagement", getUserHealthEngagement);
 
 module.exports = router;
