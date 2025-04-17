@@ -15,15 +15,15 @@ const PatientAppointmentPaymentSchema = new mongoose.Schema(
     },
     razorpayPaymentLinkId: {
       type: String,
-      required: function () {
-        return this.createdBy === "Doctor" || this.createdBy === "Superadmin"; // Required if razorpayOrderId is not present
-      },
+      // required: function () {
+      //   return this.createdBy === "Doctor" || this.createdBy === "Superadmin"; // Required if razorpayOrderId is not present
+      // },
     },
     razorpayOrderId: {
       type: String,
-      required: function () {
-        return this.createdBy === "Doctor" || this.createdBy === "Superadmin"; // Required if razorpayOrderId is not present
-      },
+      // required: function () {
+      //   return this.createdBy === "Doctor" || this.createdBy === "Superadmin"; // Required if razorpayOrderId is not present
+      // },
     },
     razorpayPaymentId: {
       type: String,

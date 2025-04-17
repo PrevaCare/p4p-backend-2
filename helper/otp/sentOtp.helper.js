@@ -82,4 +82,85 @@ const sendMessage = async (mobile, templateId) => {
     return new Error(error);
   }
 };
-module.exports = { sendOtp, sendMessage };
+
+const sendBookingMsgToDoctor = async (mobile, patientname, appointmentDate, startTime, endTime) => {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const senderId = process.env.MSG91_SENDER_ID;
+  const route = process.env.MSG91_ROUTE;
+  const templateId = process.env.MSG91_APPOINTMENT_BOOKED_TEMPLATE_ID_FOR_DOCTOR;
+
+  const url = `https://control.msg91.com/api/v5/flow/`;
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        flow_id: templateId,
+        recipients: [
+          {
+            mobiles: `91${mobile}`,
+          },
+        ],
+        sender: senderId,
+        authkey: authKey,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.data.type === "success") {
+      console.log("Booking msg sent successfully!");
+      return true;
+    } else {
+      //   return new Error(response.data);
+      throw new Error(response.data);
+    }
+  } catch (error) {
+    return new Error(error);
+  }
+};
+
+
+const sendBookingMsgToPatient = async (mobile, doctorName, appointmentDate, startTime, endTime) => {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const senderId = process.env.MSG91_SENDER_ID;
+  const route = process.env.MSG91_ROUTE;
+  const templateId = process.env.MSG91_APPOINTMENT_BOOKED_TEMPLATE_ID_FOR_PATIENT;
+
+  const url = `https://control.msg91.com/api/v5/flow/`;
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        flow_id: templateId,
+        recipients: [
+          {
+            mobiles: `91${mobile}`,
+          },
+        ],
+        sender: senderId,
+        authkey: authKey,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.data.type === "success") {
+      console.log("Booking msg sent successfully!");
+      return true;
+    } else {
+      //   return new Error(response.data);
+      throw new Error(response.data);
+    }
+  } catch (error) {
+    return new Error(error);
+  }
+};
+module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor };

@@ -16,8 +16,10 @@ const notificationsModel = require("../../models/notificationSystem/notification
 const {
   appointmentCancellationTemplate,
 } = require("../../utils/notifications/superadminNotification.utils");
+const { appointmentBookedTemplate } = require("../../utils/notifications/doctorNotification.utils");
 const dayjs = require("dayjs");
 const customParseFormat = require("dayjs/plugin/customParseFormat");
+const { sendBookingMsgToPatient } = require("../../helper/otp/sentOtp.helper");
 
 // Extend Day.js with custom parsing for HH:mm format
 dayjs.extend(customParseFormat);
@@ -39,7 +41,7 @@ const decrementTeleconsultationCount = async (existingUser, session) => {
   const planModel =
     userRole === "Employee" ? employeePlanModel : individualUserPlanModel;
 
-    
+
   const plan = await planModel.findOneAndUpdate(
     userRole === "Employee"
       ? { employeeId: existingUser._id, ...query }
@@ -322,7 +324,7 @@ const createNewPatientAppointment2 = async (req, res) => {
           : paymentLinkResponse.id,
       razorpayPaymentLinkId:
         role === "Doctor" || role === "Superadmin"
-          ? paymentLinkResponse.id
+          ? paymentLinkResponse?.id ? paymentLinkResponse.id : null
           : null,
       amount: existingDoctor.consultationFees,
       currency: "INR",
@@ -331,8 +333,25 @@ const createNewPatientAppointment2 = async (req, res) => {
     await paymentRecord.save({ session });
 
     await session.commitTransaction();
-    // session.endSession();
 
+
+    const notifications = appointmentBookedTemplate(
+      `${existingUser.firstName} ${existingUser.lastName}`,
+      req.body.doctorId,
+      req.body.appointmentDate,
+      req.body.startTime,
+      req.body.endTime,
+      req.body.consultationType,
+      req.body.symptoms,
+      req.body.symptomsInDetail,
+      existingUser.phone,
+      `${existingDoctor.firstName} ${existingDoctor.lastName}`,
+
+    );
+    await notificationsModel.create(notifications);
+    await sendBookingMsgToPatient(existingUser.phone, `${existingDoctor.firstName} ${existingDoctor.lastName}`, req.body.appointmentDate, req.body.startTime, req.body.endTime);
+    await sendBookingMsgToDoctor(existingDoctor.phone, `${existingUser.firstName} ${existingUser.lastName}`, req.body.appointmentDate, req.body.startTime, req.body.endTime);
+    // session.endSession();
     return Response.success(
       res,
       {
@@ -571,8 +590,7 @@ const cancelAndRefundAppointment = async (req, res) => {
         // refundResponse,
       },
       200,
-      `Appointment cancelled ${
-        paymentRecord && "and refund initiated"
+      `Appointment cancelled ${paymentRecord && "and refund initiated"
       } successfully!   `
     );
   } catch (err) {
