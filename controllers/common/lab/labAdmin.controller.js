@@ -209,14 +209,14 @@ const parseAndValidateCityArrays = (item) => {
     : [];
   const homeCollectionCharges = item["Home Collection Charges"]
     ? item["Home Collection Charges"]
-        .split(",")
-        .map((charge) => parseFloat(charge.trim()) || 0)
+      .split(",")
+      .map((charge) => parseFloat(charge.trim()) || 0)
     : [];
   const homeCollectionAvailable = item["Home Collection available"]
     ? item["Home Collection available"].split(",").map((avail) => {
-        const val = avail.trim().toLowerCase();
-        return val === "true" || val === "yes" || val === "1";
-      })
+      const val = avail.trim().toLowerCase();
+      return val === "true" || val === "yes" || val === "1";
+    })
     : [];
 
   // Validate array lengths
@@ -262,8 +262,7 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
 
   if (!isValid) {
     console.warn(
-      `Invalid city data format in ${isPackage ? "package" : "test"} row: ${
-        item[isPackage ? "Package Code" : "Test Code"]
+      `Invalid city data format in ${isPackage ? "package" : "test"} row: ${item[isPackage ? "Package Code" : "Test Code"]
       }`
     );
     return cityAvailability;
@@ -277,7 +276,7 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
     const existingCity = labPartner.availableCities?.find(
       (city) =>
         city.cityName.toLowerCase().trim() ===
-          cityNames[i].toLowerCase().trim() && city.PinCode === pincodes[i]
+        cityNames[i].toLowerCase().trim() && city.PinCode === pincodes[i]
     );
 
     if (existingCity) {
@@ -287,8 +286,8 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
       const discountPercentage =
         prevaCarePrice > 0
           ? Math.round(
-              ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
-            )
+            ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+          )
           : 0;
 
       cityAvailability.push({
@@ -463,8 +462,8 @@ const importLabTests = async (req, res) => {
             const discountPercentage =
               prevaCarePrice > 0
                 ? Math.round(
-                    ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
-                  )
+                  ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+                )
                 : 0;
 
             // Parse home collection availability and charge
@@ -473,8 +472,8 @@ const importLabTests = async (req, res) => {
               row["Home Collection available"];
             const homeCollectionCharge = parseFloat(
               row["Home Collection Charge"] ||
-                row["Home Collection Charges"] ||
-                0
+              row["Home Collection Charges"] ||
+              0
             );
 
             const cityData = {
@@ -665,8 +664,7 @@ const importLabPackages = async (req, res) => {
     }
 
     console.log(
-      `Grouped ${csvData.length} rows into ${
-        Object.keys(packageGroups).length
+      `Grouped ${csvData.length} rows into ${Object.keys(packageGroups).length
       } packages`
     );
 
@@ -731,8 +729,8 @@ const importLabPackages = async (req, res) => {
             const discountPercentage =
               prevaCarePrice > 0
                 ? Math.round(
-                    ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
-                  )
+                  ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+                )
                 : 0;
 
             // Add this city to the availability array
@@ -771,13 +769,13 @@ const importLabPackages = async (req, res) => {
         // Parse tests included
         const testsIncluded = firstRow["Tests Included"]
           ? firstRow["Tests Included"]
-              .split(",")
-              .map((test) => test.trim())
-              .filter((test) => test)
-              .map((test) => ({
-                test: test,
-                parameters: [],
-              }))
+            .split(",")
+            .map((test) => test.trim())
+            .filter((test) => test)
+            .map((test) => ({
+              test: test,
+              parameters: [],
+            }))
           : [];
 
         console.log("Raw package data for:", {
@@ -1076,6 +1074,7 @@ const updateTestAvailabilityInCity = async (req, res) => {
     }
 
     // Check if this city is in the lab's available cities
+    console.log("lab.availableCities", lab.availableCities, cityId);
     const isCityAvailableInLab = lab.availableCities.some(
       (availableCity) => availableCity.cityId.toString() === cityId
     );
@@ -1216,18 +1215,18 @@ const updateTestAvailabilityInCity = async (req, res) => {
         },
         updatedCity: updatedCity
           ? {
-              cityId: city._id,
-              cityName: city.cityName,
-              state: city.state,
-              isActive: updatedCity.isActive,
-              isAvailable: updatedCity.isAvailable,
-              billingRate: updatedCity.billingRate,
-              partnerRate: updatedCity.partnerRate,
-              prevaCarePrice: updatedCity.prevaCarePrice,
-              discountPercentage: updatedCity.discountPercentage,
-              homeCollectionCharge: updatedCity.homeCollectionCharge,
-              homeCollectionAvailable: updatedCity.homeCollectionAvailable,
-            }
+            cityId: city._id,
+            cityName: city.cityName,
+            state: city.state,
+            isActive: updatedCity.isActive,
+            isAvailable: updatedCity.isAvailable,
+            billingRate: updatedCity.billingRate,
+            partnerRate: updatedCity.partnerRate,
+            prevaCarePrice: updatedCity.prevaCarePrice,
+            discountPercentage: updatedCity.discountPercentage,
+            homeCollectionCharge: updatedCity.homeCollectionCharge,
+            homeCollectionAvailable: updatedCity.homeCollectionAvailable,
+          }
           : null,
         cityCount: savedTest.cityAvailability.length,
       },
