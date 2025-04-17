@@ -1,30 +1,29 @@
 const mongoose = require("mongoose");
-const Employee = require("../../../models/patient/employee/employee.model");
-const EMR = require("../models/../../../models/common/emr.model");
-const HealthScore = require("../../../models/patient/healthScore/healthScore.model");
-const PatientBmi = require("../../../models/patient/healthTracker/bmi/patientBmi.model");
-const PatientBp = require("../../../models/patient/healthTracker/bp/patientBp.model");
-const PatientWaterIntake = require("../../../models/patient/healthTracker/waterIntake/patientWaterIntake.model");
-const PatientMood = require("../../../models/patient/healthTracker/mood/patientMood.model");
-const PatientBloodGlucose = require("../../../models/patient/healthTracker/bloodGlucose/bloodGlucose.model");
-const PatientSleep = require("../../../models/patient/healthTracker/sleep/patientSleep.model");
-const Response = require("../../../utils/Response");
-const AppConstant = require("../../../utils/AppConstant");
+const AppConstant = require("../../utils/AppConstant");
+const Response = require("../../utils/Response");
+const Employee = require("../../models/patient/employee/employee.model");
+const PatientBmi = require("../../models/patient/healthTracker/bmi/patientBmi.model");
+const PatientBp = require("../../models/patient/healthTracker/bp/patientBp.model");
+const PatientWaterIntake = require("../../models/patient/healthTracker/waterIntake/patientWaterIntake.model");
+const PatientMood = require("../../models/patient/healthTracker/mood/patientMood.model");
+const PatientBloodGlucose = require("../../models/patient/healthTracker/bloodGlucose/bloodGlucose.model");
+const PatientSleep = require("../../models/patient/healthTracker/sleep/patientSleep.model");
 
-const corporateDashboardTable = async (req, res) => {
+/**
+ * Get health engagement metrics for a specific employee/user
+ * @route GET /api/user/health-engagement
+ */
+const getUserHealthEngagement = async (req, res) => {
   try {
-    const { corporateId, limit = 10 } = req.body;
-    console.log("Corporate ID:", corporateId);
-    console.log("Limit:", limit);
-    console.log("Request Body:", req.body);
+    const { employeeId } = req.body;
 
     // Validate required fields
-    if (!corporateId) {
+    if (!employeeId) {
       return Response.error(
         res,
-        404,
+        400,
         AppConstant.FAILED,
-        "Corporate Id is missing!"
+        "Employee ID is required"
       );
     }
 
@@ -32,39 +31,16 @@ const corporateDashboardTable = async (req, res) => {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    console.log("Looking for records after date:", oneWeekAgo);
-
-    // Debug the database for a specific user
-    const debugUserId = "6745972f0ad688f88d0d8704";
-
-    // Check if BMI records exist for this user
-    const bmiTest = await PatientBmi.find({
-      patientId: new mongoose.Types.ObjectId(debugUserId),
-    }).sort({ date: -1 });
-    console.log("BMI Test Records found:", bmiTest.length);
-    if (bmiTest.length > 0) {
-      console.log("Sample BMI record:", bmiTest[0]);
+    // Check if employee exists
+    const employee = await Employee.findById(employeeId);
+    if (!employee) {
+      return Response.error(res, 404, AppConstant.FAILED, "Employee not found");
     }
 
-    // Get collection names from Mongoose models
-    console.log("Collection names from models:");
-    console.log("PatientBmi collection:", PatientBmi.collection.name);
-    console.log("PatientBp collection:", PatientBp.collection.name);
-    console.log(
-      "PatientWaterIntake collection:",
-      PatientWaterIntake.collection.name
-    );
-    console.log("PatientMood collection:", PatientMood.collection.name);
-    console.log(
-      "PatientBloodGlucose collection:",
-      PatientBloodGlucose.collection.name
-    );
-    console.log("PatientSleep collection:", PatientSleep.collection.name);
-
-    // Aggregate data
-    const employees = await Employee.aggregate([
+    // Aggregate user's health data
+    const userHealthData = await Employee.aggregate([
       {
-        $match: { corporate: new mongoose.Types.ObjectId(corporateId) },
+        $match: { _id: new mongoose.Types.ObjectId(employeeId) },
       },
       {
         $lookup: {
@@ -389,6 +365,8 @@ const corporateDashboardTable = async (req, res) => {
           profileImg: 1,
           age: 1,
           gender: 1,
+          email: 1,
+          phone: 1,
           emrGenerationDate: {
             $arrayElemAt: ["$latestEMR.createdAt", 0],
           },
@@ -407,22 +385,50 @@ const corporateDashboardTable = async (req, res) => {
           bloodGlucoseRecords: 1,
           sleepUsageDaysCount: 1,
           sleepRecords: 1,
+          // Calculate overall engagement score (0-7) based on days of usage
+          overallEngagementScore: {
+            $min: [
+              7,
+              {
+                $sum: [
+                  "$bmiUsageDaysCount",
+                  "$bpUsageDaysCount",
+                  "$waterIntakeUsageDaysCount",
+                  "$moodUsageDaysCount",
+                  "$bloodGlucoseUsageDaysCount",
+                  "$sleepUsageDaysCount",
+                ],
+              },
+            ],
+          },
         },
       },
-      { $sort: { overallHealthScore: -1 } },
-      { $limit: parseInt(limit, 10) },
     ]);
 
-    // Send response
-    return Response.success(res, employees, 200, AppConstant.SUCCESS);
+    if (userHealthData.length === 0) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "No health data found for this employee"
+      );
+    }
+
+    return Response.success(
+      res,
+      userHealthData[0],
+      200,
+      "User health engagement data retrieved successfully"
+    );
   } catch (err) {
+    console.error("Error in getUserHealthEngagement:", err);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      err.message || "Internal server error!"
+      err.message || "Internal server error"
     );
   }
 };
 
-module.exports = { corporateDashboardTable };
+module.exports = { getUserHealthEngagement };
