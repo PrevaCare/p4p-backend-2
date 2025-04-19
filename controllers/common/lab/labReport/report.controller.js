@@ -5,6 +5,7 @@ const AppConstant = require("../../../../utils/AppConstant");
 const Response = require("../../../../utils/Response");
 const {
     reportValidationSchema, } = require("../../../../validators/lab/reports.validator")
+const mongoose = require("mongoose");
 
 const createReport = async (req, res) => {
     try {
@@ -106,20 +107,105 @@ const createReport = async (req, res) => {
 const getReportsByUser = async (req, res) => {
     try {
         const { userId } = req.params;
+        const {
+            page = 1,
+            limit = 10,
+            search = "",
+            sortBy = "createdAt",
+            sortOrder = "desc"
+        } = req.query;
 
+        // Validate user ID
         if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
             return Response.error(res, 400, AppConstant.FAILED, "Invalid user ID");
         }
 
-        const reports = await Report.find({ user: userId })
-            .populate({
-                path: "doctor",
-                select: "firstName lastName specialization", // only include these fields
-            })
-            .sort({ createdAt: -1 });
+        const searchRegex = search ? new RegExp(search, "i") : null;
 
-        return Response.success(res, reports, 200, "Reports fetched successfully");
+        const aggregationPipeline = [
+            {
+                $match: {
+                    user: new mongoose.Types.ObjectId(userId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "doctor",
+                    foreignField: "_id",
+                    as: "doctorDetails"
+                }
+            },
+            {
+                $unwind: "$doctorDetails"
+            },
+            // Apply search if provided
+            ...(searchRegex ? [{
+                $match: {
+                    $or: [
+                        { "doctorDetails.firstName": searchRegex },
+                        { "doctorDetails.lastName": searchRegex },
+                        { "doctorDetails.specialization": searchRegex },
+                        { "reportName": searchRegex }
+                    ]
+                }
+            }] : []),
+            {
+                $project: {
+                    reportName: 1,
+                    indication: 1,
+                    remarks: 1,
+                    createdAt: 1,
+                    documents: 1,
+                    doctor: {
+                        firstName: "$doctorDetails.firstName",
+                        lastName: "$doctorDetails.lastName",
+                        specialization: "$doctorDetails.specialization"
+                    }
+                }
+            },
+            {
+                $facet: {
+                    paginatedResults: [
+                        {
+                            $sort: {
+                                [sortBy]: sortOrder === "asc" ? 1 : -1
+                            }
+                        },
+                        {
+                            $skip: (Number(page) - 1) * Number(limit)
+                        },
+                        {
+                            $limit: Number(limit)
+                        }
+                    ],
+                    totalCount: [
+                        {
+                            $count: "total"
+                        }
+                    ]
+                }
+            }
+        ];
+
+        const [result] = await Report.aggregate(aggregationPipeline);
+
+        const reports = result.paginatedResults;
+        const totalReports = result.totalCount[0]?.total || 0;
+
+        return Response.success(
+            res,
+            {
+                reports,
+                totalReports,
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalReports / parseInt(limit)),
+            },
+            200,
+            "Reports fetched successfully"
+        );
     } catch (error) {
+        console.error("Error in getReportsByUser:", error);
         return Response.error(
             res,
             500,

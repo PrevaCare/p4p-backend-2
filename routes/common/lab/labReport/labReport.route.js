@@ -46,7 +46,7 @@ router.post(
 
 router.post(
   "/admin/report",
-  upload.fields([{ name: "logo", maxCount: 1 }, { name: "labReportFile" }]),
+  anyFileUpload.fields([{ name: "logo", maxCount: 1 }, { name: "labReportFile" }]),
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
   uploadRateLimit,

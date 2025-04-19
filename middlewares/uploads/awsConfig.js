@@ -22,6 +22,7 @@ const uploadToS3 = async (file) => {
     };
 
     const result = await s3.upload(params).promise();
+    console.log("result", result);
     return result;
   } catch (error) {
     console.error("Error in uploadToS3:", error);
