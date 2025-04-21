@@ -11,6 +11,8 @@ const {
   deleteDoctorById,
   updateDoctorById,
   getDoctorNameAndIds,
+  getCategoryOfDoctor,
+  getDoctorByCategory,
 } = require("../../controllers/doctors/viewDoctors.js");
 const {
   verifyToken,
@@ -31,6 +33,19 @@ router.get(
   // checkPermissions("GET", "Doctor"),
   getDoctorNameAndIds
 );
+
+router.get(
+  "/admin/doctor-categories",
+  verifyToken,
+  getCategoryOfDoctor
+);
+
+router.get(
+  "/admin/doctor-by-category",
+  verifyToken,
+  getDoctorByCategory
+);
+
 // get single doctor detail
 router.post(
   "/admin/doctor",

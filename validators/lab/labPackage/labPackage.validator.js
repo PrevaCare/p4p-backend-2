@@ -47,9 +47,13 @@ const labPackageValidationSchema = Joi.object({
     "number.base": "Offered price to PrevaCare must be a number.",
     "any.required": "Offered price to PrevaCare is required.",
   }),
-  prevaCarePrice: Joi.number().required().messages({
-    "number.base": "PrevaCare price must be a number.",
-    "any.required": "PrevaCare price is required.",
+  prevaCarePriceForCorporate: Joi.number().required().messages({
+    "number.base": "PrevaCare price for corporate must be a number.",
+    "any.required": "PrevaCare price for corporate is required.",
+  }),
+  prevaCarePriceForIndividual: Joi.number().required().messages({
+    "number.base": "PrevaCare price for individual must be a number.",
+    "any.required": "PrevaCare price for individual is required.",
   }),
   discountPercentage: Joi.number().required().messages({
     "number.base": "Discount percentage must be a number.",

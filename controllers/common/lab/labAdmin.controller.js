@@ -281,12 +281,13 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
 
     if (existingCity) {
       // Calculate discount percentage
-      const prevaCarePrice = parseFloat(item["PrevaCare Price"] || 0);
+      const prevaCarePriceForCorporate = parseFloat(item["PrevaCare Price for Corporate"] || 0);
+      const prevaCarePriceForIndividual = parseFloat(item["PrevaCare Price for Individual"] || 0);
       const discountPrice = parseFloat(item["Discount Price"] || 0);
       const discountPercentage =
-        prevaCarePrice > 0
+        prevaCarePriceForCorporate > 0
           ? Math.round(
-            ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+            ((prevaCarePriceForCorporate - discountPrice) / prevaCarePriceForCorporate) * 100
           )
           : 0;
 
@@ -295,7 +296,8 @@ const processCityAvailability = (labPartner, item, isPackage = false) => {
         isAvailable: true,
         labSellingPrice: parseFloat(item["Billing Rate"] || 0),
         offeredPriceToPrevaCare: parseFloat(item["Partner Rate"] || 0),
-        prevaCarePrice: parseFloat(prevaCarePrice || 0),
+        prevaCarePriceForCorporate: parseFloat(prevaCarePriceForCorporate || 0),
+        prevaCarePriceForIndividual: parseFloat(prevaCarePriceForIndividual || 0),
         discountPercentage: discountPercentage,
         homeCollectionCharge: homeCollectionCharges[i],
         homeCollectionAvailable: homeCollectionAvailable[i],
@@ -457,12 +459,13 @@ const importLabTests = async (req, res) => {
             }
 
             // Calculate discount percentage
-            const prevaCarePrice = parseFloat(row["PrevaCare Price"] || 0);
+            const prevaCarePriceForCorporate = parseFloat(row["PrevaCare Price for Corporate"] || 0);
+            const prevaCarePriceForIndividual = parseFloat(row["PrevaCare Price for Individual"] || 0);
             const discountPrice = parseFloat(row["Discount Price"] || 0);
             const discountPercentage =
-              prevaCarePrice > 0
+              prevaCarePriceForCorporate > 0
                 ? Math.round(
-                  ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+                  ((prevaCarePriceForCorporate - discountPrice) / prevaCarePriceForCorporate) * 100
                 )
                 : 0;
 
@@ -482,7 +485,8 @@ const importLabTests = async (req, res) => {
               isActive: true,
               billingRate: parseFloat(row["Billing Rate"] || 0), // Match schema field name
               partnerRate: parseFloat(row["Partner Rate"] || 0), // Match schema field name
-              prevaCarePrice: prevaCarePrice,
+              prevaCarePriceForCorporate: prevaCarePriceForCorporate,
+              prevaCarePriceForIndividual: prevaCarePriceForIndividual,
               discountPercentage: discountPercentage,
               homeCollectionCharge: homeCollectionCharge,
               homeCollectionAvailable:
@@ -723,13 +727,14 @@ const importLabPackages = async (req, res) => {
             // Calculate prices for this city
             const billingRate = parseFloat(row["Billing Rate"]) || 0;
             const partnerRate = parseFloat(row["Partner Rate"]) || 0;
-            const prevaCarePrice = parseFloat(row["PrevaCare Price"]) || 0;
+            const prevaCarePriceForCorporate = parseFloat(row["PrevaCare Price for Corporate"]) || 0;
+            const prevaCarePriceForIndividual = parseFloat(row["PrevaCare Price for Individual"]) || 0;
             const discountPrice =
               parseFloat(row["Discount Price"]) || prevaCarePrice;
             const discountPercentage =
-              prevaCarePrice > 0
+              prevaCarePriceForCorporate > 0
                 ? Math.round(
-                  ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
+                  ((prevaCarePriceForCorporate - discountPrice) / prevaCarePriceForCorporate) * 100
                 )
                 : 0;
 
@@ -741,7 +746,8 @@ const importLabPackages = async (req, res) => {
               isAvailable: true,
               billingRate: billingRate,
               partnerRate: partnerRate,
-              prevaCarePrice: prevaCarePrice,
+              prevaCarePriceForCorporate: prevaCarePriceForCorporate,
+              prevaCarePriceForIndividual: prevaCarePriceForIndividual,
               discountPrice: discountPrice,
               discountPercentage: discountPercentage,
               homeCollectionCharge:
@@ -1102,7 +1108,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
       status,
       labSellingPrice,
       offeredPriceToPrevaCare,
-      prevaCarePrice,
+      prevaCarePriceForCorporate,
+      prevaCarePriceForIndividual,
       discountPercentage,
       homeCollectionCharge,
       homeCollectionAvailable,
@@ -1130,15 +1137,22 @@ const updateTestAvailabilityInCity = async (req, res) => {
         );
       }
 
-      if (!prevaCarePrice) {
+      if (!prevaCarePriceForCorporate) {
         return Response.error(
           res,
           400,
           AppConstant.FAILED,
-          "prevaCarePrice is required when status is true"
+          "prevaCarePriceForCorporate is required when status is true"
         );
       }
-
+      if (!prevaCarePriceForIndividual) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "prevaCarePriceForIndividual is required when status is true"
+        );
+      }
       if (discountPercentage === undefined && discountPercentage !== 0) {
         return Response.error(
           res,
@@ -1160,7 +1174,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
     if (isActive !== false) {
       cityData.billingRate = parseFloat(labSellingPrice || 0);
       cityData.partnerRate = parseFloat(offeredPriceToPrevaCare || 0);
-      cityData.prevaCarePrice = parseFloat(prevaCarePrice || 0);
+      cityData.prevaCarePriceForCorporate = parseFloat(prevaCarePriceForCorporate || 0);
+      cityData.prevaCarePriceForIndividual = parseFloat(prevaCarePriceForIndividual || 0);
       cityData.discountPercentage = parseFloat(discountPercentage || 0);
       cityData.homeCollectionCharge = parseFloat(homeCollectionCharge || 0);
 
@@ -1222,7 +1237,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
             isAvailable: updatedCity.isAvailable,
             billingRate: updatedCity.billingRate,
             partnerRate: updatedCity.partnerRate,
-            prevaCarePrice: updatedCity.prevaCarePrice,
+            prevaCarePriceForCorporate: updatedCity.prevaCarePriceForCorporate,
+            prevaCarePriceForIndividual: updatedCity.prevaCarePriceForIndividual,
             discountPercentage: updatedCity.discountPercentage,
             homeCollectionCharge: updatedCity.homeCollectionCharge,
             homeCollectionAvailable: updatedCity.homeCollectionAvailable,
@@ -1350,7 +1366,8 @@ const updatePackageAvailabilityInCity = async (req, res) => {
       isActive,
       billingRate,
       partnerRate,
-      prevaCarePrice,
+      prevaCarePriceForCorporate,
+      prevaCarePriceForIndividual,
       discountPercentage,
       homeCollectionCharge,
       homeCollectionAvailable,
@@ -1378,14 +1395,23 @@ const updatePackageAvailabilityInCity = async (req, res) => {
         );
       }
 
-      if (!prevaCarePrice) {
+      if (!prevaCarePriceForCorporate) {
         return Response.error(
           res,
           400,
           AppConstant.FAILED,
-          "prevaCarePrice is required when isActive is true"
+          "prevaCarePriceForCorporate is required when isActive is true"
         );
       }
+      if (!prevaCarePriceForIndividual) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "prevaCarePriceIndividual is required when isActive is true"
+        );
+      }
+
 
       if (discountPercentage === undefined && discountPercentage !== 0) {
         return Response.error(
@@ -1411,7 +1437,8 @@ const updatePackageAvailabilityInCity = async (req, res) => {
     if (isActive !== false) {
       cityData.billingRate = parseFloat(billingRate || 0);
       cityData.partnerRate = parseFloat(partnerRate || 0);
-      cityData.prevaCarePrice = parseFloat(prevaCarePrice || 0);
+      cityData.prevaCarePriceForCorporate = parseFloat(prevaCarePriceForCorporate || 0);
+      cityData.prevaCarePriceForIndividual = parseFloat(prevaCarePriceForIndividual || 0);
       cityData.discountPercentage = parseFloat(discountPercentage || 0);
       cityData.homeCollectionCharge = parseFloat(homeCollectionCharge || 0);
 
@@ -1451,7 +1478,8 @@ const updatePackageAvailabilityInCity = async (req, res) => {
           isActive: cityData.isActive,
           billingRate: cityData.billingRate,
           partnerRate: cityData.partnerRate,
-          prevaCarePrice: cityData.prevaCarePrice,
+          prevaCarePriceForCorporate: cityData.prevaCarePriceForCorporate,
+          prevaCarePriceForIndividual: cityData.prevaCarePriceForIndividual,
           discountPercentage: cityData.discountPercentage,
           homeCollectionCharge: cityData.homeCollectionCharge,
           homeCollectionAvailable: cityData.homeCollectionAvailable,

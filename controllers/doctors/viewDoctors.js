@@ -1,4 +1,5 @@
 const Doctor = require("../../models/doctors/doctor.model.js");
+const User = require("../../models/common/user.model.js");
 const Response = require("../../utils/Response.js");
 const AppConstant = require("../../utils/AppConstant.js");
 const {
@@ -97,6 +98,66 @@ const getSingleDoctorDetail = async (req, res) => {
   }
 };
 
+const getCategoryOfDoctor = async (req, res) => {
+  try {
+
+    const categories = await User.distinct('specialization', { role: 'Doctor' });
+    if (!categories) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "No category found !"
+      );
+    }
+
+    return Response.success(
+      res,
+      { categories },
+      200,
+      AppConstant.SUCCESS,
+      "Categories Found Successfully!"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error !"
+    );
+  }
+};
+
+const getDoctorByCategory = async (req, res) => {
+  try {
+    const { category } = req.body;
+    const doctors = await User.find({ specialization: category, role: 'Doctor' }).select('firstName lastName _id');
+
+    if (!doctors) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "No doctors found for this category !"
+      );
+    }
+
+    return Response.success(
+      res,
+      { doctorsTotal: doctors.length, doctors },
+      200,
+      AppConstant.SUCCESS,
+      "Doctors Found Successfully!"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error !"
+    );
+  }
+};
 // delete doctor by id
 const deleteDoctorById = async (req, res) => {
   try {
@@ -291,4 +352,6 @@ module.exports = {
   deleteDoctorById,
   updateDoctorById,
   getDoctorNameAndIds,
+  getCategoryOfDoctor,
+  getDoctorByCategory,
 };

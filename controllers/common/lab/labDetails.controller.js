@@ -45,7 +45,8 @@ const getTestDetails = async (req, res) => {
           pincode: city.cityId.pincode,
         },
         // Add simplified pricing for front-end use
-        price: city.prevaCarePrice,
+        priceForCorporate: city.prevaCarePriceForCorporate,
+        priceForIndividual: city.prevaCarePriceForIndividual,
         sellingPrice: city.billingRate,
         discount: city.discountPercentage,
         homeCollectionCharge: city.homeCollectionCharge,
@@ -119,7 +120,8 @@ const getPackageDetails = async (req, res) => {
             pincode: city.cityId.pincode,
           },
           // Add simplified pricing for front-end use
-          price: city.prevaCarePrice,
+          priceForCorporate: city.prevaCarePriceForCorporate,
+          priceForIndividual: city.prevaCarePriceForIndividual,
           sellingPrice: city.billingRate,
           discount: city.discountPercentage,
           homeCollectionCharge: city.homeCollectionCharge,

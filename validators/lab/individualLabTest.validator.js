@@ -33,9 +33,13 @@ const cityAvailabilitySchema = Joi.object({
     "number.base": "City-specific offered price to PrevaCare must be a number.",
     "any.required": "City-specific offered price to PrevaCare is required.",
   }),
-  prevaCarePrice: Joi.number().required().messages({
-    "number.base": "City-specific PrevaCare price must be a number.",
-    "any.required": "City-specific PrevaCare price is required.",
+  prevaCarePriceForCorporate: Joi.number().required().messages({
+    "number.base": "City-specific PrevaCare price for Corporate must be a number.",
+    "any.required": "City-specific PrevaCare price for Corporate is required.",
+  }),
+  prevaCarePriceForIndividual: Joi.number().required().messages({
+    "number.base": "City-specific PrevaCare price for Individual must be a number.",
+    "any.required": "City-specific PrevaCare price for Individual is required.",
   }),
   discountPercentage: Joi.number().required().messages({
     "number.base": "City-specific discount percentage must be a number.",

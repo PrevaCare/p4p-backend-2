@@ -229,9 +229,15 @@ const createLabPackage = async (req, res) => {
             continue;
           }
 
-          if (!cityData.prevaCarePrice) {
+          if (!cityData.prevaCarePriceForCorporate) {
             errors.push(
-              `City-specific PrevaCare price (prevaCarePrice) is required for ${cityDocument.cityName}`
+              `City-specific PrevaCare price for corporate (prevaCarePriceForCorporate) is required for ${cityDocument.cityName}`
+            );
+            continue;
+          }
+          if (!cityData.prevaCarePriceForIndividual) {
+            errors.push(
+              `City-specific PrevaCare price for individual (prevaCarePriceForIndividual) is required for ${cityDocument.cityName}`
             );
             continue;
           }
@@ -256,7 +262,12 @@ const createLabPackage = async (req, res) => {
             isActive: cityData.isActive !== false, // Default to true
             billingRate: parseFloat(cityData.billingRate || 0),
             partnerRate: parseFloat(cityData.partnerRate || 0),
-            prevaCarePrice: parseFloat(cityData.prevaCarePrice || 0),
+            prevaCarePriceForCorporate: parseFloat(
+              cityData.prevaCarePriceForCorporate || 0
+            ),
+            prevaCarePriceForIndividual: parseFloat(
+              cityData.prevaCarePriceForIndividual || 0
+            ),
             discountPercentage: parseFloat(cityData.discountPercentage || 0),
             homeCollectionCharge: parseFloat(
               cityData.homeCollectionCharge || 0
@@ -482,7 +493,12 @@ const updateLabPackage = async (req, res) => {
             isActive: cityData.isActive !== false, // Default to true
             billingRate: parseFloat(cityData.billingRate || 0),
             partnerRate: parseFloat(cityData.partnerRate || 0),
-            prevaCarePrice: parseFloat(cityData.prevaCarePrice || 0),
+            prevaCarePriceForCorporate: parseFloat(
+              cityData.prevaCarePriceForCorporate || 0
+            ),
+            prevaCarePriceForIndividual: parseFloat(
+              cityData.prevaCarePriceForIndividual || 0
+            ),
             discountPercentage: parseFloat(cityData.discountPercentage || 0),
             homeCollectionCharge: parseFloat(
               cityData.homeCollectionCharge || 0

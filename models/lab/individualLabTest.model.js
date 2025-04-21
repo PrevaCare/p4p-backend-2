@@ -39,9 +39,13 @@ const cityAvailabilitySchema = new mongoose.Schema({
     type: Number,
     required: [true, "City-specific offered price to PrevaCare is required!"],
   },
-  prevaCarePrice: {
+  prevaCarePriceForCorporate: {
     type: Number,
-    required: [true, "City-specific PrevaCare price is required!"],
+    required: [true, "City-specific PrevaCare price for Corporate is required!"],
+  },
+  prevaCarePriceForIndividual: {
+    type: Number,
+    required: [true, "City-specific PrevaCare price for Individual is required!"],
   },
   discountPercentage: {
     type: Number,

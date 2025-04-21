@@ -345,14 +345,16 @@ const searchLabPackages = async (req, res) => {
 
     // Handle price range for prevaCarePrice
     if (minPrice !== undefined || maxPrice !== undefined) {
-      query["cityAvailability.prevaCarePrice"] = {};
+      query["cityAvailability.prevaCarePriceForCorporate"] = {};
 
       if (minPrice !== undefined) {
-        query["cityAvailability.prevaCarePrice"].$gte = Number(minPrice);
+        query["cityAvailability.prevaCarePriceForCorporate"].$gte =
+          Number(minPrice);
       }
 
       if (maxPrice !== undefined) {
-        query["cityAvailability.prevaCarePrice"].$lte = Number(maxPrice);
+        query["cityAvailability.prevaCarePriceForCorporate"].$lte =
+          Number(maxPrice);
       }
     }
 

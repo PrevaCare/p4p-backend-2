@@ -17,7 +17,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
       availability,
       labSellingPrice,
       offeredPriceToPrevaCare,
-      prevaCarePrice,
+      prevaCarePriceForCorporate,
+      prevaCarePriceForIndividual,
       discountPercentage,
       homeCollectionCharge,
       homeCollectionAvailable,
@@ -47,14 +48,15 @@ const updateTestAvailabilityInCity = async (req, res) => {
       if (
         !labSellingPrice ||
         !offeredPriceToPrevaCare ||
-        !prevaCarePrice ||
+        !prevaCarePriceForCorporate ||
+        !prevaCarePriceForIndividual ||
         !discountPercentage
       ) {
         return Response.error(
           res,
           400,
           AppConstant.FAILED,
-          "When test is available, all pricing fields are required (labSellingPrice, offeredPriceToPrevaCare, prevaCarePrice, discountPercentage)"
+          "When test is available, all pricing fields are required (labSellingPrice, offeredPriceToPrevaCare, prevaCarePriceForCorporate, prevaCarePriceForIndividual, discountPercentage)"
         );
       }
     }
@@ -136,7 +138,8 @@ const updateTestAvailabilityInCity = async (req, res) => {
         isActive: true,
         billingRate: parseFloat(labSellingPrice || 0),
         partnerRate: parseFloat(offeredPriceToPrevaCare || 0),
-        prevaCarePrice: parseFloat(prevaCarePrice || 0),
+        prevaCarePriceForCorporate: parseFloat(prevaCarePriceForCorporate || 0),
+        prevaCarePriceForIndividual: parseFloat(prevaCarePriceForIndividual || 0),
         discountPercentage: parseFloat(discountPercentage || 0),
         homeCollectionCharge: parseFloat(homeCollectionCharge || 0),
         homeCollectionAvailable:
@@ -160,9 +163,14 @@ const updateTestAvailabilityInCity = async (req, res) => {
         );
       }
 
-      if (prevaCarePrice !== undefined) {
-        testDoc.cityAvailability[cityIndex].prevaCarePrice =
-          parseFloat(prevaCarePrice);
+      if (prevaCarePriceForCorporate !== undefined) {
+        testDoc.cityAvailability[cityIndex].prevaCarePriceForCorporate =
+          parseFloat(prevaCarePriceForCorporate);
+      }
+
+      if (prevaCarePriceForIndividual !== undefined) {
+        testDoc.cityAvailability[cityIndex].prevaCarePriceForIndividual =
+          parseFloat(prevaCarePriceForIndividual);
       }
 
       if (discountPercentage !== undefined) {
@@ -210,9 +218,12 @@ const updateTestAvailabilityInCity = async (req, res) => {
           partnerRate: testDoc.cityAvailability.find(
             (c) => c.cityId.toString() === cityId
           )?.partnerRate,
-          prevaCarePrice: testDoc.cityAvailability.find(
+          prevaCarePriceForCorporate: testDoc.cityAvailability.find(
             (c) => c.cityId.toString() === cityId
-          )?.prevaCarePrice,
+          )?.prevaCarePriceForCorporate,
+          prevaCarePriceForIndividual: testDoc.cityAvailability.find(
+            (c) => c.cityId.toString() === cityId
+          )?.prevaCarePriceForIndividual,
           discountPercentage: testDoc.cityAvailability.find(
             (c) => c.cityId.toString() === cityId
           )?.discountPercentage,

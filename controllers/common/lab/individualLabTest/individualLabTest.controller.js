@@ -167,9 +167,9 @@ const createIndividualLabTest = async (req, res) => {
             continue;
           }
 
-          if (!cityData.prevaCarePrice) {
+          if (!cityData.prevaCarePriceForCorporate) {
             errors.push(
-              `City-specific PrevaCare price (prevaCarePrice) is required for ${cityDocument.cityName}`
+              `City-specific PrevaCare price for Corporate (prevaCarePriceForCorporate) is required for ${cityDocument.cityName}`
             );
             continue;
           }
@@ -191,7 +191,8 @@ const createIndividualLabTest = async (req, res) => {
             isActive: cityData.isActive !== false,
             billingRate: parseFloat(cityData.billingRate || 0),
             partnerRate: parseFloat(cityData.partnerRate || 0),
-            prevaCarePrice: parseFloat(cityData.prevaCarePrice || 0),
+            prevaCarePriceForCorporate: parseFloat(cityData.prevaCarePriceForCorporate || 0),
+            prevaCarePriceForIndividual: parseFloat(cityData.prevaCarePriceForIndividual || 0),
             discountPercentage: parseFloat(cityData.discountPercentage || 0),
             homeCollectionCharge: parseFloat(cityData.homeCollectionCharge || 0),
             homeCollectionAvailable:
@@ -434,9 +435,9 @@ const searchIndividualLabTest = async (req, res) => {
 
     // Handle price range
     if (minPrice || maxPrice) {
-      query.prevaCarePrice = {};
-      if (minPrice) query.prevaCarePrice.$gte = Number(minPrice);
-      if (maxPrice) query.prevaCarePrice.$lte = Number(maxPrice);
+      query.prevaCarePriceForCorporate = {};
+      if (minPrice) query.prevaCarePriceForCorporate.$gte = Number(minPrice);
+      if (maxPrice) query.prevaCarePriceForCorporate.$lte = Number(maxPrice);
     }
 
     // Handle location search
