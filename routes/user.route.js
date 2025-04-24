@@ -69,7 +69,7 @@ router.post(
 );
 
 router.post(
-  "/individual/user/register/indivisualUser",
+  "/individual/user/register/individualUser",
   upload.fields([{ name: "profileImg", maxCount: 1 }]),
   // verifyToken,
   registerIndividualUser

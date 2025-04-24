@@ -511,7 +511,7 @@ const registerIndividualUser = async (req, res) => {
       "Please provide all required fields - phone, email, role, key !"
     );
   }
-  if (key !== "11223344556677889900" || role !== "IndividualUser") {
+  if (key !== "3153218268346369" || role !== "IndividualUser") {
     return Response.error(
       res,
       400,
