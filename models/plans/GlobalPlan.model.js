@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const globalCorporatePlanSchema = new mongoose.Schema(
   {
+    imageLink: {
+      type: String,
+      default: "",
+      required: [true, "imageLink is required !"],
+    },
     name: {
       type: String,
       trim: true,

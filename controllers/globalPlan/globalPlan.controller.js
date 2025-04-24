@@ -5,6 +5,7 @@ const {
   addGlobalPlanSchema,
   updateGlobalPlanSchema,
 } = require("../../validators/globalPlan/addGlobalPlan.validator");
+const { uploadToS3 } = require("../../middlewares/uploads/awsConfig");
 
 // create
 const addGlobalPlan = async (req, res) => {
@@ -19,9 +20,62 @@ const addGlobalPlan = async (req, res) => {
     //     err.message || "validation failed"
     //   );
     // }
-    const lowerCaseName = req.body.name && req.body.name.toLowerCase();
-    const lowerCaseCategory =
-      req.body.category && req.body.category.toLowerCase();
+    console.log("req.body ", req.body);
+    console.log("req.files ", req.files);
+    console.log("req.body ends");
+    const {
+      name,
+      category,
+      price,
+      remarks,
+      booleanFeatureList,
+      countFeatureList,
+    } = req.body;
+
+    // Check if imagefile exists in req.files (multer adds this)
+    if (
+      !req.files ||
+      !req.files.imagefile ||
+      req.files.imagefile.length === 0
+    ) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Image file is required"
+      );
+    }
+
+    const imageFile = req.files.imagefile[0];
+    console.log("Image file:", imageFile);
+
+    // Upload image to S3
+    let imageLink = "";
+    try {
+      const uploadResult = await uploadToS3(imageFile);
+      imageLink = uploadResult.Location;
+      req.body.imageLink = imageLink;
+    } catch (err) {
+      console.error("S3 upload error:", err);
+      return Response.error(
+        res,
+        500,
+        AppConstant.FAILED,
+        "Error uploading image to S3"
+      );
+    }
+
+    if (!name || !category || !price) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Name, category, and price are required"
+      );
+    }
+
+    const lowerCaseName = name.toLowerCase();
+    const lowerCaseCategory = category.toLowerCase();
 
     const alreadyExistingPlan = await GlobalPlan.findOne({
       name: lowerCaseName,
@@ -40,13 +94,14 @@ const addGlobalPlan = async (req, res) => {
       ...req.body,
       name: lowerCaseName,
       category: lowerCaseCategory,
+      imageLink: imageLink,
     });
-    const savedGlobalPlab = await newGlobalPlan.save();
+    const savedGlobalPlan = await newGlobalPlan.save();
 
     // Return success response
     return Response.success(
       res,
-      savedGlobalPlab,
+      savedGlobalPlan,
       201,
       "Global plan created successfully !"
     );

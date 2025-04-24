@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const { upload } = require("../../middlewares/uploads/multerConfig.js");
 
 const {
   addGlobalPlan,
@@ -20,6 +21,7 @@ router.post(
   "/admin/global-plans",
   verifyToken,
   checkPermissions("CREATE", "Superadmin"),
+  upload.fields([{ name: "imagefile", maxCount: 1 }]),
   addGlobalPlan
 );
 
