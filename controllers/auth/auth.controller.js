@@ -38,6 +38,7 @@ const IndividualUser = require("../../models/individualUser/induvidualUser.model
 const otpModel = require("../../models/otp.model.js");
 const { generateOtp } = require("../../utils/otpGenerator.js");
 const { sendOtp } = require("../../helper/otp/sentOtp.helper.js");
+const corporatePlanModel = require("../../models/corporates/corporatePlan.model.js");
 // register super admin
 const register = async (req, res) => {
   try {
@@ -673,10 +674,10 @@ const verifyOtpAndLogin = async (req, res) => {
     // await otpModel.deleteMany({ phone });
     existingOtp.isVerified = true;
     await existingOtp.save();
-    const existingUser = await User.findOne({ phone });
-    // if (!existingUser) {
-    //   return Response.error(res, 404, AppConstant.FAILED, "user not found !");
-    // }
+
+    // Find user by phone
+    let existingUser = await User.findOne({ phone });
+
     // accessToken
     if (existingUser) {
       const accessToken = generateToken(existingUser);
@@ -685,23 +686,54 @@ const verifyOtpAndLogin = async (req, res) => {
       existingUser.refreshToken.push(refreshToken);
       await existingUser.save();
 
-      const { _id, firstName, lastName, profileImg, gender, role } =
-        existingUser._doc;
+      let responseData = {
+        _id: existingUser._id,
+        isUserExist: true,
+        firstName: existingUser.firstName,
+        lastName: existingUser.lastName,
+        profileImg: existingUser.profileImg,
+        phone,
+        gender: existingUser.gender,
+        role: existingUser.role,
+        accessToken,
+        refreshToken,
+      };
+
+      // If user is an Employee, get corporate details
+      if (existingUser.role === "Employee" && existingUser.corporate) {
+        // Populate corporate details
+        const corporateDetails = await Corporate.findById(
+          existingUser.corporate
+        ).select("companyName logo");
+
+        if (corporateDetails) {
+          responseData.corporate = {
+            _id: corporateDetails._id,
+            companyName: corporateDetails.companyName,
+            logo: corporateDetails.logo,
+          };
+
+          // Check if there's an active plan for this corporate
+          const activePlan = await corporatePlanModel
+            .findOne({
+              corporateId: corporateDetails._id,
+              status: "active",
+            })
+            .select("name category");
+
+          if (activePlan) {
+            responseData.corporate.activePlan = {
+              _id: activePlan._id,
+              name: activePlan.name,
+              category: activePlan.category,
+            };
+          }
+        }
+      }
 
       return Response.success(
         res,
-        {
-          _id,
-          isUserExist: true,
-          firstName,
-          lastName,
-          profileImg,
-          phone,
-          gender,
-          role,
-          accessToken,
-          refreshToken,
-        },
+        responseData,
         200,
         "User logged in successfully !"
       );
