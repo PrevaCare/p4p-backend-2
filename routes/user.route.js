@@ -27,6 +27,9 @@ const {
 } = require("../controllers/user/appUser.controller.js");
 const { getUserById } = require("../controllers/user/getUser.controller.js");
 const {
+  changeUserType,
+} = require("../controllers/user/changeUserType.controller.js");
+const {
   verifyToken,
   verifyAndSuperAdmin,
 } = require("../middlewares/jwt/verifyToken");
@@ -63,6 +66,8 @@ router.post(
   verifyToken,
   register
 );
+
+router.post("/admin/change-user-type", verifyAndSuperAdmin, changeUserType);
 
 router.post("/admin/login", login);
 router.post("/admin/logout", verifyAndAuthoriseToken, logout);
