@@ -23,7 +23,7 @@ const addGlobalPlan = async (req, res) => {
     console.log("req.body ", req.body);
     console.log("req.files ", req.files);
     console.log("req.body ends");
-    const {
+    let {
       name,
       category,
       price,
@@ -90,12 +90,75 @@ const addGlobalPlan = async (req, res) => {
       );
     }
 
+    // Parse booleanFeatureList and countFeatureList from form data
+    let booleanFeatureList_updated = booleanFeatureList;
+    let countFeatureList_updated = countFeatureList;
+
+    // Process booleanFeatureList
+    const booleanKeys = Object.keys(req.body).filter((key) =>
+      key.startsWith("booleanFeatureList")
+    );
+    if (booleanKeys.length > 0) {
+      // Get the max index
+      const indices = [
+        ...new Set(
+          booleanKeys.map((key) => {
+            const match = key.match(/booleanFeatureList\[(\d+)\]/);
+            return match ? parseInt(match[1]) : -1;
+          })
+        ),
+      ].filter((idx) => idx !== -1);
+
+      // Create the array of boolean features
+      for (let i = 0; i <= Math.max(...indices); i++) {
+        const name = req.body[`booleanFeatureList[${i}][name]`];
+        const status = req.body[`booleanFeatureList[${i}][status]`] === "true";
+
+        if (name) {
+          booleanFeatureList.push({ name, status });
+        }
+      }
+    }
+
+    // Process countFeatureList
+    const countKeys = Object.keys(req.body).filter((key) =>
+      key.startsWith("countFeatureList")
+    );
+    if (countKeys.length > 0) {
+      // Get the max index
+      const indices = [
+        ...new Set(
+          countKeys.map((key) => {
+            const match = key.match(/countFeatureList\[(\d+)\]/);
+            return match ? parseInt(match[1]) : -1;
+          })
+        ),
+      ].filter((idx) => idx !== -1);
+
+      // Create the array of count features
+      for (let i = 0; i <= Math.max(...indices); i++) {
+        const name = req.body[`countFeatureList[${i}][name]`];
+        const count = parseInt(
+          req.body[`countFeatureList[${i}][count]`] || "0"
+        );
+
+        if (name) {
+          countFeatureList.push({ name, count });
+        }
+      }
+    }
+
     const newGlobalPlan = new GlobalPlan({
       ...req.body,
       name: lowerCaseName,
       category: lowerCaseCategory,
       imageLink: imageLink,
+      price,
+      remarks,
+      booleanFeatureList,
+      countFeatureList,
     });
+
     const savedGlobalPlan = await newGlobalPlan.save();
 
     // Return success response
