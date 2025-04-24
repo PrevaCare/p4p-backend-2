@@ -15,6 +15,9 @@ const Response = require("../../../../utils/Response");
 const AppConstant = require("../../../../utils/AppConstant");
 const healthScoreModel = require("../../../../models/patient/healthScore/healthScore.model.js");
 const userModel = require("../../../../models/common/user.model.js");
+const Corporate = require("../../../../models/corporates/corporate.model.js");
+const corporatePlanModel = require("../../../../models/corporates/corporatePlan.model.js");
+const Employee = require("../../../../models/patient/employee/employee.model.js");
 
 const healthTrackerController = {
   async getLatestHealthData(req, res) {
@@ -69,9 +72,44 @@ const healthTrackerController = {
             age: 1,
             weight: 1,
             jobProfile: 1,
+            department: 1,
+            corporate: 1,
             // createdAt: 1,
           }
         );
+      };
+
+      // Function to get corporate details if user is an employee
+      const getCorporateDetails = async (userId) => {
+        const employee = await Employee.findById(userId)
+          .select("corporate")
+          .populate({
+            path: "corporate",
+            select: "companyName logo",
+          });
+
+        if (!employee || !employee.corporate) return null;
+
+        // Check if there's an active plan for this corporate
+        const activePlan = await corporatePlanModel
+          .findOne({
+            corporateId: employee.corporate._id,
+            status: "active",
+          })
+          .select("name category _id usedCount totalCount status");
+
+        return {
+          _id: employee.corporate._id,
+          companyName: employee.corporate.companyName,
+          logo: employee.corporate.logo,
+          activePlan: activePlan
+            ? {
+                _id: activePlan._id,
+                name: activePlan.name,
+                category: activePlan.category,
+              }
+            : null,
+        };
       };
 
       // Get latest records from all individual models
@@ -100,6 +138,12 @@ const healthTrackerController = {
         getLatestHealthScore(),
         getUserInfo(),
       ]);
+
+      // Get corporate details if user is an employee
+      let corporateDetails = null;
+      if (userInfo && userInfo.role === "Employee") {
+        corporateDetails = await getCorporateDetails(patientId);
+      }
 
       // Compile health data with preference to individual models
       const healthData = {
@@ -226,10 +270,14 @@ const healthTrackerController = {
         isMarried: userInfo?.isMarried ? userInfo?.isMarried : false,
         age: userInfo?.age ? userInfo?.age : null,
         jobProfile: userInfo?.jobProfile ? userInfo?.jobProfile : null,
+        department: userInfo?.department ? userInfo?.department : null,
         bloodGroup: latestEMR?.basicInfo?.bloodGroup
           ? latestEMR?.basicInfo?.bloodGroup
           : null,
         _id: patientId,
+
+        // Add corporate details if available
+        corporate: corporateDetails,
 
         //           _id
 
