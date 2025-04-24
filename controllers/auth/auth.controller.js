@@ -499,7 +499,7 @@ const register = async (req, res) => {
 };
 
 const registerIndividualUser = async (req, res) => {
-  console.log(" register individual user hitted");
+  console.log(" register individual user hit");
   console.log(req.body);
   const { phone, email, password, role, key, ...otherFields } = req.body;
   console.log(phone, email, password, role, key, otherFields);
@@ -528,14 +528,14 @@ const registerIndividualUser = async (req, res) => {
 
   try {
     const clientType = req.headers["x-client-type"];
-    if (!clientType || !["web", "mobile"].includes(clientType)) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        "Please provide valid client type !"
-      );
-    }
+    // if (!clientType || !["web", "mobile"].includes(clientType)) {
+    //   return Response.error(
+    //     res,
+    //     400,
+    //     AppConstant.FAILED,
+    //     "Please provide valid client type !"
+    //   );
+    // }
 
     profileImg = req.files && req.files.length > 0 && req.files.profileImg[0];
 
@@ -543,19 +543,19 @@ const registerIndividualUser = async (req, res) => {
       ? (await uploadToS3(profileImg)).Location
       : null;
 
-    if (clientType === "mobile") {
-      const isExistingOtpVerified = await otpModel.findOne({
-        $and: [{ phone }, { isVerified: true }],
-      });
-      if (!isExistingOtpVerified) {
-        return Response.error(
-          res,
-          400,
-          AppConstant.FAILED,
-          "Please verify otp first !"
-        );
-      }
-    }
+    // if (clientType === "mobile") {
+    //   const isExistingOtpVerified = await otpModel.findOne({
+    //     $and: [{ phone }, { isVerified: true }],
+    //   });
+    //   if (!isExistingOtpVerified) {
+    //     return Response.error(
+    //       res,
+    //       400,
+    //       AppConstant.FAILED,
+    //       "Please verify otp first !"
+    //     );
+    //   }
+    // }
     user = new IndividualUser({
       profileImg: uploadedProfileImg,
       phone,
