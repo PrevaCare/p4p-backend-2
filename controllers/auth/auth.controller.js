@@ -42,20 +42,9 @@ const corporatePlanModel = require("../../models/corporates/corporatePlan.model.
 // register super admin
 const register = async (req, res) => {
   try {
-    // const { error } = registerSchema.validate(req.body);
-    // if (error) {
-    //   return Response.error(
-    //     res,
-    //     400,
-    //     AppConstant.FAILED,
-    //     error.message || "validation failed !"
-    //   );
-    // }
-    // console.log("ok");
-    // return;
     const { phone, email, password, role, addresses, ...otherFields } =
       req.body;
-    // console.log("register: " + role);
+    console.log("register: " + role);
 
     const existingSuperAdmin = await User.findOne({
       $or: [{ email: email }, { phone: phone }],
@@ -509,6 +498,95 @@ const register = async (req, res) => {
   }
 };
 
+const registerIndividualUser = async (req, res) => {
+  console.log(" register individual user hitted");
+  console.log(req.body);
+  const { phone, email, password, role, key, ...otherFields } = req.body;
+  console.log(phone, email, password, role, key, otherFields);
+  if (!phone || !email || !role || !key) {
+    return Response.error(
+      res,
+      400,
+      AppConstant.FAILED,
+      "Please provide all required fields - phone, email, role, key !"
+    );
+  }
+  if (key !== "11223344556677889900" || role !== "IndividualUser") {
+    return Response.error(
+      res,
+      400,
+      AppConstant.FAILED,
+      "Invalid key or role provided !"
+    );
+  }
+  const encryptedPassword = CryptoJS.AES.encrypt(
+    password || `${phone}@123`,
+    process.env.AES_SEC
+  ).toString();
+  let uploadedLogo, user, logo, profileImg, uploadedProfileImg;
+  const addressIds = [];
+
+  try {
+    const clientType = req.headers["x-client-type"];
+    if (!clientType || !["web", "mobile"].includes(clientType)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Please provide valid client type !"
+      );
+    }
+
+    profileImg = req.files && req.files.length > 0 && req.files.profileImg[0];
+
+    uploadedProfileImg = profileImg
+      ? (await uploadToS3(profileImg)).Location
+      : null;
+
+    if (clientType === "mobile") {
+      const isExistingOtpVerified = await otpModel.findOne({
+        $and: [{ phone }, { isVerified: true }],
+      });
+      if (!isExistingOtpVerified) {
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          "Please verify otp first !"
+        );
+      }
+    }
+    user = new IndividualUser({
+      profileImg: uploadedProfileImg,
+      phone,
+      email,
+      password: encryptedPassword,
+      role,
+      ...otherFields,
+    });
+
+    const accessToken = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
+    user.accessToken.push(accessToken);
+    user.refreshToken.push(refreshToken);
+
+    const savedUser = await user.save();
+    return Response.success(
+      res,
+      savedUser,
+      201,
+      "User registered successfully !"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal Server error !"
+    );
+  }
+};
+
 // login --> admin
 const login = async (req, res) => {
   try {
@@ -719,13 +797,16 @@ const verifyOtpAndLogin = async (req, res) => {
               corporateId: corporateDetails._id,
               status: "active",
             })
-            .select("name category");
+            .select("name category usedCount totalCount status");
 
           if (activePlan) {
             responseData.corporate.activePlan = {
               _id: activePlan._id,
               name: activePlan.name,
               category: activePlan.category,
+              usedCount: activePlan.usedCount,
+              totalCount: activePlan.totalCount,
+              status: activePlan.status,
             };
           }
         }
@@ -968,4 +1049,5 @@ module.exports = {
   refreshAccessToken,
   forgotPassword,
   updatePassword,
+  registerIndividualUser,
 };

@@ -8,6 +8,7 @@ const {
   updatePassword,
   appLogin,
   verifyOtpAndLogin,
+  registerIndividualUser,
 } = require("../controllers/auth/auth.controller.js");
 const {
   deleteEmployeeOrIndividualUser,
@@ -65,6 +66,13 @@ router.post(
   upload.fields([{ name: "profileImg", maxCount: 1 }]),
   verifyToken,
   register
+);
+
+router.post(
+  "/individual/user/register/indivisualUser",
+  upload.fields([{ name: "profileImg", maxCount: 1 }]),
+  // verifyToken,
+  registerIndividualUser
 );
 
 router.post("/admin/change-user-type", verifyAndSuperAdmin, changeUserType);
