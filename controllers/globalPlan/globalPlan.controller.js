@@ -1,11 +1,97 @@
 const AppConstant = require("../../utils/AppConstant");
 const Response = require("../../utils/Response");
 const GlobalPlan = require("../../models/plans/GlobalPlan.model");
+const BooleanFeature = require("../../models/plans/BooleanFeature.model");
+const CountFeature = require("../../models/plans/CountFeature.model");
 const {
   addGlobalPlanSchema,
   updateGlobalPlanSchema,
 } = require("../../validators/globalPlan/addGlobalPlan.validator");
 const { uploadToS3 } = require("../../middlewares/uploads/awsConfig");
+
+// Helper function to create a BooleanFeature if it doesn't exist
+const tryCreateBooleanFeature = async (featureName) => {
+  try {
+    if (!featureName) {
+      console.error("tryCreateBooleanFeature: Feature name is null or empty");
+      return null;
+    }
+
+    const lowerCaseName = featureName.toLowerCase();
+    console.log(
+      `tryCreateBooleanFeature: Searching for feature: "${lowerCaseName}"`
+    );
+
+    let feature = await BooleanFeature.findOne({ name: lowerCaseName });
+
+    if (feature) {
+      console.log(
+        `tryCreateBooleanFeature: Found existing feature with ID: ${feature._id}`
+      );
+      return feature._id;
+    }
+
+    console.log(
+      `tryCreateBooleanFeature: Creating new feature: "${lowerCaseName}"`
+    );
+    const newFeature = new BooleanFeature({
+      name: lowerCaseName,
+      status: false,
+    });
+
+    const savedFeature = await newFeature.save();
+    console.log(
+      `tryCreateBooleanFeature: Created new feature with ID: ${savedFeature._id}`
+    );
+
+    return savedFeature._id;
+  } catch (error) {
+    console.error(`tryCreateBooleanFeature error for "${featureName}":`, error);
+    return null;
+  }
+};
+
+// Helper function to create a CountFeature if it doesn't exist
+const tryCreateCountFeature = async (featureName, defaultCount = 0) => {
+  try {
+    if (!featureName) {
+      console.error("tryCreateCountFeature: Feature name is null or empty");
+      return null;
+    }
+
+    const lowerCaseName = featureName.toLowerCase();
+    console.log(
+      `tryCreateCountFeature: Searching for feature: "${lowerCaseName}"`
+    );
+
+    let feature = await CountFeature.findOne({ name: lowerCaseName });
+
+    if (feature) {
+      console.log(
+        `tryCreateCountFeature: Found existing feature with ID: ${feature._id}`
+      );
+      return feature._id;
+    }
+
+    console.log(
+      `tryCreateCountFeature: Creating new feature: "${lowerCaseName}"`
+    );
+    const newFeature = new CountFeature({
+      name: lowerCaseName,
+      count: defaultCount,
+    });
+
+    const savedFeature = await newFeature.save();
+    console.log(
+      `tryCreateCountFeature: Created new feature with ID: ${savedFeature._id}`
+    );
+
+    return savedFeature._id;
+  } catch (error) {
+    console.error(`tryCreateCountFeature error for "${featureName}":`, error);
+    return null;
+  }
+};
 
 // create
 const addGlobalPlan = async (req, res) => {
@@ -91,62 +177,221 @@ const addGlobalPlan = async (req, res) => {
     }
 
     // Parse booleanFeatureList and countFeatureList from form data
-    let booleanFeatureList_updated = booleanFeatureList;
-    let countFeatureList_updated = countFeatureList;
+    let booleanFeatureList_updated = booleanFeatureList || [];
+    let countFeatureList_updated = countFeatureList || [];
 
-    // Process booleanFeatureList
-    const booleanKeys = Object.keys(req.body).filter((key) =>
-      key.startsWith("booleanFeatureList")
-    );
-    if (booleanKeys.length > 0) {
-      // Get the max index
-      const indices = [
-        ...new Set(
-          booleanKeys.map((key) => {
-            const match = key.match(/booleanFeatureList\[(\d+)\]/);
-            return match ? parseInt(match[1]) : -1;
-          })
-        ),
-      ].filter((idx) => idx !== -1);
+    console.log("Original request.body:", JSON.stringify(req.body, null, 2));
 
-      // Create the array of boolean features
-      for (let i = 0; i <= Math.max(...indices); i++) {
-        const name = req.body[`booleanFeatureList[${i}][name]`];
-        const status = req.body[`booleanFeatureList[${i}][status]`] === "true";
+    // Process booleanFeatureList - use both array format and indexed format
+    booleanFeatureList = [];
 
-        if (name) {
-          booleanFeatureList.push({ name, status });
+    // Check if we have the array directly in the request body
+    if (
+      req.body.booleanFeatureList &&
+      Array.isArray(req.body.booleanFeatureList)
+    ) {
+      console.log("Direct array format detected");
+      for (const feature of req.body.booleanFeatureList) {
+        try {
+          if (!feature.name) continue;
+
+          let featureId = feature.featureId;
+          if (!featureId) {
+            featureId = await tryCreateBooleanFeature(feature.name);
+          }
+
+          if (featureId) {
+            booleanFeatureList.push({
+              name: feature.name,
+              status: !!feature.status,
+              featureId,
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing feature in array format:`, error);
         }
       }
+    } else {
+      // Process form-data format with indexed keys
+      const booleanKeys = Object.keys(req.body).filter((key) =>
+        key.startsWith("booleanFeatureList")
+      );
+      console.log("Boolean keys found:", booleanKeys);
+
+      if (booleanKeys.length > 0) {
+        // Check if we have the form-data format with indices
+        const indexPattern = /booleanFeatureList\[(\d+)\]/;
+        const indices = [
+          ...new Set(
+            booleanKeys.map((key) => {
+              const match = key.match(indexPattern);
+              return match ? parseInt(match[1]) : -1;
+            })
+          ),
+        ].filter((idx) => idx !== -1);
+
+        console.log("Indices found:", indices);
+
+        if (indices.length > 0) {
+          // Process using the indexed format
+          for (let i = 0; i <= Math.max(...indices); i++) {
+            const name = req.body[`booleanFeatureList[${i}][name]`];
+            const status =
+              req.body[`booleanFeatureList[${i}][status]`] === "true";
+            const featureId = req.body[`booleanFeatureList[${i}][featureId]`];
+
+            console.log(
+              `Processing feature ${i}: name=${name}, status=${status}, featureId=${featureId}`
+            );
+
+            if (name) {
+              try {
+                let actualFeatureId = featureId;
+                if (!actualFeatureId) {
+                  actualFeatureId = await tryCreateBooleanFeature(name);
+                  console.log(
+                    `Created/found feature ID: ${actualFeatureId} for ${name}`
+                  );
+                }
+
+                if (actualFeatureId) {
+                  const featureToAdd = {
+                    name,
+                    status,
+                    featureId,
+                  };
+
+                  console.log(`Adding feature to list:`, featureToAdd);
+                  booleanFeatureList.push(featureToAdd);
+                }
+              } catch (error) {
+                console.error(`Error processing feature ${name}:`, error);
+              }
+            }
+          }
+        }
+      } else {
+        console.log("No boolean features found in form data");
+      }
     }
+
+    console.log("Final booleanFeatureList:", booleanFeatureList);
 
     // Process countFeatureList
     const countKeys = Object.keys(req.body).filter((key) =>
       key.startsWith("countFeatureList")
     );
-    if (countKeys.length > 0) {
-      // Get the max index
-      const indices = [
-        ...new Set(
-          countKeys.map((key) => {
-            const match = key.match(/countFeatureList\[(\d+)\]/);
-            return match ? parseInt(match[1]) : -1;
-          })
-        ),
-      ].filter((idx) => idx !== -1);
+    console.log("Count keys found:", countKeys);
+    console.log("All request keys:", Object.keys(req.body));
 
-      // Create the array of count features
-      for (let i = 0; i <= Math.max(...indices); i++) {
-        const name = req.body[`countFeatureList[${i}][name]`];
-        const count = parseInt(
-          req.body[`countFeatureList[${i}][count]`] || "0"
-        );
+    // Initialize countFeatureList as an empty array
+    countFeatureList = [];
 
-        if (name) {
-          countFeatureList.push({ name, count });
+    // Check if we have the array directly in the request body
+    if (req.body.countFeatureList && Array.isArray(req.body.countFeatureList)) {
+      console.log("Direct array format detected for countFeatureList");
+
+      // Iterate through the array
+      for (let i = 0; i < req.body.countFeatureList.length; i++) {
+        const feature = req.body.countFeatureList[i];
+
+        if (!feature || !feature.name) continue;
+
+        try {
+          const name = feature.name;
+          // Ensure count is a number
+          const count = parseInt(feature.count || "0", 10);
+
+          console.log(`Processing count feature: name=${name}, count=${count}`);
+
+          // Get or create feature ID
+          let featureId = feature.featureId;
+          if (!featureId) {
+            featureId = await tryCreateCountFeature(name, count);
+            console.log(
+              `Created/found count feature ID: ${featureId} for ${name}`
+            );
+          }
+
+          if (featureId) {
+            countFeatureList.push({
+              name,
+              count,
+              featureId,
+            });
+            console.log(
+              `Added count feature with ID to list: ${name}, ${count}, ${featureId}`
+            );
+          } else {
+            countFeatureList.push({ name, count });
+            console.log(
+              `Added count feature without ID to list: ${name}, ${count}`
+            );
+          }
+        } catch (error) {
+          console.error(`Error processing count feature:`, error);
         }
       }
+    } else if (countKeys.length > 0) {
+      // Process form-data with indexed keys
+      try {
+        const indexPattern = /countFeatureList\[(\d+)\]/;
+        const indices = [
+          ...new Set(
+            countKeys.map((key) => {
+              const match = key.match(indexPattern);
+              return match ? parseInt(match[1], 10) : -1;
+            })
+          ),
+        ].filter((idx) => idx !== -1);
+
+        console.log("Count indices found:", indices);
+
+        if (indices.length > 0) {
+          for (let i = 0; i <= Math.max(...indices); i++) {
+            const name = req.body[`countFeatureList[${i}][name]`];
+            const countValue = req.body[`countFeatureList[${i}][count]`];
+            const count = countValue ? parseInt(countValue, 10) : 0;
+            const featureId = req.body[`countFeatureList[${i}][featureId]`];
+
+            if (!name) continue;
+
+            console.log(
+              `Processing indexed count feature: name=${name}, count=${count}`
+            );
+
+            // Get or create feature ID
+            let actualFeatureId = featureId;
+            if (!actualFeatureId) {
+              actualFeatureId = await tryCreateCountFeature(name, count);
+              console.log(
+                `Created/found count feature ID: ${actualFeatureId} for ${name}`
+              );
+            }
+
+            if (actualFeatureId) {
+              countFeatureList.push({
+                name,
+                count,
+                featureId: actualFeatureId,
+              });
+              console.log(
+                `Added indexed count feature with ID: ${name}, ${count}`
+              );
+            } else {
+              countFeatureList.push({ name, count });
+              console.log(
+                `Added indexed count feature without ID: ${name}, ${count}`
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error processing indexed count features:", error);
+      }
     }
+
+    console.log("Final countFeatureList:", JSON.stringify(countFeatureList));
 
     const newGlobalPlan = new GlobalPlan({
       ...req.body,
@@ -207,6 +452,36 @@ const updateGlobalPlan = async (req, res) => {
         AppConstant.FAILED,
         err.message || "validation failed"
       );
+    }
+
+    // Handle booleanFeatureList updates if present
+    if (
+      req.body.booleanFeatureList &&
+      Array.isArray(req.body.booleanFeatureList)
+    ) {
+      // Process each feature to ensure it has a featureId
+      for (let i = 0; i < req.body.booleanFeatureList.length; i++) {
+        const feature = req.body.booleanFeatureList[i];
+        if (feature.name && !feature.featureId) {
+          const featureId = await tryCreateBooleanFeature(feature.name);
+          req.body.booleanFeatureList[i].featureId = featureId;
+        }
+      }
+    }
+
+    // Handle countFeatureList updates if present
+    if (req.body.countFeatureList && Array.isArray(req.body.countFeatureList)) {
+      // Process each feature to ensure it has a featureId
+      for (let i = 0; i < req.body.countFeatureList.length; i++) {
+        const feature = req.body.countFeatureList[i];
+        if (feature.name && !feature.featureId) {
+          const featureId = await tryCreateCountFeature(
+            feature.name,
+            feature.count || 0
+          );
+          req.body.countFeatureList[i].featureId = featureId;
+        }
+      }
     }
 
     const dataToBeUpdated = req.body.name
@@ -284,7 +559,27 @@ const getAllGlobalPlansCategory = async (req, res) => {
 const getAllBooleanFeatureNamesGlobalPlans = async (req, res) => {
   try {
     const { search } = req.query;
+    const query = search
+      ? { name: { $regex: `^${search}`, $options: "i" } }
+      : {};
 
+    // First get features from the dedicated BooleanFeature collection
+    const booleanFeatures = await BooleanFeature.find(query)
+      .sort({ name: 1 })
+      .select("name -_id");
+
+    // If we have dedicated features, use those
+    if (booleanFeatures.length > 0) {
+      return Response.success(
+        res,
+        booleanFeatures,
+        200,
+        AppConstant.SUCCESS,
+        "All boolean feature list names found successfully!"
+      );
+    }
+
+    // Otherwise, fall back to the legacy method of aggregating from GlobalPlan
     const pipeline = [
       // Unwind the booleanFeatureList array
       { $unwind: "$booleanFeatureList" },
@@ -295,7 +590,7 @@ const getAllBooleanFeatureNamesGlobalPlans = async (req, res) => {
             {
               $match: {
                 "booleanFeatureList.name": {
-                  $regex: `^${search}`, // Matches names starting with the search term
+                  $regex: `^${search}`,
                   $options: "i",
                 },
               },
@@ -341,12 +636,33 @@ const getAllBooleanFeatureNamesGlobalPlans = async (req, res) => {
     );
   }
 };
+
 const getAllCountFeatureNamesGlobalPlans = async (req, res) => {
   try {
     const { search } = req.query;
+    const query = search
+      ? { name: { $regex: `^${search}`, $options: "i" } }
+      : {};
 
+    // First get features from the dedicated CountFeature collection
+    const countFeatures = await CountFeature.find(query)
+      .sort({ name: 1 })
+      .select("name -_id");
+
+    // If we have dedicated features, use those
+    if (countFeatures.length > 0) {
+      return Response.success(
+        res,
+        countFeatures,
+        200,
+        AppConstant.SUCCESS,
+        "All count feature list names found successfully!"
+      );
+    }
+
+    // Otherwise, fall back to the legacy method of aggregating from GlobalPlan
     const pipeline = [
-      // Unwind the booleanFeatureList array
+      // Unwind the countFeatureList array
       { $unwind: "$countFeatureList" },
 
       // If search parameter exists, filter by name
@@ -383,14 +699,14 @@ const getAllCountFeatureNamesGlobalPlans = async (req, res) => {
       },
     ];
 
-    const allBooleanFeatureListNames = await GlobalPlan.aggregate(pipeline);
+    const allCountFeatureListNames = await GlobalPlan.aggregate(pipeline);
 
     return Response.success(
       res,
-      allBooleanFeatureListNames,
+      allCountFeatureListNames,
       200,
       AppConstant.SUCCESS,
-      "All boolean feature list names found successfully!"
+      "All count feature list names found successfully!"
     );
   } catch (err) {
     return Response.error(
@@ -441,7 +757,8 @@ const getGlobalPlanById = async (req, res) => {
     );
   }
 };
-// delete  single global plan by id
+
+// delete single global plan by id
 const deleteGlobalPlanById = async (req, res) => {
   try {
     const { globalPlanId } = req.params;
@@ -473,6 +790,7 @@ const deleteGlobalPlanById = async (req, res) => {
     );
   }
 };
+
 // get all global plan to show on dashboard
 const getAllGlobalPlansToShowOnDashboardForIndividualUser = async (
   req,

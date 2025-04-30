@@ -28,6 +28,10 @@ const globalCorporatePlanSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        featureId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "BooleanFeature",
+        },
       },
     ],
     countFeatureList: [
@@ -39,6 +43,10 @@ const globalCorporatePlanSchema = new mongoose.Schema(
         count: {
           type: Number,
           default: 0,
+        },
+        featureId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CountFeature",
         },
       },
     ],

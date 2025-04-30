@@ -16,6 +16,8 @@ const {
   checkPermissions,
   verifyToken,
 } = require("../../middlewares/jwt/permission.js");
+const BooleanFeature = require("../../models/plans/BooleanFeature.model.js");
+const CountFeature = require("../../models/plans/CountFeature.model.js");
 
 router.post(
   "/admin/global-plans",
@@ -67,6 +69,8 @@ router.get(
   checkPermissions("READ", "Superadmin"),
   getAllGlobalPlansCategory
 );
+
+// Keep the original route to support existing clients
 router.get(
   "/admin/global-plan/boolean-featurelist",
   // verifyToken,

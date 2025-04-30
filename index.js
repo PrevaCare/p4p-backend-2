@@ -22,6 +22,8 @@ const addressRoute = require("./routes/common/address/address.route");
 const globalPlanRoute = require("./routes/admin/globalPlan.route");
 const corporatePlanRoute = require("./routes/admin/corporatePlan.route");
 const employeePlanRoute = require("./routes/admin/employeePlan.route");
+const booleanFeatureRoute = require("./routes/admin/booleanFeature.route");
+const countFeatureRoute = require("./routes/admin/countFeature.route");
 const corporateDashboardGraphRoute = require("./routes/common/corporates/corporateDashboardGraph.route");
 const employeeRoute = require("./routes/employee/employee.route");
 const individualUserRoute = require("./routes/common/individualUser/individualUser.route");
@@ -34,6 +36,7 @@ const {
   updateNoShowAppointments,
 } = require("./cron-jobs/appointments/cancelAppointment.cron");
 const { sendMessage } = require("./helper/otp/sentOtp.helper");
+const planAssignmentRoute = require("./routes/employee/planAssignment.route");
 const app = express();
 dotenv.config();
 const port = process.env.PORT;
@@ -88,12 +91,15 @@ app.use("/v1/", addressRoute); //  address
 app.use("/v1/", globalPlanRoute); //  global plans
 app.use("/v1/", corporatePlanRoute); //  corporate plans
 app.use("/v1/", employeePlanRoute); //  corporate plans
+app.use("/v1/", booleanFeatureRoute);
+app.use("/v1/", countFeatureRoute);
 app.use("/v1/", corporateDashboardGraphRoute); //  corporate plans
 app.use("/v1/", employeeRoute); //  employee
 app.use("/v1/", individualUserRoute); //  individual users
 app.use("/v1/", appointmentRoute); //  appointment route
 app.use("/v1/", healthSummarytRoute); //  health summary route
 app.use("/v1/", doctorBankDetailRoute); //  doctor bank details route
+app.use("/v1/employee/plans", planAssignmentRoute);
 
 // Check for no-shows every 15 minutes
 if (process.env.NODE_ENV !== "development") {

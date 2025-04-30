@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+
 const CorporatePlanSchema = new mongoose.Schema(
   {
     corporateId: {
@@ -6,6 +7,13 @@ const CorporatePlanSchema = new mongoose.Schema(
       ref: "Corporate",
       required: [true, "corporate Id is required !"],
     },
+    assignedEmployee: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Employee",
+        timestamps: true,
+      },
+    ],
     name: {
       type: String,
       trim: true,
@@ -27,6 +35,10 @@ const CorporatePlanSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        featureId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "BooleanFeature",
+        },
       },
     ],
     countFeatureList: [
@@ -39,6 +51,39 @@ const CorporatePlanSchema = new mongoose.Schema(
           type: Number,
           default: 0,
         },
+        planType: {
+          type: String,
+          default: "yearly",
+          enum: [
+            "yearly", // 12 months
+            "weekly", // 7 days
+            "semi-monthly", // 2 times in a month
+            "semi-annually", // 2 times in a year
+            "monthly", // 1 month
+            "daily", // 1 day
+            "quarterly", // 3 months
+            "bimonthly", // 2 months
+            "bi-weekly", // 2 weeks
+            "bi-monthly", // 2 months
+          ],
+          required: true,
+        },
+        featureId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CountFeature",
+        },
+      },
+    ],
+    assignedDoctor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Doctor",
+      },
+    ],
+    assignedLabs: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Lab",
       },
     ],
     price: {
@@ -47,14 +92,6 @@ const CorporatePlanSchema = new mongoose.Schema(
     },
     remarks: {
       type: String,
-    },
-    totalCount: {
-      type: Number,
-      required: true,
-    },
-    usedCount: {
-      type: Number,
-      default: 0,
     },
     discountPercentage: {
       type: Number,
@@ -79,14 +116,22 @@ const CorporatePlanSchema = new mongoose.Schema(
       type: Date,
       // required: [true, "end date is required !"],
     },
+    employeeCount: {
+      type: Number,
+      default: 0,
+    },
+    totalEmployeeCount: {
+      type: Number,
+      required: [true, "total employee count is required !"],
+    },
     autoRenew: {
       type: Boolean,
       default: false,
     },
     billingCycle: {
-      type: Number, // Store number of months, 1 for monthly, 12 for yearly
-      // required: [true, "billing cycle is required"],
-      // enum: [1, 12],
+      type: String,
+      enum: ["monthly", "yearly"],
+      required: [true, "billing cycle is required"],
     },
     paymentStatus: {
       type: String,

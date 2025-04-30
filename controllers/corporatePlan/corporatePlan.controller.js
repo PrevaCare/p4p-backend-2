@@ -1,20 +1,48 @@
 const corporatePlanModel = require("../../models/corporates/corporatePlan.model");
+const BooleanFeature = require("../../models/plans/BooleanFeature.model");
+const CountFeature = require("../../models/plans/CountFeature.model");
 const AppConstant = require("../../utils/AppConstant");
 const Response = require("../../utils/Response");
+
+// Helper function to create a BooleanFeature if it doesn't exist
+const tryCreateBooleanFeature = async (featureName) => {
+  try {
+    if (!featureName) return null;
+    const lowerCaseName = featureName.toLowerCase();
+    let feature = await BooleanFeature.findOne({ name: lowerCaseName });
+    if (feature) return feature._id;
+    const newFeature = new BooleanFeature({
+      name: lowerCaseName,
+      status: false,
+    });
+    const savedFeature = await newFeature.save();
+    return savedFeature._id;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Helper function to create a CountFeature if it doesn't exist
+const tryCreateCountFeature = async (featureName, defaultCount = 0) => {
+  try {
+    if (!featureName) return null;
+    const lowerCaseName = featureName.toLowerCase();
+    let feature = await CountFeature.findOne({ name: lowerCaseName });
+    if (feature) return feature._id;
+    const newFeature = new CountFeature({
+      name: lowerCaseName,
+      count: defaultCount,
+    });
+    const savedFeature = await newFeature.save();
+    return savedFeature._id;
+  } catch (error) {
+    return null;
+  }
+};
 
 // create
 const addCorporatePlan = async (req, res) => {
   try {
-    // Validate request body
-    // const { error } = addGlobalPlanSchema.validate(req.body);
-    // if (error) {
-    //   return Response.error(
-    //     res,
-    //     400,
-    //     AppConstant.FAILED,
-    //     err.message || "validation failed"
-    //   );
-    // }
     const lowerCaseName = req.body.name && req.body.name.toLowerCase();
     const lowerCaseCategory =
       req.body.category && req.body.category.toLowerCase();
@@ -34,10 +62,50 @@ const addCorporatePlan = async (req, res) => {
       );
     }
 
+    // Handle booleanFeatureList
+    let booleanFeatureList = [];
+    if (Array.isArray(req.body.booleanFeatureList)) {
+      for (const feature of req.body.booleanFeatureList) {
+        if (!feature.name) continue;
+        let featureId = feature.featureId;
+        if (!featureId) {
+          featureId = await tryCreateBooleanFeature(feature.name);
+        }
+        booleanFeatureList.push({
+          name: feature.name,
+          status: feature.status === true || feature.status === "true",
+          featureId,
+        });
+      }
+    }
+
+    // Handle countFeatureList
+    let countFeatureList = [];
+    if (Array.isArray(req.body.countFeatureList)) {
+      for (const feature of req.body.countFeatureList) {
+        if (!feature.name) continue;
+        let featureId = feature.featureId;
+        if (!featureId) {
+          featureId = await tryCreateCountFeature(
+            feature.name,
+            feature.count || 0
+          );
+        }
+        countFeatureList.push({
+          name: feature.name,
+          count: feature.count || 0,
+          planType: feature.planType || "yearly",
+          featureId,
+        });
+      }
+    }
+
     const newCorporatePlan = new corporatePlanModel({
       ...req.body,
       name: lowerCaseName,
       category: lowerCaseCategory,
+      booleanFeatureList,
+      countFeatureList,
     });
     const savedCorporatePlan = await newCorporatePlan.save();
 
@@ -49,7 +117,6 @@ const addCorporatePlan = async (req, res) => {
       "Corporate plan created successfully !"
     );
   } catch (err) {
-    // Handle any errors
     if (err.name === "ValidationError") {
       return Response.error(
         res,
