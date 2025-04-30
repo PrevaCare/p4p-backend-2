@@ -129,9 +129,11 @@ const healthTrackerController = {
             planType: feature.planType,
             assignedAt: feature.assignedAt,
             expiresAt: feature.expiresAt,
+            totalAllowed: feature.totalAllowed,
             periodAllowed: feature.periodAllowed,
             periodRemaining: feature.periodRemaining,
             periodUsed: feature.periodUsed,
+            usageHistory: feature.history,
           })),
           countFeatures: userPlan.activeCountFeatures.map((feature) => ({
             featureName: feature.featureName,
@@ -139,9 +141,11 @@ const healthTrackerController = {
             planType: feature.planType,
             assignedAt: feature.assignedAt,
             expiresAt: feature.expiresAt,
+            totalAllowed: feature.totalAllowed,
             periodAllowed: feature.periodAllowed,
             periodRemaining: feature.periodRemaining,
             periodUsed: feature.periodUsed,
+            usageHistory: feature.history,
           })),
         };
       };
