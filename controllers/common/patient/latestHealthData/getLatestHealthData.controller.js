@@ -3,6 +3,7 @@ const PatientBMI = require("../../../../models/patient/healthTracker/bmi/patient
 const PatientPR = require("../../../../models/patient/healthTracker/pr/patientPr.model");
 const PatientWeight = require("../../../../models/patient/healthTracker/weight/patientWeight.model");
 const PatientSleep = require("../../../../models/patient/healthTracker/sleep/patientSleep.model.js");
+const UserPlansBalance = require("../../../../models/corporates/individualPlan.model");
 
 const PatientBloodGlucose = require("../../../../models/patient/healthTracker/bloodGlucose/bloodGlucose.model");
 const PatientWaterIntake = require("../../../../models/patient/healthTracker/waterIntake/patientWaterIntake.model");
@@ -112,6 +113,39 @@ const healthTrackerController = {
         };
       };
 
+      // Function to get plan features
+      const getPlanFeatures = async (userId) => {
+        const userPlan = await UserPlansBalance.findOne({
+          userId: userId,
+          roleType: "employee",
+        });
+
+        if (!userPlan) return null;
+
+        return {
+          booleanFeatures: userPlan.activeBooleanFeatures.map((feature) => ({
+            featureName: feature.featureName,
+            featureType: feature.featureType,
+            planType: feature.planType,
+            assignedAt: feature.assignedAt,
+            expiresAt: feature.expiresAt,
+            periodAllowed: feature.periodAllowed,
+            periodRemaining: feature.periodRemaining,
+            periodUsed: feature.periodUsed,
+          })),
+          countFeatures: userPlan.activeCountFeatures.map((feature) => ({
+            featureName: feature.featureName,
+            featureType: feature.featureType,
+            planType: feature.planType,
+            assignedAt: feature.assignedAt,
+            expiresAt: feature.expiresAt,
+            periodAllowed: feature.periodAllowed,
+            periodRemaining: feature.periodRemaining,
+            periodUsed: feature.periodUsed,
+          })),
+        };
+      };
+
       // Get latest records from all individual models
       const [
         latestBP,
@@ -125,6 +159,7 @@ const healthTrackerController = {
         latestEMR,
         latestHealthScore,
         userInfo,
+        planFeatures,
       ] = await Promise.all([
         getLatestRecord(PatientBP),
         getLatestRecord(PatientBMI),
@@ -137,6 +172,7 @@ const healthTrackerController = {
         getLatestEMR(),
         getLatestHealthScore(),
         getUserInfo(),
+        getPlanFeatures(patientId),
       ]);
 
       // Get corporate details if user is an employee
@@ -278,6 +314,7 @@ const healthTrackerController = {
 
         // Add corporate details if available
         corporate: corporateDetails,
+        planFeatures: planFeatures,
 
         //           _id
 
