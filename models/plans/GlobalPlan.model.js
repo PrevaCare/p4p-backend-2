@@ -32,6 +32,16 @@ const globalCorporatePlanSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "BooleanFeature",
         },
+        type: {
+          type: String,
+          default: "others",
+          required: [true, "Feature type is required!"],
+        },
+        subType: {
+          type: String,
+          default: "others",
+          required: [true, "Feature sub-type is required!"],
+        },
       },
     ],
     countFeatureList: [
@@ -47,6 +57,16 @@ const globalCorporatePlanSchema = new mongoose.Schema(
         featureId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "CountFeature",
+        },
+        type: {
+          type: String,
+          default: "others",
+          required: [true, "Feature type is required!"],
+        },
+        subType: {
+          type: String,
+          default: "others",
+          required: [true, "Feature sub-type is required!"],
         },
       },
     ],

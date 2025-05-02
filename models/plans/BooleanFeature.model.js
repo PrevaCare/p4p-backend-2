@@ -12,6 +12,16 @@ const booleanFeatureSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    type: {
+      type: String,
+      default: "others",
+      required: [true, "Feature type is required!"],
+    },
+    subType: {
+      type: String,
+      default: "others",
+      required: [true, "Feature sub-type is required!"],
+    },
   },
   { timestamps: true }
 );

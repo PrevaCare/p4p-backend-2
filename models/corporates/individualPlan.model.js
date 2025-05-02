@@ -51,6 +51,16 @@ const FeatureUsageSchema = new Schema(
       ],
       required: true,
     },
+    type: {
+      type: String,
+      default: "others",
+      required: [true, "Feature type is required!"],
+    },
+    subType: {
+      type: String,
+      default: "others",
+      required: [true, "Feature sub-type is required!"],
+    },
     status: { type: Boolean, default: false },
     assignedAt: { type: Date, required: true },
     expiresAt: { type: Date, required: true },

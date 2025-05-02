@@ -39,6 +39,16 @@ const CorporatePlanSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "BooleanFeature",
         },
+        type: {
+          type: String,
+          default: "others",
+          required: [true, "Feature type is required!"],
+        },
+        subType: {
+          type: String,
+          default: "others",
+          required: [true, "Feature sub-type is required!"],
+        },
       },
     ],
     countFeatureList: [
@@ -71,6 +81,16 @@ const CorporatePlanSchema = new mongoose.Schema(
         featureId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "CountFeature",
+        },
+        type: {
+          type: String,
+          default: "others",
+          required: [true, "Feature type is required!"],
+        },
+        subType: {
+          type: String,
+          default: "others",
+          required: [true, "Feature sub-type is required!"],
         },
       },
     ],
@@ -130,7 +150,7 @@ const CorporatePlanSchema = new mongoose.Schema(
     },
     billingCycle: {
       type: String,
-      enum: ["monthly", "yearly"],
+      enum: ["monthly", "yearly", "1", "12"],
       required: [true, "billing cycle is required"],
     },
     paymentStatus: {
@@ -145,10 +165,37 @@ const CorporatePlanSchema = new mongoose.Schema(
       type: Date,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        // Ensure type and subType fields are included for each feature
+        if (ret.booleanFeatureList) {
+          ret.booleanFeatureList.forEach((feature) => {
+            if (!feature.type) feature.type = "others";
+            if (!feature.subType) feature.subType = "others";
+          });
+        }
+        if (ret.countFeatureList) {
+          ret.countFeatureList.forEach((feature) => {
+            if (!feature.type) feature.type = "others";
+            if (!feature.subType) feature.subType = "others";
+          });
+        }
+        return ret;
+      },
+    },
+  }
 );
 // Pre-save middleware to calculate endDate based on startDate and duration
 CorporatePlanSchema.pre("save", function (next) {
+  // Convert numeric billingCycle to string values
+  if (this.billingCycle === 1 || this.billingCycle === "1") {
+    this.billingCycle = "monthly";
+  } else if (this.billingCycle === 12 || this.billingCycle === "12") {
+    this.billingCycle = "yearly";
+  }
+
   if (
     this.isNew ||
     this.isModified("startDate") ||
@@ -157,8 +204,12 @@ CorporatePlanSchema.pre("save", function (next) {
     const months = this.duration === "monthly" ? 1 : 12;
     this.endDate = new Date(this.startDate);
     this.endDate.setMonth(this.endDate.getMonth() + months);
-    // Set billingCycle based on duration
-    this.billingCycle = months;
+
+    // Ensure billingCycle is always a valid value
+    if (this.duration) {
+      this.billingCycle = this.duration; // Use duration as billing cycle (monthly or yearly)
+    }
+
     // Set nextBillingDate
     this.nextBillingDate = new Date(this.startDate);
     this.nextBillingDate.setMonth(this.nextBillingDate.getMonth() + months);

@@ -12,6 +12,16 @@ const countFeatureSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    type: {
+      type: String,
+      default: "others",
+      required: [true, "Feature type is required!"],
+    },
+    subType: {
+      type: String,
+      default: "others",
+      required: [true, "Feature sub-type is required!"],
+    },
   },
   { timestamps: true }
 );
