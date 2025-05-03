@@ -31,6 +31,7 @@ const appointmentRoute = require("./routes/appointment/appointment.route");
 const healthSummarytRoute = require("./routes/common/patient/healthSummary/healthSummary.route");
 const doctorBankDetailRoute = require("./routes/common/doctor/doctorBankDetail.route");
 const doctorCategoriesRoute = require("./routes/common/doctor/doctorCategories.route");
+const packageTypeRoute = require("./routes/common/packageFeatures/packageType.route");
 const cron = require("node-cron");
 const {
   paymentLinkExpireAtAppointmentStartDate,
@@ -101,6 +102,7 @@ app.use("/v1/", appointmentRoute); //  appointment route
 app.use("/v1/", healthSummarytRoute); //  health summary route
 app.use("/v1/", doctorBankDetailRoute); //  doctor bank details route
 app.use("/v1/", doctorCategoriesRoute); //  doctor categories route
+app.use("/v1/package-types", packageTypeRoute); // package types and subtypes
 app.use("/v1/employee/plans", planAssignmentRoute);
 
 // Check for no-shows every 15 minutes
