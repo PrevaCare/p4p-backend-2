@@ -1,0 +1,415 @@
+{
+  "info": {
+    "_postman_id": "b7e8d9f2-a1c3-4d6f-95e7-287f3b412a90",
+    "name": "Global Plan API",
+    "description": "API endpoints for managing Global Plans with Boolean and Count Features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Global Plan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Premium Plan",
+              "type": "text"
+            },
+            {
+              "key": "category",
+              "value": "Subscription",
+              "type": "text"
+            },
+            {
+              "key": "price",
+              "value": "99.99",
+              "type": "text"
+            },
+            {
+              "key": "remarks",
+              "value": "This is a premium plan with all features",
+              "type": "text"
+            },
+            {
+              "key": "imagefile",
+              "type": "file",
+              "description": "Image file for the plan"
+            },
+            {
+              "key": "booleanFeatureList[0][name]",
+              "value": "premium_access",
+              "type": "text"
+            },
+            {
+              "key": "booleanFeatureList[0][status]",
+              "value": "true",
+              "type": "text"
+            },
+            {
+              "key": "booleanFeatureList[0][type]",
+              "value": "Security",
+              "type": "text"
+            },
+            {
+              "key": "booleanFeatureList[0][subType]",
+              "value": "Access",
+              "type": "text"
+            },
+            {
+              "key": "booleanFeatureList[1][name]",
+              "value": "advanced_analytics",
+              "type": "text"
+            },
+            {
+              "key": "booleanFeatureList[1][status]",
+              "value": "true",
+              "type": "text"
+            },
+            {
+              "key": "booleanFeatureList[1][type]",
+              "value": "Analytics",
+              "type": "text"
+            },
+            {
+              "key": "booleanFeatureList[1][subType]",
+              "value": "Reports",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[0][name]",
+              "value": "monthly_reports",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[0][count]",
+              "value": "10",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[0][type]",
+              "value": "Reports",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[0][subType]",
+              "value": "Monthly",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[1][name]",
+              "value": "user_accounts",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[1][count]",
+              "value": "5",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[1][type]",
+              "value": "Users",
+              "type": "text"
+            },
+            {
+              "key": "countFeatureList[1][subType]",
+              "value": "Accounts",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans"]
+        },
+        "description": "Creates a new global plan with boolean and count features"
+      },
+      "response": []
+    },
+    {
+      "name": "Create Global Plan (JSON)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"Premium Plan\",\n    \"category\": \"Subscription\",\n    \"price\": 99.99,\n    \"remarks\": \"This is a premium plan with all features\",\n    \"booleanFeatureList\": [\n        {\n            \"name\": \"premium_access\",\n            \"status\": true,\n            \"type\": \"Security\",\n            \"subType\": \"Access\"\n        },\n        {\n            \"name\": \"advanced_analytics\",\n            \"status\": true,\n            \"type\": \"Analytics\",\n            \"subType\": \"Reports\"\n        }\n    ],\n    \"countFeatureList\": [\n        {\n            \"name\": \"monthly_reports\",\n            \"count\": 10,\n            \"type\": \"Reports\",\n            \"subType\": \"Monthly\"\n        },\n        {\n            \"name\": \"user_accounts\",\n            \"count\": 5,\n            \"type\": \"Users\",\n            \"subType\": \"Accounts\"\n        }\n    ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans"]
+        },
+        "description": "Creates a new global plan with JSON payload (note: this doesn't include image upload, use the form-data version for that)"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Global Plans",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans"]
+        },
+        "description": "Returns a list of all global plans"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Global Plan By ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"globalPlanId\": \"{{globalPlanId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans/id",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans", "id"]
+        },
+        "description": "Returns the details of a specific global plan identified by its ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Update Global Plan",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"Premium Plan Updated\",\n    \"price\": 129.99,\n    \"booleanFeatureList\": [\n        {\n            \"name\": \"premium_access\",\n            \"status\": true,\n            \"type\": \"Security\",\n            \"subType\": \"Premium\"\n        },\n        {\n            \"name\": \"new_feature\",\n            \"status\": true,\n            \"type\": \"Feature\",\n            \"subType\": \"New\"\n        }\n    ],\n    \"countFeatureList\": [\n        {\n            \"name\": \"monthly_reports\",\n            \"count\": 15,\n            \"type\": \"Reports\",\n            \"subType\": \"Monthly\"\n        }\n    ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans/:globalPlanId",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans", ":globalPlanId"],
+          "variable": [
+            {
+              "key": "globalPlanId",
+              "value": "{{globalPlanId}}",
+              "description": "The ID of the global plan to update"
+            }
+          ]
+        },
+        "description": "Updates the details of a specific global plan identified by its ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Global Plan",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans/:globalPlanId",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans", ":globalPlanId"],
+          "variable": [
+            {
+              "key": "globalPlanId",
+              "value": "{{globalPlanId}}",
+              "description": "The ID of the global plan to delete"
+            }
+          ]
+        },
+        "description": "Deletes a specific global plan identified by its ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Global Plan Categories",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans/categories?search=subscription",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans", "categories"],
+          "query": [
+            {
+              "key": "search",
+              "value": "subscription",
+              "description": "Optional search parameter to filter categories"
+            }
+          ]
+        },
+        "description": "Returns a list of all global plan categories, with optional search filter"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Boolean Feature Names",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans/boolean-features?search=premium",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans", "boolean-features"],
+          "query": [
+            {
+              "key": "search",
+              "value": "premium",
+              "description": "Optional search parameter to filter feature names"
+            }
+          ]
+        },
+        "description": "Returns a list of all boolean feature names used in global plans"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Count Feature Names",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans/count-features?search=user",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans", "count-features"],
+          "query": [
+            {
+              "key": "search",
+              "value": "user",
+              "description": "Optional search parameter to filter feature names"
+            }
+          ]
+        },
+        "description": "Returns a list of all count feature names used in global plans"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Plans for Dashboard",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/global-plans/dashboard",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "global-plans", "dashboard"]
+        },
+        "description": "Returns a simplified list of all global plans for display on the dashboard"
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "Base URL of the API server"
+    },
+    {
+      "key": "token",
+      "value": "your_jwt_token_here",
+      "type": "string",
+      "description": "JWT token for authentication"
+    },
+    {
+      "key": "globalPlanId",
+      "value": "60d21b4667d0d8992e610c85",
+      "type": "string",
+      "description": "ID of a global plan for testing"
+    }
+  ]
+}

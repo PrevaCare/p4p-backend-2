@@ -63,18 +63,18 @@ const CorporatePlanSchema = new mongoose.Schema(
         },
         planType: {
           type: String,
-          default: "yearly",
+          default: "Yearly",
           enum: [
-            "yearly", // 12 months
-            "weekly", // 7 days
-            "semi-monthly", // 2 times in a month
-            "semi-annually", // 2 times in a year
-            "monthly", // 1 month
-            "daily", // 1 day
-            "quarterly", // 3 months
-            "bimonthly", // 2 months
-            "bi-weekly", // 2 weeks
-            "bi-monthly", // 2 months
+            "Yearly", // 12 months
+            "Weekly", // 7 days
+            "Semi-monthly", // 2 times in a month
+            "Semi-annually", // 2 times in a year
+            "Monthly", // 1 month
+            "Daily", // 1 day
+            "Quarterly", // 3 months
+            "Bimonthly", // 2 months
+            "Bi-weekly", // 2 weeks
+            "Bi-monthly", // 2 months
           ],
           required: true,
         },
@@ -119,13 +119,13 @@ const CorporatePlanSchema = new mongoose.Schema(
     },
     duration: {
       type: String,
-      enum: ["monthly", "yearly"],
+      enum: ["Monthly", "Yearly"],
       required: true,
     },
     status: {
       type: String,
-      enum: ["active", "expired", "suspended", "cancelled"],
-      default: "active",
+      enum: ["Active", "Expired", "Suspended", "Cancelled"],
+      default: "Active",
     },
     startDate: {
       type: Date,
@@ -150,7 +150,7 @@ const CorporatePlanSchema = new mongoose.Schema(
     },
     billingCycle: {
       type: String,
-      enum: ["monthly", "yearly", "1", "12"],
+      enum: ["Monthly", "Yearly", "1", "12"],
       required: [true, "billing cycle is required"],
     },
     paymentStatus: {
@@ -172,14 +172,14 @@ const CorporatePlanSchema = new mongoose.Schema(
         // Ensure type and subType fields are included for each feature
         if (ret.booleanFeatureList) {
           ret.booleanFeatureList.forEach((feature) => {
-            if (!feature.type) feature.type = "others";
-            if (!feature.subType) feature.subType = "others";
+            if (!feature.type) feature.type = "Others";
+            if (!feature.subType) feature.subType = "Others";
           });
         }
         if (ret.countFeatureList) {
           ret.countFeatureList.forEach((feature) => {
-            if (!feature.type) feature.type = "others";
-            if (!feature.subType) feature.subType = "others";
+            if (!feature.type) feature.type = "Others";
+            if (!feature.subType) feature.subType = "Others";
           });
         }
         return ret;
@@ -191,9 +191,9 @@ const CorporatePlanSchema = new mongoose.Schema(
 CorporatePlanSchema.pre("save", function (next) {
   // Convert numeric billingCycle to string values
   if (this.billingCycle === 1 || this.billingCycle === "1") {
-    this.billingCycle = "monthly";
+    this.billingCycle = "Monthly";
   } else if (this.billingCycle === 12 || this.billingCycle === "12") {
-    this.billingCycle = "yearly";
+    this.billingCycle = "Yearly";
   }
 
   if (
@@ -201,13 +201,13 @@ CorporatePlanSchema.pre("save", function (next) {
     this.isModified("startDate") ||
     this.isModified("duration")
   ) {
-    const months = this.duration === "monthly" ? 1 : 12;
+    const months = this.duration === "Monthly" ? 1 : 12;
     this.endDate = new Date(this.startDate);
     this.endDate.setMonth(this.endDate.getMonth() + months);
 
     // Ensure billingCycle is always a valid value
     if (this.duration) {
-      this.billingCycle = this.duration; // Use duration as billing cycle (monthly or yearly)
+      this.billingCycle = this.duration; // Use duration as billing cycle (Monthly or Yearly)
     }
 
     // Set nextBillingDate

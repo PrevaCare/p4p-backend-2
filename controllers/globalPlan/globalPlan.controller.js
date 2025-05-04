@@ -9,15 +9,19 @@ const {
 } = require("../../validators/globalPlan/addGlobalPlan.validator");
 const { uploadToS3 } = require("../../middlewares/uploads/awsConfig");
 
-// Helper function to create a BooleanFeature if it doesn't exist
-const tryCreateBooleanFeature = async (featureName) => {
+// Helper function to create or update a BooleanFeature
+const tryCreateBooleanFeature = async (
+  featureName,
+  type = "Others",
+  subType = "Others"
+) => {
   try {
     if (!featureName) {
       console.error("tryCreateBooleanFeature: Feature name is null or empty");
       return null;
     }
 
-    const lowerCaseName = featureName.toLowerCase();
+    const lowerCaseName = featureName;
     console.log(
       `tryCreateBooleanFeature: Searching for feature: "${lowerCaseName}"`
     );
@@ -28,6 +32,17 @@ const tryCreateBooleanFeature = async (featureName) => {
       console.log(
         `tryCreateBooleanFeature: Found existing feature with ID: ${feature._id}`
       );
+
+      // Update the type and subType if provided
+      if (type !== "Others" || subType !== "Others") {
+        feature.type = type;
+        feature.subType = subType;
+        await feature.save();
+        console.log(
+          `tryCreateBooleanFeature: Updated feature type/subType for "${lowerCaseName}"`
+        );
+      }
+
       return feature._id;
     }
 
@@ -36,7 +51,9 @@ const tryCreateBooleanFeature = async (featureName) => {
     );
     const newFeature = new BooleanFeature({
       name: lowerCaseName,
-      status: false,
+      status: true,
+      type: type,
+      subType: subType,
     });
 
     const savedFeature = await newFeature.save();
@@ -51,15 +68,20 @@ const tryCreateBooleanFeature = async (featureName) => {
   }
 };
 
-// Helper function to create a CountFeature if it doesn't exist
-const tryCreateCountFeature = async (featureName, defaultCount = 0) => {
+// Helper function to create or update a CountFeature
+const tryCreateCountFeature = async (
+  featureName,
+  defaultCount = 0,
+  type = "Others",
+  subType = "Others"
+) => {
   try {
     if (!featureName) {
       console.error("tryCreateCountFeature: Feature name is null or empty");
       return null;
     }
 
-    const lowerCaseName = featureName.toLowerCase();
+    const lowerCaseName = featureName;
     console.log(
       `tryCreateCountFeature: Searching for feature: "${lowerCaseName}"`
     );
@@ -70,6 +92,17 @@ const tryCreateCountFeature = async (featureName, defaultCount = 0) => {
       console.log(
         `tryCreateCountFeature: Found existing feature with ID: ${feature._id}`
       );
+
+      // Update the type and subType if provided
+      if (type !== "Others" || subType !== "Others") {
+        feature.type = type;
+        feature.subType = subType;
+        await feature.save();
+        console.log(
+          `tryCreateCountFeature: Updated feature type/subType for "${lowerCaseName}"`
+        );
+      }
+
       return feature._id;
     }
 
@@ -79,6 +112,9 @@ const tryCreateCountFeature = async (featureName, defaultCount = 0) => {
     const newFeature = new CountFeature({
       name: lowerCaseName,
       count: defaultCount,
+      status: true,
+      type: type,
+      subType: subType,
     });
 
     const savedFeature = await newFeature.save();
@@ -195,9 +231,37 @@ const addGlobalPlan = async (req, res) => {
         try {
           if (!feature.name) continue;
 
+          // Get feature type and subType if provided, otherwise use default
+          const featureType = feature.type || "Others";
+          const featureSubType = feature.subType || "Others";
+
           let featureId = feature.featureId;
           if (!featureId) {
-            featureId = await tryCreateBooleanFeature(feature.name);
+            // Pass type and subType to the helper function
+            featureId = await tryCreateBooleanFeature(
+              feature.name,
+              featureType,
+              featureSubType
+            );
+          } else {
+            // If featureId exists, still check if we need to update type/subType
+            const existingFeature = await BooleanFeature.findById(featureId);
+            if (existingFeature) {
+              // Update type and subType if provided and different from current values
+              if (
+                (featureType !== "Others" &&
+                  existingFeature.type !== featureType) ||
+                (featureSubType !== "Others" &&
+                  existingFeature.subType !== featureSubType)
+              ) {
+                existingFeature.type = featureType;
+                existingFeature.subType = featureSubType;
+                await existingFeature.save();
+                console.log(
+                  `Updated existing boolean feature (${feature.name}) type/subType`
+                );
+              }
+            }
           }
 
           if (featureId) {
@@ -205,6 +269,8 @@ const addGlobalPlan = async (req, res) => {
               name: feature.name,
               status: !!feature.status,
               featureId,
+              type: featureType,
+              subType: featureSubType,
             });
           }
         } catch (error) {
@@ -246,19 +312,51 @@ const addGlobalPlan = async (req, res) => {
 
             if (name) {
               try {
+                // Get feature type and subType if provided
+                const featureType =
+                  req.body[`booleanFeatureList[${i}][type]`] || "Others";
+                const featureSubType =
+                  req.body[`booleanFeatureList[${i}][subType]`] || "Others";
+
                 let actualFeatureId = featureId;
                 if (!actualFeatureId) {
-                  actualFeatureId = await tryCreateBooleanFeature(name);
+                  actualFeatureId = await tryCreateBooleanFeature(
+                    name,
+                    featureType,
+                    featureSubType
+                  );
                   console.log(
                     `Created/found feature ID: ${actualFeatureId} for ${name}`
                   );
+                } else {
+                  // If featureId exists, check if we need to update type/subType
+                  const existingFeature = await BooleanFeature.findById(
+                    actualFeatureId
+                  );
+                  if (existingFeature) {
+                    if (
+                      (featureType !== "Others" &&
+                        existingFeature.type !== featureType) ||
+                      (featureSubType !== "Others" &&
+                        existingFeature.subType !== featureSubType)
+                    ) {
+                      existingFeature.type = featureType;
+                      existingFeature.subType = featureSubType;
+                      await existingFeature.save();
+                      console.log(
+                        `Updated existing boolean feature (${name}) type/subType`
+                      );
+                    }
+                  }
                 }
 
                 if (actualFeatureId) {
                   const featureToAdd = {
                     name,
                     status,
-                    featureId,
+                    featureId: actualFeatureId,
+                    type: featureType,
+                    subType: featureSubType,
                   };
 
                   console.log(`Adding feature to list:`, featureToAdd);
@@ -301,16 +399,44 @@ const addGlobalPlan = async (req, res) => {
           const name = feature.name;
           // Ensure count is a number
           const count = parseInt(feature.count || "0", 10);
+          // Get feature type and subType if provided
+          const featureType = feature.type || "Others";
+          const featureSubType = feature.subType || "Others";
 
-          console.log(`Processing count feature: name=${name}, count=${count}`);
+          console.log(
+            `Processing count feature: name=${name}, count=${count}, type=${featureType}, subType=${featureSubType}`
+          );
 
           // Get or create feature ID
           let featureId = feature.featureId;
           if (!featureId) {
-            featureId = await tryCreateCountFeature(name, count);
+            featureId = await tryCreateCountFeature(
+              name,
+              count,
+              featureType,
+              featureSubType
+            );
             console.log(
               `Created/found count feature ID: ${featureId} for ${name}`
             );
+          } else {
+            // If featureId exists, check if we need to update type/subType
+            const existingFeature = await CountFeature.findById(featureId);
+            if (existingFeature) {
+              if (
+                (featureType !== "Others" &&
+                  existingFeature.type !== featureType) ||
+                (featureSubType !== "Others" &&
+                  existingFeature.subType !== featureSubType)
+              ) {
+                existingFeature.type = featureType;
+                existingFeature.subType = featureSubType;
+                await existingFeature.save();
+                console.log(
+                  `Updated existing count feature (${name}) type/subType`
+                );
+              }
+            }
           }
 
           if (featureId) {
@@ -318,6 +444,8 @@ const addGlobalPlan = async (req, res) => {
               name,
               count,
               featureId,
+              type: featureType,
+              subType: featureSubType,
             });
             console.log(
               `Added count feature with ID to list: ${name}, ${count}, ${featureId}`
@@ -353,20 +481,50 @@ const addGlobalPlan = async (req, res) => {
             const countValue = req.body[`countFeatureList[${i}][count]`];
             const count = countValue ? parseInt(countValue, 10) : 0;
             const featureId = req.body[`countFeatureList[${i}][featureId]`];
+            // Get feature type and subType if provided
+            const featureType =
+              req.body[`countFeatureList[${i}][type]`] || "Others";
+            const featureSubType =
+              req.body[`countFeatureList[${i}][subType]`] || "Others";
 
             if (!name) continue;
 
             console.log(
-              `Processing indexed count feature: name=${name}, count=${count}`
+              `Processing indexed count feature: name=${name}, count=${count}, type=${featureType}, subType=${featureSubType}`
             );
 
             // Get or create feature ID
             let actualFeatureId = featureId;
             if (!actualFeatureId) {
-              actualFeatureId = await tryCreateCountFeature(name, count);
+              actualFeatureId = await tryCreateCountFeature(
+                name,
+                count,
+                featureType,
+                featureSubType
+              );
               console.log(
                 `Created/found count feature ID: ${actualFeatureId} for ${name}`
               );
+            } else {
+              // If featureId exists, check if we need to update type/subType
+              const existingFeature = await CountFeature.findById(
+                actualFeatureId
+              );
+              if (existingFeature) {
+                if (
+                  (featureType !== "Others" &&
+                    existingFeature.type !== featureType) ||
+                  (featureSubType !== "Others" &&
+                    existingFeature.subType !== featureSubType)
+                ) {
+                  existingFeature.type = featureType;
+                  existingFeature.subType = featureSubType;
+                  await existingFeature.save();
+                  console.log(
+                    `Updated existing count feature (${name}) type/subType`
+                  );
+                }
+              }
             }
 
             if (actualFeatureId) {
@@ -374,6 +532,8 @@ const addGlobalPlan = async (req, res) => {
                 name,
                 count,
                 featureId: actualFeatureId,
+                type: featureType,
+                subType: featureSubType,
               });
               console.log(
                 `Added indexed count feature with ID: ${name}, ${count}`

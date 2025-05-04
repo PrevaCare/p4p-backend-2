@@ -52,7 +52,7 @@ const createCountFeatureUsage = (feature) => {
     featureId: feature.featureId,
     featureType: "CountFeature",
     name: feature.name,
-    planType: feature.planType || "yearly",
+    planType: feature.planType || "Yearly",
     totalAllowed: feature.count,
     used: 0,
     remaining: feature.count,
@@ -87,7 +87,7 @@ const assignFeaturesToPlan = (corporatePlan, userPlan) => {
 
   // Set plan details
   userPlan.planName = corporatePlan.name;
-  userPlan.planType = corporatePlan.duration || "yearly";
+  userPlan.planType = corporatePlan.duration || "Yearly";
   userPlan.assignedAt = now;
   userPlan.expiresAt = corporatePlan.endDate;
   userPlan.totalAllowed = corporatePlan.totalEmployeeCount || 0;

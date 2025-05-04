@@ -1,0 +1,184 @@
+{
+  "info": {
+    "_postman_id": "e3e80d3d-72cf-4a0e-9f1f-5c14d92e15a8",
+    "name": "Boolean Feature API",
+    "description": "API endpoints for managing Boolean Features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Boolean Feature",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"premium_access\",\n    \"status\": true,\n    \"type\": \"subscription\",\n    \"subType\": \"premium\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/admin/boolean-features",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "boolean-features"]
+        },
+        "description": "Creates a new boolean feature with the specified name and status"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Boolean Features",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/boolean-features?search=premium",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "boolean-features"],
+          "query": [
+            {
+              "key": "search",
+              "value": "premium",
+              "description": "Optional search parameter to filter features by name"
+            }
+          ]
+        },
+        "description": "Returns a list of all boolean features. Can be filtered with an optional search parameter."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Boolean Feature By ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/boolean-features/:featureId",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "boolean-features", ":featureId"],
+          "variable": [
+            {
+              "key": "featureId",
+              "value": "60d21b4667d0d8992e610c85",
+              "description": "The ID of the boolean feature"
+            }
+          ]
+        },
+        "description": "Returns the details of a specific boolean feature identified by its ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Update Boolean Feature",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"premium_access_updated\",\n    \"status\": false,\n    \"type\": \"subscription\",\n    \"subType\": \"premium\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/admin/boolean-features/:featureId",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "boolean-features", ":featureId"],
+          "variable": [
+            {
+              "key": "featureId",
+              "value": "60d21b4667d0d8992e610c85",
+              "description": "The ID of the boolean feature to update"
+            }
+          ]
+        },
+        "description": "Updates the details of a specific boolean feature identified by its ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Boolean Feature",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "description": "JWT token for authentication"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/admin/boolean-features/:featureId",
+          "host": ["{{base_url}}"],
+          "path": ["admin", "boolean-features", ":featureId"],
+          "variable": [
+            {
+              "key": "featureId",
+              "value": "60d21b4667d0d8992e610c85",
+              "description": "The ID of the boolean feature to delete"
+            }
+          ]
+        },
+        "description": "Deletes a specific boolean feature identified by its ID"
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "Base URL of the API server"
+    },
+    {
+      "key": "token",
+      "value": "your_jwt_token_here",
+      "type": "string",
+      "description": "JWT token for authentication"
+    }
+  ]
+}

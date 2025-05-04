@@ -24,6 +24,7 @@ const corporatePlanRoute = require("./routes/admin/corporatePlan.route");
 const employeePlanRoute = require("./routes/admin/employeePlan.route");
 const booleanFeatureRoute = require("./routes/admin/booleanFeature.route");
 const countFeatureRoute = require("./routes/admin/countFeature.route");
+const corporateFeatureRoute = require("./routes/admin/corporateFeature.route");
 const corporateDashboardGraphRoute = require("./routes/common/corporates/corporateDashboardGraph.route");
 const employeeRoute = require("./routes/employee/employee.route");
 const individualUserRoute = require("./routes/common/individualUser/individualUser.route");
@@ -95,6 +96,7 @@ app.use("/v1/", corporatePlanRoute); //  corporate plans
 app.use("/v1/", employeePlanRoute); //  corporate plans
 app.use("/v1/", booleanFeatureRoute);
 app.use("/v1/", countFeatureRoute);
+app.use("/v1/", corporateFeatureRoute);
 app.use("/v1/", corporateDashboardGraphRoute); //  corporate plans
 app.use("/v1/", employeeRoute); //  employee
 app.use("/v1/", individualUserRoute); //  individual users
