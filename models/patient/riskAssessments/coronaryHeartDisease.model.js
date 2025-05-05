@@ -9,7 +9,7 @@ const CoronaryHeartDiseaseSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      enum: ["M", "F", "O"],
+      enum: ["Male", "Female", "Other", "M", "F", "O"],
       required: [true, "gender is required !"],
     },
     age: {
@@ -49,6 +49,10 @@ const CoronaryHeartDiseaseSchema = new mongoose.Schema(
     riskPercentage: {
       type: Number,
       //   required: [true, "risk Percentage is required !"],
+    },
+    riskLevel: {
+      type: String,
+      enum: ["Low", "Moderate", "High", "Very High"],
     },
   },
   { timestamps: true }
