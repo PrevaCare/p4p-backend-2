@@ -5,11 +5,26 @@ const {
   liverRiskCalculatorValidationSchema,
 } = require("../../../validators/patient/riskAssessments/liverRiskCalculator.validator");
 const liverRiskCalculateModel = require("../../../models/patient/riskAssessments/liverRiskCalculate.model");
+const liverRecommendationsModel = require("../../../models/patient/riskAssessments/liverRecommendations.model");
 const {
   calculateLiverRiskHelper,
 } = require("../../../helper/riskAssessment/liverRiskCalculator.helper");
-// create
+const {
+  determineLiverRiskLevel,
+} = require("../../../utils/riskAssessment/liverRiskUtils");
 
+// Fallback utility function in case import fails
+const fallbackDetermineLiverRiskLevel = (riskScore) => {
+  if (riskScore <= 25) {
+    return "Low";
+  } else if (riskScore > 25 && riskScore <= 50) {
+    return "Moderate";
+  } else {
+    return "High";
+  }
+};
+
+// create
 const createLiverRiskCalculator = async (req, res) => {
   try {
     const { error } = liverRiskCalculatorValidationSchema.validate(req.body);
@@ -21,7 +36,6 @@ const createLiverRiskCalculator = async (req, res) => {
         error.message || "validation error !"
       );
     }
-    // const newLiverRisk = new liverRiskCalculateModel(req.body);
 
     // Calculate risk score and level
     const { riskScore, riskLevel } = calculateLiverRiskHelper(req.body);
@@ -62,22 +76,89 @@ const createLiverRiskCalculator = async (req, res) => {
   }
 };
 
-// get all diabetic score
+// get all liver risk assessments with recommendations
 const getAllLiverRiskCalculator = async (req, res) => {
   try {
     const { patientId } = req.body;
-    const savedStrokeRisk = await liverRiskCalculateModel
+    if (!patientId) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Patient ID is required"
+      );
+    }
+
+    // Get all assessments sorted by date
+    const allAssessments = await liverRiskCalculateModel
       .find({ user: patientId }, "riskScore riskLevel createdAt")
       .sort({ createdAt: -1 })
       .limit(10);
+
+    // If there are no assessments, return empty array
+    if (!allAssessments || allAssessments.length === 0) {
+      return Response.success(
+        res,
+        [],
+        200,
+        "No liver risk assessments found for this user",
+        AppConstant.SUCCESS
+      );
+    }
+
+    // Process each assessment to include recommendations
+    const assessmentsWithRecommendations = await Promise.all(
+      allAssessments.map(async (assessment) => {
+        const riskScore = assessment.riskScore || 0;
+
+        // Use imported function with fallback for risk level
+        const getRiskLevel =
+          typeof determineLiverRiskLevel === "function"
+            ? determineLiverRiskLevel
+            : fallbackDetermineLiverRiskLevel;
+
+        // Normalize risk level format from DB (HIGH/MODERATE/LOW) to Title case (High/Moderate/Low)
+        const normalizedRiskLevel =
+          assessment.riskLevel.charAt(0).toUpperCase() +
+          assessment.riskLevel.slice(1).toLowerCase();
+
+        // Fetch recommendations for this assessment
+        const recommendationData = await liverRecommendationsModel.findOne({
+          riskLevel: normalizedRiskLevel,
+        });
+
+        // If recommendation found, include it with the assessment
+        let recommendations = null;
+        if (recommendationData) {
+          recommendations = {
+            dietRecommendation: recommendationData.dietRecommendation,
+            medicalRecommendation: recommendationData.medicalRecommendation,
+            physicalActivityRecommendation:
+              recommendationData.physicalActivityRecommendation,
+            riskLevel: normalizedRiskLevel,
+          };
+        }
+
+        // Return assessment with embedded recommendations
+        return {
+          _id: assessment._id,
+          riskScore: assessment.riskScore,
+          riskLevel: assessment.riskLevel,
+          recommendations: recommendations,
+          createdAt: assessment.createdAt,
+        };
+      })
+    );
+
     return Response.success(
       res,
-      savedStrokeRisk,
+      assessmentsWithRecommendations,
       200,
-      "all stoke data found !",
+      "Liver risk assessments and recommendations found successfully",
       AppConstant.SUCCESS
     );
   } catch (err) {
+    console.error("Error fetching liver risk data:", err);
     return Response.error(
       res,
       500,
