@@ -19,7 +19,7 @@ const {
 const { appointmentBookedTemplate } = require("../../utils/notifications/doctorNotification.utils");
 const dayjs = require("dayjs");
 const customParseFormat = require("dayjs/plugin/customParseFormat");
-const { sendBookingMsgToPatient } = require("../../helper/otp/sentOtp.helper");
+const { sendBookingMsgToPatient, sendBookingMsgToDoctor } = require("../../helper/otp/sentOtp.helper");
 
 // Extend Day.js with custom parsing for HH:mm format
 dayjs.extend(customParseFormat);
@@ -228,7 +228,7 @@ const createNewPatientAppointment2 = async (req, res) => {
         // Doctor creates appointment
         existingDoctor = await doctorModel
           .findOne({ _id })
-          .select("firstName lastName consultationFees");
+          .select("firstName lastName consultationFees phone");
         //   console.log(existingDoctor);
         //   console.log(existingUser);
         //   return;
@@ -349,8 +349,9 @@ const createNewPatientAppointment2 = async (req, res) => {
 
     );
     await notificationsModel.create(notifications);
-    await sendBookingMsgToPatient(existingUser.phone, `${existingDoctor.firstName} ${existingDoctor.lastName}`, req.body.appointmentDate, req.body.startTime, req.body.endTime);
-    await sendBookingMsgToDoctor(existingDoctor.phone, `${existingUser.firstName} ${existingUser.lastName}`, req.body.appointmentDate, req.body.startTime, req.body.endTime);
+    console.log("Doctor details", existingDoctor.phone, existingUser.phone);
+    await sendBookingMsgToPatient(existingUser.phone, `${existingUser.firstName} ${existingUser.lastName}`, `${existingDoctor.firstName} ${existingDoctor.lastName}`, req.body.appointmentDate, req.body.startTime);
+    await sendBookingMsgToDoctor(existingDoctor.phone, `${existingDoctor.firstName} ${existingDoctor.lastName}`, `${existingUser.firstName} ${existingUser.lastName}`, req.body.appointmentDate, req.body.startTime);
     // session.endSession();
     return Response.success(
       res,
