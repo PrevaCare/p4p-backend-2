@@ -83,7 +83,7 @@ const sendMessage = async (mobile, templateId) => {
   }
 };
 
-const sendBookingMsgToDoctor = async (mobile, patientname, appointmentDate, startTime, endTime) => {
+const sendBookingMsgToDoctor = async (mobile, doctorName, patientname, appointmentDate, startTime) => {
   const authKey = process.env.MSG91_AUTH_KEY;
   const senderId = process.env.MSG91_SENDER_ID;
   const route = process.env.MSG91_ROUTE;
@@ -99,6 +99,10 @@ const sendBookingMsgToDoctor = async (mobile, patientname, appointmentDate, star
         recipients: [
           {
             mobiles: `91${mobile}`,
+            var1: doctorName,
+            var2: patientname,
+            var3: appointmentDate,
+            var4: startTime,
           },
         ],
         sender: senderId,
@@ -124,11 +128,55 @@ const sendBookingMsgToDoctor = async (mobile, patientname, appointmentDate, star
 };
 
 
-const sendBookingMsgToPatient = async (mobile, doctorName, appointmentDate, startTime, endTime) => {
+const sendBookingMsgToPatient = async (mobile, patientname, doctorName, appointmentDate, startTime) => {
   const authKey = process.env.MSG91_AUTH_KEY;
   const senderId = process.env.MSG91_SENDER_ID;
   const route = process.env.MSG91_ROUTE;
   const templateId = process.env.MSG91_APPOINTMENT_BOOKED_TEMPLATE_ID_FOR_PATIENT;
+
+  const url = `https://control.msg91.com/api/v5/flow/`;
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        flow_id: templateId,
+        recipients: [
+          {
+            mobiles: `91${mobile}`,
+            var1: patientname,
+            var2: doctorName,
+            var3: appointmentDate,
+            var4: startTime,
+          },
+        ],
+        sender: senderId,
+        authkey: authKey,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.data.type === "success") {
+      console.log("Booking msg sent successfully!");
+      return true;
+    } else {
+      //   return new Error(response.data);
+      throw new Error(response.data);
+    }
+  } catch (error) {
+    return new Error(error);
+  }
+};
+
+const sendEMRCreationMsg = async (mobile) => {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const senderId = process.env.MSG91_SENDER_ID;
+  const route = process.env.MSG91_ROUTE;
+  const templateId = process.env.MSG91_EMR_CREATION_TEMPLATE_ID;
 
   const url = `https://control.msg91.com/api/v5/flow/`;
 
@@ -153,7 +201,7 @@ const sendBookingMsgToPatient = async (mobile, doctorName, appointmentDate, star
     );
 
     if (response.data.type === "success") {
-      console.log("Booking msg sent successfully!");
+      console.log("EMR creation msg sent successfully!");
       return true;
     } else {
       //   return new Error(response.data);
@@ -163,4 +211,5 @@ const sendBookingMsgToPatient = async (mobile, doctorName, appointmentDate, star
     return new Error(error);
   }
 };
-module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor };
+
+module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor, sendEMRCreationMsg };
