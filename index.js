@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const userRoute = require("./routes/user.route");
 const doctorRoute = require("./routes/admin/doctor.route");
+const commonDoctorRoute = require("./routes/common/doctor/doctor.route");
 const instituteRoute = require("./routes/common/institute/institute.route");
 const commonCorporateRoute = require("./routes/common/corporates/getCorporate.route");
 const commonPatientRoute = require("./routes/common/patient/patient.route");
@@ -78,6 +79,7 @@ app.use(express.static("public"));
 
 app.use("/v1/", userRoute);
 app.use("/v1/", doctorRoute);
+app.use("/v1/", commonDoctorRoute);
 app.use("/v1/", instituteRoute);
 app.use("/v1/", commonCorporateRoute); // common
 app.use("/v1/", commonPatientRoute); // common
