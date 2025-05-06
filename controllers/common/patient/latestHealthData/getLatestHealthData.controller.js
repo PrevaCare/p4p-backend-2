@@ -3,6 +3,8 @@ const PatientBMI = require("../../../../models/patient/healthTracker/bmi/patient
 const PatientPR = require("../../../../models/patient/healthTracker/pr/patientPr.model");
 const PatientWeight = require("../../../../models/patient/healthTracker/weight/patientWeight.model");
 const PatientSleep = require("../../../../models/patient/healthTracker/sleep/patientSleep.model.js");
+const PatientStress = require("../../../../models/patient/healthTracker/stress/patientStress.model");
+const PatientDepression = require("../../../../models/patient/healthTracker/depression/patientDepression.model");
 const UserPlansBalance = require("../../../../models/corporates/individualPlan.model");
 
 const PatientBloodGlucose = require("../../../../models/patient/healthTracker/bloodGlucose/bloodGlucose.model");
@@ -168,6 +170,8 @@ const healthTrackerController = {
         latestHealthScore,
         userInfo,
         planFeatures,
+        latestStress,
+        latestDepression,
       ] = await Promise.all([
         getLatestRecord(PatientBP),
         getLatestRecord(PatientBMI),
@@ -181,6 +185,8 @@ const healthTrackerController = {
         getLatestHealthScore(),
         getUserInfo(),
         getPlanFeatures(patientId),
+        getLatestRecord(PatientStress),
+        getLatestRecord(PatientDepression),
       ]);
 
       // Get corporate details if user is an employee
@@ -289,6 +295,27 @@ const healthTrackerController = {
               unit: "m",
             }
           : null,
+
+        stress:
+          latestStress && latestStress.totalScore !== undefined
+            ? {
+                value: latestStress.totalScore,
+                unit: "score",
+                level: latestStress.stressLevel || null,
+                recommendation: latestStress.recommendation || null,
+              }
+            : null,
+
+        depression:
+          latestDepression && latestDepression.totalScore !== undefined
+            ? {
+                value: latestDepression.totalScore,
+                unit: "score",
+                level: latestDepression.depressionLevel || null,
+                recommendation: latestDepression.recommendation || null,
+                selfHarmRisk: latestDepression.selfHarmRisk || false,
+              }
+            : null,
         allergies:
           latestEMR?.history?.allergies &&
           latestEMR?.history?.allergies?.length > 0

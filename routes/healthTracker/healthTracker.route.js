@@ -57,12 +57,24 @@ const {
   verifyAndAuthoriseToken,
 } = require("../../middlewares/jwt/verifyToken");
 
-const{
+const {
   createPatientSpo2Goal,
   createPatientSpo2,
   getAllPatientSpo2ByDateRange,
-  getCurrentPatientSpo2Goal
-}=require("../../controllers/common/patient/healthTracker/patientSpo2.controller");
+  getCurrentPatientSpo2Goal,
+} = require("../../controllers/common/patient/healthTracker/patientSpo2.controller");
+
+const {
+  createPatientStress,
+  getLatestStress,
+  getAllStressByDateRange,
+} = require("../../controllers/common/patient/healthTracker/patientStress.controller");
+
+const {
+  createPatientDepression,
+  getLatestDepression,
+  getAllDepressionByDateRange,
+} = require("../../controllers/common/patient/healthTracker/patientDepression.controller");
 
 const router = require("express").Router();
 
@@ -114,30 +126,28 @@ router.post(
   // verifyToken,
   verifyAndAuthoriseToken,
   createPatientSpo2Goal
-); 
+);
 
 router.post(
   "/app/healthtracker/patient-spo2",
   // verifyToken,
   verifyAndAuthoriseToken,
   createPatientSpo2
-); 
+);
 
 router.post(
   "/app/healthtracker/patient-spo2-goals",
   // verifyToken,
   verifyAndAuthoriseToken,
   getCurrentPatientSpo2Goal
-  
-); 
+);
 
 router.post(
   "/app/healthtracker/patient-spo2s",
   // verifyToken,
   verifyAndAuthoriseToken,
   getAllPatientSpo2ByDateRange
-); 
-
+);
 
 // <====================  patient blood glucose ===============>
 
@@ -313,13 +323,13 @@ router.post(
 // goal
 router.post(
   "/app/healthtracker/mood",
-  //  verifyToken,
+  // verifyToken,
   verifyAndAuthoriseToken,
   createPatientMood
 );
 router.post(
   "/app/healthtracker/mood-last",
-  //  verifyToken,
+  // verifyToken,
   verifyAndAuthoriseToken,
   getSingleMood
 );
@@ -328,8 +338,51 @@ router.post(
   "/app/healthtracker/moods",
   // verifyToken,
   verifyAndAuthoriseToken,
-
   getAllMoodByDateRange
+);
+
+// <====================  stress  ===============>
+router.post(
+  "/app/healthtracker/stress",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  createPatientStress
+);
+
+router.post(
+  "/app/healthtracker/stress-last",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  getLatestStress
+);
+
+router.post(
+  "/app/healthtracker/stresses",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  getAllStressByDateRange
+);
+
+// <====================  depression  ===============>
+router.post(
+  "/app/healthtracker/depression",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  createPatientDepression
+);
+
+router.post(
+  "/app/healthtracker/depression-last",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  getLatestDepression
+);
+
+router.post(
+  "/app/healthtracker/depressions",
+  // verifyToken,
+  verifyAndAuthoriseToken,
+  getAllDepressionByDateRange
 );
 
 module.exports = router;
