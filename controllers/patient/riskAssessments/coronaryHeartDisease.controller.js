@@ -250,7 +250,7 @@ const getCoronaryDataScoreAndDateByEmployeeId = async (req, res) => {
             await coronaryRecommendationsModel.findOne({
               ageGroup,
               gender,
-              riskLevel: "Moderate", // Default to moderate risk if specific level not found
+              // riskLevel: "Moderate", // Default to moderate risk if specific level not found
             });
 
           if (defaultRecommendation) {
@@ -258,7 +258,7 @@ const getCoronaryDataScoreAndDateByEmployeeId = async (req, res) => {
               dietAdjustments: defaultRecommendation.dietAdjustments,
               physicalActivity: defaultRecommendation.physicalActivity,
               medicalInterventions: defaultRecommendation.medicalInterventions,
-              riskLevel: "Moderate",
+              // riskLevel: "Moderate",
               note: "Using default recommendations as exact match not found",
             };
           }
@@ -269,7 +269,13 @@ const getCoronaryDataScoreAndDateByEmployeeId = async (req, res) => {
           _id: assessment._id,
           riskPercentage: assessment.riskPercentage,
           riskLevel: riskLevel,
-          recommendations: recommendations,
+          recommendations: recommendations
+            ? {
+                dietAdjustments: recommendations.dietAdjustments,
+                physicalActivity: recommendations.physicalActivity,
+                medicalInterventions: recommendations.medicalInterventions,
+              }
+            : null,
           createdAt: assessment.createdAt,
         };
       })

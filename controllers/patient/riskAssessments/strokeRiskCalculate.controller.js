@@ -144,7 +144,6 @@ const getAllStrokeRiskCalculatorDateAndLowerHigherVal = async (req, res) => {
             medicalRecommendation: recommendationData.medicalRecommendation,
             physicalActivityRecommendation:
               recommendationData.physicalActivityRecommendation,
-            riskLevel: riskLevel,
           };
         }
 
@@ -154,6 +153,7 @@ const getAllStrokeRiskCalculatorDateAndLowerHigherVal = async (req, res) => {
           lowerRiskScore: assessment.lowerRiskScore,
           higherRiskScore: assessment.higherRiskScore,
           meanRiskScore: (lowerRiskScore + higherRiskScore) / 2,
+          riskLevel: riskLevel,
           desc: assessment.desc,
           recommendations: recommendations,
           createdAt: assessment.createdAt,

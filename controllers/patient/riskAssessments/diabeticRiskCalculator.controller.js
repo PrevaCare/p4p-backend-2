@@ -60,7 +60,44 @@ const fallbackMapGenderForDiabeticRecommendations = (gender, ageGroup) => {
   return "All";
 };
 
-// create
+// Helper function to calculate age score
+const calculateAgeScore = (age) => {
+  if (age < 35) return 0;
+  if (age >= 35 && age <= 49) return 20;
+  return 30; // age >= 50
+};
+
+// Helper function to calculate waist score
+const calculateWaistScore = (waistCircumference, gender) => {
+  if (gender.toLowerCase() === "female") {
+    if (waistCircumference < 80) return 0;
+    if (waistCircumference >= 80 && waistCircumference <= 89) return 10;
+    return 20; // waistCircumference >= 90
+  } else {
+    if (waistCircumference < 90) return 0;
+    if (waistCircumference >= 90 && waistCircumference <= 99) return 10;
+    return 20; // waistCircumference >= 100
+  }
+};
+
+// Helper function to calculate physical activity score
+const calculatePhysicalActivityScore = (activityLevel) => {
+  const level = activityLevel.toLowerCase();
+  if (level.includes("vigorous") || level.includes("strenuous")) return 0;
+  if (level.includes("moderate")) return 10;
+  if (level.includes("mild")) return 20;
+  return 30; // sedentary or no exercise
+};
+
+// Helper function to calculate family history score
+const calculateFamilyHistoryScore = (familyHistory) => {
+  const history = familyHistory.toLowerCase();
+  if (history.includes("both")) return 20;
+  if (history.includes("one")) return 10;
+  return 0; // no diabetes in parents
+};
+
+// Create diabetic risk calculator entry
 const createDiabeticRiskCalculator = async (req, res) => {
   try {
     const { error } = diabeticRiskCalculatorValidation.validate(req.body);
@@ -72,34 +109,68 @@ const createDiabeticRiskCalculator = async (req, res) => {
         error.message || "validation error !"
       );
     }
-    const {
-      user,
+
+    let ageScore, waistScore, physicalActivityScore, familyHistoryScore;
+
+    // Check if raw data is provided instead of scores
+    if (
+      req.body.age &&
+      req.body.waistCircumference &&
+      req.body.physicalActivity &&
+      req.body.familyHistory
+    ) {
+      // Calculate scores from raw data
+      ageScore = calculateAgeScore(req.body.age);
+      waistScore = calculateWaistScore(
+        req.body.waistCircumference,
+        req.body.gender
+      );
+      physicalActivityScore = calculatePhysicalActivityScore(
+        req.body.physicalActivity
+      );
+      familyHistoryScore = calculateFamilyHistoryScore(req.body.familyHistory);
+    } else {
+      // Use provided scores directly
+      ageScore = Number(req.body.ageScore);
+      waistScore = Number(req.body.waistScore);
+      physicalActivityScore = Number(req.body.physicalActivityScore);
+      familyHistoryScore = Number(req.body.familyHistoryScore);
+    }
+
+    // Calculate risk using helper function
+    const { totalScore, riskLevel } = calculateDiabeticRiskHelper({
       ageScore,
       waistScore,
       physicalActivityScore,
       familyHistoryScore,
-    } = req.body;
-
-    // Calculate risk using helper function
-    const { totalScore, riskLevel } = calculateDiabeticRiskHelper({
-      ageScore: Number(ageScore),
-      waistScore: Number(waistScore),
-      physicalActivityScore: Number(physicalActivityScore),
-      familyHistoryScore: Number(familyHistoryScore),
     });
 
     // Create new diabetic risk assessment
     const newDiabeticRisk = await diabeticRiskCalculatorModel.create({
-      user,
-      ageScore: Number(ageScore),
-      waistScore: Number(waistScore),
-      physicalActivityScore: Number(physicalActivityScore),
-      familyHistoryScore: Number(familyHistoryScore),
+      user: req.body.user,
+      ageScore,
+      waistScore,
+      physicalActivityScore,
+      familyHistoryScore,
       totalScore,
       riskLevel,
+      // Include raw data if it was provided
+      ...(req.body.age && {
+        age: req.body.age,
+        waistCircumference: req.body.waistCircumference,
+        physicalActivity: req.body.physicalActivity,
+        familyHistory: req.body.familyHistory,
+        gender: req.body.gender,
+      }),
     });
 
-    return Response.success(res, newDiabeticRisk, 201, AppConstant.SUCCESS);
+    return Response.success(
+      res,
+      newDiabeticRisk,
+      201,
+      "Diabetic risk assessment calculated successfully!",
+      AppConstant.SUCCESS
+    );
   } catch (err) {
     return Response.error(
       res,
@@ -110,10 +181,10 @@ const createDiabeticRiskCalculator = async (req, res) => {
   }
 };
 
-// get all diabetic score
+// Get all diabetic risk assessments
 const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
   try {
-    const { patientId } = req.body;
+    const { patientId } = req.query || req.body;
     if (!patientId) {
       return Response.error(
         res,
@@ -125,7 +196,7 @@ const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
 
     // Get all assessments sorted by date
     const allAssessments = await diabeticRiskCalculatorModel
-      .find({ user: patientId }, "totalScore riskLevel createdAt")
+      .find({ user: patientId })
       .sort({ createdAt: -1 })
       .limit(10);
 
@@ -140,126 +211,14 @@ const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
       );
     }
 
-    // Get user info for age and gender
-    const userInfo = await userModel.findById(patientId, "age gender");
-    if (!userInfo) {
-      // If no user info, return data without recommendations
-      return Response.success(
-        res,
-        allAssessments,
-        200,
-        "Diabetic risk assessments found, but user info not available for recommendations",
-        AppConstant.SUCCESS
-      );
-    }
-
-    // Determine age group from user age (default to middle age if not available)
-    const age = userInfo.age || 45;
-
-    // Use imported function with fallback
-    const getAgeGroup =
-      typeof determineDiabeticAgeGroup === "function"
-        ? determineDiabeticAgeGroup
-        : fallbackDetermineDiabeticAgeGroup;
-    const ageGroup = getAgeGroup(age);
-
-    // Process each assessment to include recommendations
-    const assessmentsWithRecommendations = await Promise.all(
-      allAssessments.map(async (assessment) => {
-        const totalScore = assessment.totalScore;
-
-        // Use imported function with fallback for risk level
-        const getRiskLevel =
-          typeof determineDiabeticRiskLevel === "function"
-            ? determineDiabeticRiskLevel
-            : fallbackDetermineDiabeticRiskLevel;
-
-        // Extract risk level from assessment or calculate it
-        let riskLevel;
-        if (assessment.riskLevel && assessment.riskLevel.includes("LOW")) {
-          riskLevel = "Low";
-        } else if (
-          assessment.riskLevel &&
-          assessment.riskLevel.includes("MODERATE")
-        ) {
-          riskLevel = "Moderate";
-        } else if (
-          assessment.riskLevel &&
-          assessment.riskLevel.includes("HIGH")
-        ) {
-          riskLevel = "High";
-        } else {
-          riskLevel = getRiskLevel(totalScore);
-        }
-
-        // Get mapped gender for recommendations
-        const mapGender =
-          typeof mapGenderForDiabeticRecommendations === "function"
-            ? mapGenderForDiabeticRecommendations
-            : fallbackMapGenderForDiabeticRecommendations;
-
-        const gender = userInfo.gender || "Male";
-        const mappedGender = mapGender(gender, ageGroup);
-
-        // Fetch recommendations for this assessment
-        const recommendationData = await diabeticRecommendationsModel.findOne({
-          ageGroup,
-          gender: mappedGender,
-          riskLevel,
-        });
-
-        // If recommendation found, include it with the assessment
-        let recommendations = null;
-        if (recommendationData) {
-          recommendations = {
-            dietaryRecommendation: recommendationData.dietaryRecommendation,
-            medicalRecommendation: recommendationData.medicalRecommendation,
-            physicalActivityRecommendation:
-              recommendationData.physicalActivityRecommendation,
-            riskLevel: riskLevel,
-          };
-        } else {
-          // Try with default "All" gender if specific gender not found
-          const defaultRecommendation =
-            await diabeticRecommendationsModel.findOne({
-              ageGroup,
-              gender: "All",
-              riskLevel,
-            });
-
-          if (defaultRecommendation) {
-            recommendations = {
-              dietaryRecommendation:
-                defaultRecommendation.dietaryRecommendation,
-              medicalRecommendation:
-                defaultRecommendation.medicalRecommendation,
-              physicalActivityRecommendation:
-                defaultRecommendation.physicalActivityRecommendation,
-              riskLevel: riskLevel,
-            };
-          }
-        }
-
-        // Return assessment with embedded recommendations
-        return {
-          _id: assessment._id,
-          totalScore: assessment.totalScore,
-          riskLevel: assessment.riskLevel,
-          recommendations: recommendations,
-          createdAt: assessment.createdAt,
-        };
-      })
-    );
-
     return Response.success(
       res,
-      assessmentsWithRecommendations,
+      allAssessments,
       200,
-      "Diabetic risk assessments and recommendations found successfully",
+      "Diabetic risk assessments found successfully",
       AppConstant.SUCCESS
     );
   } catch (err) {
-    console.error("Error fetching diabetic risk data:", err);
     return Response.error(
       res,
       500,

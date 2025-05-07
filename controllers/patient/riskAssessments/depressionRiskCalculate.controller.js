@@ -1,5 +1,6 @@
 const AppConstant = require("../../../utils/AppConstant");
 const Response = require("../../../utils/Response");
+const PatientDepression = require("../../../models/patient/healthTracker/depression/patientDepression.model");
 
 const {
   depressionRiskCalculatorValidationSchema,
@@ -18,9 +19,17 @@ const getAgeGroup = (age) => {
   else return "60+";
 };
 
-// Helper function to determine if severe depression levels - will use common recommendations for these
-const isHighSeverityLevel = (level) => {
-  return level === "Moderately Severe" || level === "Severe";
+// Map incoming question keys to schema enum values
+const mapQuestionKeys = {
+  littleInterest: "interestPleasure",
+  feelingDown: "downDepressedHopeless",
+  sleepIssues: "sleepIssues",
+  feelingTired: "tiredLowEnergy",
+  appetiteIssues: "appetiteIssues",
+  feelingBad: "feelingBadFailure",
+  concentrationIssues: "concentrationIssues",
+  movingSpeaking: "movementIssues",
+  suicidalThoughts: "selfHarmThoughts",
 };
 
 // Create depression risk calculator entry
@@ -46,12 +55,42 @@ const createDepressionRiskCalculator = async (req, res) => {
 
     // Create new depression risk assessment
     const newDepressionRisk = new depressionRiskCalculateModel({
-      ...req.body,
+      user: req.body.user,
+      age: req.body.age,
+      gender: req.body.gender,
+      phqQuestions: req.body.phqQuestions,
+      additionalFactors: req.body.additionalFactors,
       phqScore,
       depressionLevel,
     });
 
-    // Save to database
+    // Get recommendations based on depression level, age group, and gender
+    const ageGroup = getAgeGroup(req.body.age);
+    const recommendationData = await depressionRecommendationsModel.findOne({
+      depressionLevel: depressionLevel,
+      ageGroup: ageGroup,
+      gender: req.body.gender,
+    });
+
+    // Create entry in PatientDepression collection for health tracking
+    const patientDepressionEntry = new PatientDepression({
+      patientId: req.body.user,
+      totalScore: phqScore,
+      depressionLevel: depressionLevel,
+      recommendation: recommendationData
+        ? recommendationData.dietaryRecommendation
+        : "No specific recommendations available.",
+      addedBy: "Doctor",
+      selfHarmRisk:
+        depressionLevel === "Severe" || depressionLevel === "ModeratelySevere",
+      questions: Object.entries(req.body.phqQuestions).map(([key, value]) => ({
+        questionKey: mapQuestionKeys[key] || key,
+        score: value,
+      })),
+    });
+
+    // Save both entries
+    await patientDepressionEntry.save();
     const savedDepressionRisk = await newDepressionRisk.save();
 
     return Response.success(
@@ -85,7 +124,9 @@ const createDepressionRiskCalculator = async (req, res) => {
 // Get all depression risk assessments with recommendations
 const getAllDepressionRiskCalculator = async (req, res) => {
   try {
-    const { patientId } = req.body;
+    // Get patientId from either query parameters or request body
+    const patientId = req.query.patientId || req.body.patientId;
+
     if (!patientId) {
       return Response.error(
         res,
@@ -118,31 +159,13 @@ const getAllDepressionRiskCalculator = async (req, res) => {
         // Determine age group for recommendations
         const ageGroup = getAgeGroup(assessment.age);
 
-        // Set query parameters for finding recommendations
-        const queryParams = {};
-
-        // For higher severity levels, we use common recommendations
-        if (isHighSeverityLevel(assessment.depressionLevel)) {
-          queryParams.depressionLevel = assessment.depressionLevel;
-          queryParams.ageGroup = "All Ages";
-          queryParams.gender = "All Genders";
-        } else {
-          queryParams.depressionLevel = assessment.depressionLevel;
-          queryParams.ageGroup = ageGroup;
-
-          // For Minimal/Moderate depression, gender specific recommendations exist only for specific age groups
-          if (assessment.depressionLevel === "Mild" && ageGroup === "18-40") {
-            queryParams.gender = assessment.gender;
-          } else {
-            // For other levels/age groups, gender doesn't matter in recommendations
-            queryParams.gender =
-              assessment.gender === "Other" ? "Male" : assessment.gender;
-          }
-        }
-
-        // Find appropriate recommendation
+        // Find appropriate recommendation based on risk level, age group, and gender
         const recommendationData = await depressionRecommendationsModel.findOne(
-          queryParams
+          {
+            depressionLevel: assessment.depressionLevel,
+            ageGroup: ageGroup,
+            gender: assessment.gender,
+          }
         );
 
         // If recommendation found, include it with the assessment
@@ -152,9 +175,6 @@ const getAllDepressionRiskCalculator = async (req, res) => {
             dietaryRecommendation: recommendationData.dietaryRecommendation,
             activityRecommendation: recommendationData.activityRecommendation,
             supportRecommendation: recommendationData.supportRecommendation,
-            depressionLevel: assessment.depressionLevel,
-            ageGroup: recommendationData.ageGroup,
-            gender: recommendationData.gender,
           };
         }
 
@@ -165,6 +185,7 @@ const getAllDepressionRiskCalculator = async (req, res) => {
           depressionLevel: assessment.depressionLevel,
           age: assessment.age,
           gender: assessment.gender,
+          ageGroup: ageGroup,
           recommendations: recommendations,
           createdAt: assessment.createdAt,
         };

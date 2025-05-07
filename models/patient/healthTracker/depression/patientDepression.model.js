@@ -7,6 +7,11 @@ const patientDepressionSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "patient is required !"],
     },
+    addedBy: {
+      type: String,
+      enum: ["IndividualUser", "Doctor", "Employee"],
+      // required: [true, "addedBy is required !"],
+    },
     questions: [
       {
         questionKey: {

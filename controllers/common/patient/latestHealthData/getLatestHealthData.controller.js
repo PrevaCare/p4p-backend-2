@@ -302,7 +302,7 @@ const healthTrackerController = {
                 value: latestStress.totalScore,
                 unit: "score",
                 level: latestStress.stressLevel || null,
-                recommendation: latestStress.recommendation || null,
+                // recommendation: latestStress.recommendation || null,
               }
             : null,
 
@@ -312,7 +312,7 @@ const healthTrackerController = {
                 value: latestDepression.totalScore,
                 unit: "score",
                 level: latestDepression.depressionLevel || null,
-                recommendation: latestDepression.recommendation || null,
+                // recommendation: latestDepression.recommendation || null,
                 selfHarmRisk: latestDepression.selfHarmRisk || false,
               }
             : null,

@@ -62,6 +62,7 @@ const createPatientStress = async (req, res) => {
     }
 
     const { patientId, responses } = req.body;
+    const addedBy = req.user.role;
 
     // Check if all required question keys are present
     const providedKeys = responses.map((r) => r.questionKey);
@@ -88,6 +89,7 @@ const createPatientStress = async (req, res) => {
     // Create new stress assessment
     const newStress = new patientStressModel({
       patientId,
+      addedBy,
       questions: responses.map((r) => ({
         questionKey: r.questionKey,
         score: r.response,
@@ -102,6 +104,7 @@ const createPatientStress = async (req, res) => {
     return Response.success(
       res,
       savedStress,
+
       201,
       "Stress assessment created successfully!"
     );

@@ -1,5 +1,6 @@
 const AppConstant = require("../../../utils/AppConstant");
 const Response = require("../../../utils/Response");
+const PatientStress = require("../../../models/patient/healthTracker/stress/patientStress.model");
 
 const {
   stressRiskCalculatorValidationSchema,
@@ -16,6 +17,18 @@ const getAgeGroup = (age) => {
   if (age <= 40) return "18-40";
   else if (age <= 60) return "41-60";
   else return "60+";
+};
+
+// Map incoming question keys to schema enum values
+const mapQuestionKeys = {
+  upsetByUnexpected: "unexpectedEvents",
+  unableToControl: "controlImportantThings",
+  feltNervous: "nervousStressed",
+  confidentHandling: "handleProblems",
+  thingsGoingWell: "goingYourWay",
+  couldNotCope: "copeWithThings",
+  angryOutOfControl: "controlIrritations",
+  difficulties: "difficultiesPilingUp",
 };
 
 // Create stress risk calculator entry
@@ -37,12 +50,40 @@ const createStressRiskCalculator = async (req, res) => {
 
     // Create new stress risk assessment
     const newStressRisk = new stressRiskCalculateModel({
-      ...req.body,
+      user: req.body.user,
+      age: req.body.age,
+      gender: req.body.gender,
+      pssQuestions: req.body.pssQuestions,
+      additionalFactors: req.body.additionalFactors,
       pssScore,
       stressLevel,
     });
 
-    // Save to database
+    // Get recommendations based on stress level, age group, and gender
+    const ageGroup = getAgeGroup(req.body.age);
+    const recommendationData = await stressRecommendationsModel.findOne({
+      riskLevel: stressLevel,
+      ageGroup: ageGroup,
+      gender: req.body.gender,
+    });
+
+    // Create entry in PatientStress collection for health tracking
+    const patientStressEntry = new PatientStress({
+      patientId: req.body.user,
+      totalScore: pssScore,
+      stressLevel: stressLevel,
+      recommendation: recommendationData
+        ? recommendationData.dietaryRecommendation
+        : "No specific recommendations available.",
+      addedBy: "Doctor",
+      questions: Object.entries(req.body.pssQuestions).map(([key, value]) => ({
+        questionKey: mapQuestionKeys[key] || key,
+        score: value,
+      })),
+    });
+
+    // Save both entries
+    await patientStressEntry.save();
     const savedStressRisk = await newStressRisk.save();
 
     return Response.success(
@@ -76,7 +117,9 @@ const createStressRiskCalculator = async (req, res) => {
 // Get all stress risk assessments with recommendations
 const getAllStressRiskCalculator = async (req, res) => {
   try {
-    const { patientId } = req.body;
+    // Get patientId from either query parameters or request body
+    const patientId = req.query.patientId || req.body.patientId;
+
     if (!patientId) {
       return Response.error(
         res,
@@ -125,9 +168,6 @@ const getAllStressRiskCalculator = async (req, res) => {
               recommendationData.physicalActivityRecommendation,
             mentalSupportRecommendation:
               recommendationData.mentalSupportRecommendation,
-            riskLevel: assessment.stressLevel,
-            ageGroup: ageGroup,
-            gender: assessment.gender,
           };
         }
 
@@ -138,6 +178,7 @@ const getAllStressRiskCalculator = async (req, res) => {
           stressLevel: assessment.stressLevel,
           age: assessment.age,
           gender: assessment.gender,
+          ageGroup: ageGroup,
           recommendations: recommendations,
           createdAt: assessment.createdAt,
         };

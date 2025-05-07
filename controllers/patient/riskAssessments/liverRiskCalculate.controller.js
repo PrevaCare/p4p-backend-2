@@ -129,13 +129,14 @@ const getAllLiverRiskCalculator = async (req, res) => {
 
         // If recommendation found, include it with the assessment
         let recommendations = null;
+        // console.log("recommendationData", recommendationData);
         if (recommendationData) {
           recommendations = {
             dietRecommendation: recommendationData.dietRecommendation,
             medicalRecommendation: recommendationData.medicalRecommendation,
             physicalActivityRecommendation:
               recommendationData.physicalActivityRecommendation,
-            riskLevel: normalizedRiskLevel,
+            // riskLevel: normalizedRiskLevel,
           };
         }
 
@@ -144,6 +145,7 @@ const getAllLiverRiskCalculator = async (req, res) => {
           _id: assessment._id,
           riskScore: assessment.riskScore,
           riskLevel: assessment.riskLevel,
+          riskLevel: normalizedRiskLevel,
           recommendations: recommendations,
           createdAt: assessment.createdAt,
         };

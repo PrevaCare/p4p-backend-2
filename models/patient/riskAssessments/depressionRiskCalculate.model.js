@@ -7,6 +7,10 @@ const DepressionRiskCalculatorSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "user is required !"],
     },
+    addedBy: {
+      type: String,
+      enum: ["IndividualUser", "Doctor"],
+    },
     age: {
       type: Number,
       required: [true, "age is required !"],
