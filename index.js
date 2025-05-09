@@ -35,6 +35,7 @@ const healthSummarytRoute = require("./routes/common/patient/healthSummary/healt
 const doctorBankDetailRoute = require("./routes/common/doctor/doctorBankDetail.route");
 const doctorCategoriesRoute = require("./routes/common/doctor/doctorCategories.route");
 const packageTypeRoute = require("./routes/common/packageFeatures/packageType.route");
+const superAdminRoute = require("./routes/admin/superadmin.route");
 const cron = require("node-cron");
 const {
   paymentLinkExpireAtAppointmentStartDate,
@@ -48,6 +49,7 @@ const port = process.env.PORT;
 
 // Import performance monitoring middleware
 const apiPerformanceMonitor = require("./middlewares/performance/apiPerformanceMonitor");
+const { sendAppointmentNotification } = require("./cron-jobs/appointments/appointmentNotification.cron");
 
 // swagger
 // const swaggerUI = require("swagger-ui-express");
@@ -110,6 +112,7 @@ app.use("/v1/", doctorBankDetailRoute); //  doctor bank details route
 app.use("/v1/", doctorCategoriesRoute); //  doctor categories route
 app.use("/v1/package-types", packageTypeRoute); // package types and subtypes
 app.use("/v1/employee/plans", planAssignmentRoute);
+app.use("/v1/", superAdminRoute);
 
 // Check for no-shows every 15 minutes
 if (process.env.NODE_ENV !== "development") {
@@ -122,6 +125,10 @@ if (process.env.NODE_ENV !== "development") {
   cron.schedule("*/5 * * * *", async () => {
     const result = await paymentLinkExpireAtAppointmentStartDate();
     console.log("Payment expiration job result:", result);
+  });
+  cron.schedule("0,30 * * * *", async () => {
+    const result = await sendAppointmentNotification();
+    console.log("Appointment notification job result:", result);
   });
 }
 

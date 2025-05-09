@@ -56,7 +56,7 @@ const SchoolSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
     },
   ],
-});
+}, { timestamps: true });
 
 // Pre-save middleware to set default classes and sections if not provided
 SchoolSchema.pre("save", function (next) {

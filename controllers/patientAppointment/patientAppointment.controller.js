@@ -243,7 +243,7 @@ const createNewPatientAppointment2 = async (req, res) => {
       } else {
         existingDoctor = await doctorModel
           .findOne({ _id: req.body.doctorId })
-          .select("firstName lastName consultationFees");
+          .select("firstName lastName consultationFees phone");
       }
 
       if (!teleconsultationPlan) {

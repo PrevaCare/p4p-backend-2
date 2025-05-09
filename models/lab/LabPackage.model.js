@@ -137,4 +137,4 @@ labPackage.pre("save", function (next) {
   next();
 });
 
-module.exports = mongoose.model("LabPackage", labPackage);
+module.exports = mongoose.models.LabPackage || mongoose.model("LabPackage", labPackage);
