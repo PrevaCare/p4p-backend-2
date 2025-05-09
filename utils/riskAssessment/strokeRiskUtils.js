@@ -5,15 +5,15 @@
  * @returns {string} Risk level category (Low, Moderate, High)
  */
 const determineStrokeRiskLevel = (lowerRiskScore, higherRiskScore) => {
-  // Calculate mean of lower and higher risk scores
-  const meanScore = (lowerRiskScore + higherRiskScore) / 2;
+  // Calculate total score (sum of lower and higher risk scores)
+  const totalScore = lowerRiskScore + higherRiskScore;
 
-  if (meanScore < 25) {
+  if (totalScore <= 2) {
     return "Low";
-  } else if (meanScore >= 25 && meanScore <= 50) {
+  } else if (totalScore >= 3 && totalScore <= 6) {
     return "Moderate";
   } else {
-    return "High";
+    return "High"; // totalScore >= 7
   }
 };
 

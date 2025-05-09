@@ -6,7 +6,7 @@
 const determineDiabeticRiskLevel = (totalScore) => {
   if (totalScore < 30) {
     return "Low";
-  } else if (totalScore >= 30 && totalScore < 60) {
+  } else if (totalScore >= 30 && totalScore <= 50) {
     return "Moderate";
   } else {
     return "High";
@@ -39,14 +39,17 @@ const mapGenderForDiabeticRecommendations = (gender, ageGroup) => {
     return "All";
   }
 
-  // For middle age group, differentiate between male and female
-  if (gender === "M" || gender === "Male") {
-    return "Male";
-  } else if (gender === "F" || gender === "Female") {
-    return "Female";
+  // For middle age group, differentiate between male and female if possible
+  if (gender) {
+    const normalizedGender = String(gender).toLowerCase();
+    if (normalizedGender === "m" || normalizedGender === "male") {
+      return "Male";
+    } else if (normalizedGender === "f" || normalizedGender === "female") {
+      return "Female";
+    }
   }
 
-  // Default to All if gender is ambiguous or other
+  // Default to All if gender is null, empty, ambiguous or other
   return "All";
 };
 

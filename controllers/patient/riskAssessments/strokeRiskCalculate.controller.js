@@ -16,14 +16,14 @@ const {
 
 // Fallback utility function in case import fails
 const fallbackDetermineStrokeRiskLevel = (lowerRiskScore, higherRiskScore) => {
-  const meanScore = (lowerRiskScore + higherRiskScore) / 2;
+  const totalScore = lowerRiskScore + higherRiskScore;
 
-  if (meanScore < 25) {
+  if (totalScore <= 2) {
     return "Low";
-  } else if (meanScore >= 25 && meanScore <= 50) {
+  } else if (totalScore >= 3 && totalScore <= 6) {
     return "Moderate";
   } else {
-    return "High";
+    return "High"; // totalScore >= 7
   }
 };
 
@@ -152,7 +152,7 @@ const getAllStrokeRiskCalculatorDateAndLowerHigherVal = async (req, res) => {
           _id: assessment._id,
           lowerRiskScore: assessment.lowerRiskScore,
           higherRiskScore: assessment.higherRiskScore,
-          meanRiskScore: (lowerRiskScore + higherRiskScore) / 2,
+          totalScore: lowerRiskScore + higherRiskScore,
           riskLevel: riskLevel,
           desc: assessment.desc,
           recommendations: recommendations,

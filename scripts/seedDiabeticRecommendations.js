@@ -81,7 +81,7 @@ const recommendationsData = [
       "Mild movement exercises under supervision.",
   },
 
-  // High Risk (60+)
+  // High Risk (>50)
   {
     ageGroup: "20-39",
     gender: "All",

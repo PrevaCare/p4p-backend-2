@@ -6,7 +6,7 @@ dotenv.config();
 
 // Initial data for stroke risk recommendations based on risk level
 const recommendationsData = [
-  // Low Risk (0-25)
+  // Low Risk (0-2)
   {
     riskLevel: "Low",
     dietRecommendation:
@@ -16,7 +16,7 @@ const recommendationsData = [
       "Daily moderate activity (walking or yoga).",
   },
 
-  // Moderate Risk (26-50)
+  // Moderate Risk (3-6)
   {
     riskLevel: "Moderate",
     dietRecommendation:
@@ -27,11 +27,11 @@ const recommendationsData = [
       "Brisk walking or yoga, with adequate hydration.",
   },
 
-  // High Risk (51+)
+  // High Risk (7-10)
   {
     riskLevel: "High",
     dietRecommendation:
-      "High‑protein vegetarian diet; avoid alcohol, fried foods, and sugar.",
+      "High-protein vegetarian diet; avoid alcohol, fried foods, and sugar.",
     medicalRecommendation:
       "Consult a liver specialist; begin treatment as per test results.",
     physicalActivityRecommendation:

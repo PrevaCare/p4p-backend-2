@@ -57,9 +57,9 @@ const calculateLiverRiskHelper = (riskFactors) => {
 
   // Determine risk level
   let riskLevel = "";
-  if (riskScore > 15) riskLevel = "HIGH";
-  else if (riskScore > 8) riskLevel = "MODERATE";
-  else riskLevel = "LOW";
+  if (riskScore >= 13) riskLevel = "HIGH";
+  else if (riskScore >= 6 && riskScore <= 12) riskLevel = "MODERATE";
+  else riskLevel = "LOW"; // riskScore <= 5
 
   return { riskScore, riskLevel };
 };

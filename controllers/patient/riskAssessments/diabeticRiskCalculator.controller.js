@@ -36,6 +36,15 @@ const fallbackDetermineDiabeticRiskLevel = (totalScore) => {
   }
 };
 
+// Function to extract standardized risk level from legacy format
+const extractRiskLevelFromLegacy = (legacyRiskLevel) => {
+  const legacyText = legacyRiskLevel.toLowerCase();
+  if (legacyText.includes("high")) return "High";
+  if (legacyText.includes("moderate")) return "Moderate";
+  if (legacyText.includes("low")) return "Low";
+  return null; // Default case
+};
+
 const fallbackDetermineDiabeticAgeGroup = (age) => {
   if (age < 40) {
     return "20-39";
@@ -95,6 +104,35 @@ const calculateFamilyHistoryScore = (familyHistory) => {
   if (history.includes("both")) return 20;
   if (history.includes("one")) return 10;
   return 0; // no diabetes in parents
+};
+
+const updateSampleRecommendation = async () => {
+  try {
+    const allRecs = await diabeticRecommendationsModel.find({});
+
+    // Only update if records are missing the physicalActivityRecommendation field
+    for (const rec of allRecs) {
+      if (!rec.physicalActivityRecommendation) {
+        // Add default physical activity recommendation based on risk level
+        let activityRec =
+          "Regular moderate physical activity for 30 minutes daily.";
+
+        if (rec.riskLevel === "High") {
+          activityRec = "Light exercise as approved by your doctor.";
+        } else if (rec.riskLevel === "Moderate") {
+          activityRec = "Moderate exercise 3-4 times per week.";
+        }
+
+        rec.physicalActivityRecommendation = activityRec;
+        await rec.save();
+        console.log(
+          `Updated recommendation ${rec._id} with missing physical activity recommendation`
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Error updating sample recommendation:", err);
+  }
 };
 
 // Create diabetic risk calculator entry
@@ -184,7 +222,7 @@ const createDiabeticRiskCalculator = async (req, res) => {
 // Get all diabetic risk assessments
 const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
   try {
-    const { patientId } = req.query || req.body;
+    const { patientId } = req.body;
     if (!patientId) {
       return Response.error(
         res,
@@ -193,6 +231,10 @@ const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
         "Patient ID is required"
       );
     }
+
+    console.log(
+      `Retrieving diabetic risk assessments for patient ${patientId}`
+    );
 
     // Get all assessments sorted by date
     const allAssessments = await diabeticRiskCalculatorModel
@@ -211,9 +253,153 @@ const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
       );
     }
 
+    console.log(
+      `Found ${allAssessments.length} assessments, latest has risk level: ${allAssessments[0].riskLevel}`
+    );
+
+    // Get user data for recommendations
+    let userAge = 40; // Default age to middle age group if not found
+    let userGender = "Male"; // Default gender if not found
+    let userData = null;
+    let patientData = null;
+
+    try {
+      userData = await userModel.findById(patientId);
+      if (userData) {
+        if (userData.gender) {
+          userGender = userData.gender;
+        }
+
+        patientData = await individualUserModel.findOne({
+          user: userData._id,
+        });
+        if (patientData && patientData.dateOfBirth) {
+          userAge =
+            new Date().getFullYear() -
+            new Date(patientData.dateOfBirth).getFullYear();
+        }
+        console.log(`User data found: age=${userAge}, gender=${userGender}`);
+      } else {
+        console.log(`No user data found for ID ${patientId}, using defaults`);
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      console.log("Using default age and gender values");
+    }
+
+    // Determine age group
+    const ageGroup = determineDiabeticAgeGroup(userAge);
+
+    // Map gender to appropriate format for recommendations
+    const mappedGender = mapGenderForDiabeticRecommendations(
+      userGender,
+      ageGroup
+    );
+
+    // Process each assessment and add recommendation
+    const assessmentsWithRecommendations = await Promise.all(
+      allAssessments.map(async (assessment) => {
+        // Convert to plain object so we can modify it
+        const assessmentObj = assessment.toObject();
+
+        // Get the standardized risk level
+        const standardizedRiskLevel =
+          assessment.riskLevel === "Low" ||
+          assessment.riskLevel === "Moderate" ||
+          assessment.riskLevel === "High"
+            ? assessment.riskLevel
+            : extractRiskLevelFromLegacy(assessment.riskLevel);
+
+        // Find recommendation for this risk level
+        let recommendation = null;
+        try {
+          // First try exact match
+          recommendation = await diabeticRecommendationsModel.findOne({
+            ageGroup,
+            gender: mappedGender,
+            riskLevel: standardizedRiskLevel,
+          });
+
+          // If not found, try with "All" gender
+          if (!recommendation) {
+            recommendation = await diabeticRecommendationsModel.findOne({
+              ageGroup,
+              gender: "All",
+              riskLevel: standardizedRiskLevel,
+            });
+          }
+
+          // If still not found, try just by risk level
+          if (!recommendation) {
+            recommendation = await diabeticRecommendationsModel.findOne({
+              riskLevel: standardizedRiskLevel,
+            });
+          }
+
+          // Last resort: use default recommendation
+          if (!recommendation) {
+            recommendation = {
+              dietaryRecommendation:
+                standardizedRiskLevel === "High"
+                  ? "Follow a strict low-sugar, high-fiber diet."
+                  : standardizedRiskLevel === "Moderate"
+                  ? "Limit sugar intake and increase vegetables and whole grains."
+                  : "Maintain a balanced diet with limited refined carbohydrates.",
+              medicalRecommendation:
+                standardizedRiskLevel === "High"
+                  ? "Consult your doctor regularly for blood sugar monitoring."
+                  : standardizedRiskLevel === "Moderate"
+                  ? "Schedule regular blood sugar checks every 6 months."
+                  : "Annual blood sugar screening is recommended.",
+              physicalActivityRecommendation:
+                standardizedRiskLevel === "High"
+                  ? "Light exercise as approved by your doctor."
+                  : standardizedRiskLevel === "Moderate"
+                  ? "Moderate exercise 3-4 times per week."
+                  : "Regular physical activity for 30 minutes daily.",
+            };
+          } else {
+            // Convert Mongoose document to plain object
+            recommendation = recommendation.toObject();
+
+            // Remove fields that shouldn't be in the response
+            delete recommendation._id;
+            delete recommendation.ageGroup;
+            delete recommendation.gender;
+            delete recommendation.riskLevel;
+            delete recommendation.__v;
+            delete recommendation.createdAt;
+            delete recommendation.updatedAt;
+          }
+        } catch (err) {
+          console.error("Error fetching recommendation:", err);
+          // Set default empty recommendation
+          recommendation = {};
+        }
+
+        // Add recommendation directly to assessment object
+        assessmentObj.recommendation = recommendation;
+        return assessmentObj;
+      })
+    );
+
+    // Extract user profile data to include in response
+    const userProfile = {
+      age: userAge,
+      gender: userGender,
+      name: userData ? userData.name : null,
+      email: userData ? userData.email : null,
+      phone: userData ? userData.phoneNumber : null,
+    };
+
+    const responseData = {
+      userProfile: userProfile,
+      assessments: assessmentsWithRecommendations,
+    };
+
     return Response.success(
       res,
-      allAssessments,
+      responseData,
       200,
       "Diabetic risk assessments found successfully",
       AppConstant.SUCCESS
