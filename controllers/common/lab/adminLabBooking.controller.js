@@ -51,7 +51,8 @@ const getAllLabBookings = async (req, res) => {
       .populate("labId", "labName")
       .populate("testId", "testName testCode")
       .populate("packageId", "packageName packageCode")
-      .populate("userId", "name email phone")
+      .populate("bookedby", "firstName lastName email phone")
+      .populate("bookedFor", "firstName lastName email phone")
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);
@@ -60,10 +61,22 @@ const getAllLabBookings = async (req, res) => {
     if (search) {
       bookings = bookings.filter(
         (booking) =>
-          booking.userId &&
-          ((booking.userId.name &&
-            booking.userId.name.toLowerCase().includes(search.toLowerCase())) ||
-            (booking.userId.phone && booking.userId.phone.includes(search)))
+          (booking.bookedFor &&
+            ((booking.bookedFor.firstName &&
+              booking.bookedFor.lastName &&
+              `${booking.bookedFor.firstName} ${booking.bookedFor.lastName}`
+                .toLowerCase()
+                .includes(search.toLowerCase())) ||
+              (booking.bookedFor.phone &&
+                booking.bookedFor.phone.includes(search)))) ||
+          (booking.bookedby &&
+            ((booking.bookedby.firstName &&
+              booking.bookedby.lastName &&
+              `${booking.bookedby.firstName} ${booking.bookedby.lastName}`
+                .toLowerCase()
+                .includes(search.toLowerCase())) ||
+              (booking.bookedby.phone &&
+                booking.bookedby.phone.includes(search))))
       );
     }
 
@@ -71,17 +84,28 @@ const getAllLabBookings = async (req, res) => {
     let totalBookings;
     if (search) {
       // Count matching bookings manually for search
-      const allMatchingBookings = await LabBooking.find(query).populate(
-        "userId",
-        "name email phone"
-      );
+      const allMatchingBookings = await LabBooking.find(query)
+        .populate("bookedby", "firstName lastName email phone")
+        .populate("bookedFor", "firstName lastName email phone");
 
       totalBookings = allMatchingBookings.filter(
         (booking) =>
-          booking.userId &&
-          ((booking.userId.name &&
-            booking.userId.name.toLowerCase().includes(search.toLowerCase())) ||
-            (booking.userId.phone && booking.userId.phone.includes(search)))
+          (booking.bookedFor &&
+            ((booking.bookedFor.firstName &&
+              booking.bookedFor.lastName &&
+              `${booking.bookedFor.firstName} ${booking.bookedFor.lastName}`
+                .toLowerCase()
+                .includes(search.toLowerCase())) ||
+              (booking.bookedFor.phone &&
+                booking.bookedFor.phone.includes(search)))) ||
+          (booking.bookedby &&
+            ((booking.bookedby.firstName &&
+              booking.bookedby.lastName &&
+              `${booking.bookedby.firstName} ${booking.bookedby.lastName}`
+                .toLowerCase()
+                .includes(search.toLowerCase())) ||
+              (booking.bookedby.phone &&
+                booking.bookedby.phone.includes(search))))
       ).length;
     } else {
       // Count without search filter
@@ -140,8 +164,9 @@ const getLabBookingDetailsAdmin = async (req, res) => {
         "packageId",
         "packageName packageCode desc category testIncluded sampleRequired preparationRequired"
       )
-      .populate("userId", "name email phone address")
-      .populate("statusHistory.updatedBy", "name email");
+      .populate("bookedby", "firstName lastName email phone address")
+      .populate("bookedFor", "firstName lastName email phone address")
+      .populate("statusHistory.updatedBy", "firstName lastName email");
 
     if (!booking) {
       return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
@@ -297,7 +322,7 @@ const generatePaymentLink = async (req, res) => {
       .populate("labId", "labName")
       .populate("testId", "testName")
       .populate("packageId", "packageName")
-      .populate("userId", "name email phone");
+      .populate("bookedby", "firstName lastName email phone");
 
     if (!booking) {
       return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
@@ -325,9 +350,9 @@ const generatePaymentLink = async (req, res) => {
       accept_partial: false,
       description: `Payment for ${serviceName} at ${booking.labId.labName}`,
       customer: {
-        name: booking.userId.name,
-        email: booking.userId.email || "customer@example.com",
-        contact: booking.userId.phone,
+        name: booking.bookedby.firstName + " " + booking.bookedby.lastName,
+        email: booking.bookedby.email || "customer@example.com",
+        contact: booking.bookedby.phone,
       },
       notify: {
         sms: true,
@@ -609,7 +634,7 @@ const getLabBookingStatistics = async (req, res) => {
       .populate("labId", "labName")
       .populate("testId", "testName")
       .populate("packageId", "packageName")
-      .populate("userId", "name");
+      .populate("bookedby", "firstName lastName email phone");
 
     return Response.success(
       res,
