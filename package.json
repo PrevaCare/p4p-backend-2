@@ -33,7 +33,7 @@
     "pdfkit": "^0.15.0",
     "pdfkit-table": "^0.1.99",
     "puppeteer": "^24.4.0",
-    "razorpay": "^2.9.5",
+    "razorpay": "^2.9.6",
     "xlsx": "^0.18.5"
   }
 }

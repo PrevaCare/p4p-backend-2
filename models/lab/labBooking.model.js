@@ -109,6 +109,9 @@ const LabBookingSchema = new mongoose.Schema(
     paymentLink: {
       type: String,
     },
+    paymentLinkId: {
+      type: String,
+    },
     paymentDate: {
       type: Date,
     },

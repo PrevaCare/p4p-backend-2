@@ -343,47 +343,92 @@ const generatePaymentLink = async (req, res) => {
         ? booking.testId?.testName
         : booking.packageId?.packageName;
 
-    // Generate a payment link using Razorpay (example integration)
+    // Create a unique reference ID for this payment (shorter version - max 40 chars)
+    const shortBookingId = bookingId.toString().substring(0, 10);
+    const reference_id = `book_${shortBookingId}_${Date.now() % 10000000}`; // Ensure less than 40 chars
+
+    // Format the customer name properly
+    const customerName =
+      `${booking.bookedby.firstName || ""} ${
+        booking.bookedby.lastName || ""
+      }`.trim() || "Customer";
+
+    // Generate a payment link using Razorpay - following their exact API format
     const paymentLinkData = {
-      amount: booking.totalAmount * 100, // Convert to smallest currency unit
+      amount: Math.round(booking.totalAmount * 100), // Amount in smallest currency unit (paise)
+      // amount: 100, // Amount in smallest currency unit (paise)
       currency: "INR",
       accept_partial: false,
       description: `Payment for ${serviceName} at ${booking.labId.labName}`,
       customer: {
-        name: booking.bookedby.firstName + " " + booking.bookedby.lastName,
-        email: booking.bookedby.email || "customer@example.com",
-        contact: booking.bookedby.phone,
+        name: customerName,
+        email: booking.bookedby.email || `user${Date.now()}@example.com`,
+        contact: booking.bookedby.phone || "+919899500873",
+        // contact: "+917667629574",
       },
       notify: {
-        sms: true,
-        email: true,
+        sms: true, // Disable SMS notifications as requested
+        email: false, // Disable email notifications as requested
       },
-      reminder_enable: true,
+      reminder_enable: false, // Disable reminders as well
       notes: {
-        bookingId: booking._id.toString(),
+        booking_id: booking._id.toString(),
+        service_name: serviceName,
+        booking_type: booking.bookingType,
       },
+      callback_url: `${
+        process.env.FRONTEND_URL || "https://preva.care"
+      }/payment/callback?bookingId=${bookingId}`,
+      callback_method: "get",
+      reference_id: reference_id,
     };
 
-    // In a real implementation, call the payment gateway API
-    // Here's an example with Razorpay
-    /*
-    const paymentLink = await razorpayInstance.paymentLink.create(paymentLinkData);
-    booking.paymentLink = paymentLink.short_url;
-    */
+    try {
+      // Create payment link using Razorpay API
+      const paymentLink = await razorpayInstance.paymentLink.create(
+        paymentLinkData
+      );
 
-    // For demonstration, create a dummy payment link
-    booking.paymentLink = `https://example.com/pay/${bookingId}?amount=${booking.totalAmount}`;
-    await booking.save();
+      // Update booking with payment link details
+      booking.paymentLink = paymentLink.short_url;
+      booking.paymentLinkId = paymentLink.id;
 
-    return Response.success(
-      res,
-      {
-        paymentLink: booking.paymentLink,
-        bookingId: booking._id,
-      },
-      200,
-      "Payment link generated successfully"
-    );
+      // Add note to status history
+      booking.statusHistory.push({
+        status: booking.status,
+        timestamp: new Date(),
+        notes: "Payment link generated",
+        updatedBy: req.user._id,
+      });
+
+      await booking.save();
+
+      return Response.success(
+        res,
+        {
+          paymentLink: paymentLink.short_url,
+          paymentLinkId: paymentLink.id,
+          bookingId: booking._id,
+          expiresAt: paymentLink.expire_by
+            ? new Date(paymentLink.expire_by * 1000)
+            : null,
+        },
+        200,
+        "Payment link generated successfully"
+      );
+    } catch (razorpayError) {
+      console.error("Razorpay API error:", razorpayError);
+      return Response.error(
+        res,
+        500,
+        AppConstant.FAILED,
+        `Error from payment gateway: ${
+          razorpayError.error?.description ||
+          razorpayError.message ||
+          "Unknown payment gateway error"
+        }`
+      );
+    }
   } catch (error) {
     console.error("Error generating payment link:", error);
     return Response.error(
@@ -663,6 +708,161 @@ const getLabBookingStatistics = async (req, res) => {
   }
 };
 
+/**
+ * Handle Razorpay payment webhook
+ * @route POST /v1/admin/lab-bookings/razorpay-webhook
+ */
+const handleRazorpayWebhook = async (req, res) => {
+  try {
+    const webhookSignature = req.headers["x-razorpay-signature"];
+    const webhookSecret =
+      process.env.RAZORPAY_WEBHOOK_SECRET || "your_webhook_secret";
+
+    // Verify webhook signature
+    const crypto = require("crypto");
+    const generatedSignature = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
+
+    // Validate the webhook signature
+    if (generatedSignature !== webhookSignature) {
+      console.error("Invalid webhook signature");
+      return res.status(400).send({ status: "invalid signature" });
+    }
+
+    const event = req.body;
+    const eventType = event.event;
+
+    // Handle different event types
+    if (eventType === "payment_link.paid") {
+      // Payment was successfully made
+      const paymentLinkId = event.payload.payment_link.entity.id;
+
+      // Find the booking with this payment link ID
+      const booking = await LabBooking.findOne({
+        paymentLinkId: paymentLinkId,
+      });
+
+      if (!booking) {
+        console.error(
+          `No booking found with payment link ID: ${paymentLinkId}`
+        );
+        return res.status(200).send({ status: "no booking found" });
+      }
+
+      // Update booking payment status
+      booking.paymentStatus = "Completed";
+      booking.paymentDate = new Date();
+      booking.paymentId = event.payload.payment.entity.id;
+
+      // Update booking status if it's still in Requested status
+      if (booking.status === "Requested") {
+        booking.status = "Confirmed";
+        booking.statusHistory.push({
+          status: "Confirmed",
+          timestamp: new Date(),
+          notes: "Payment completed via Razorpay",
+        });
+      }
+
+      await booking.save();
+      console.log(`Payment completed for booking ${booking._id}`);
+    } else if (eventType === "payment_link.cancelled") {
+      // Payment link was cancelled
+      const paymentLinkId = event.payload.payment_link.entity.id;
+
+      const booking = await LabBooking.findOne({
+        paymentLinkId: paymentLinkId,
+      });
+      if (booking) {
+        // Add a note to the booking about the cancelled payment link
+        booking.statusHistory.push({
+          status: booking.status,
+          timestamp: new Date(),
+          notes: "Payment link cancelled",
+        });
+
+        await booking.save();
+        console.log(`Payment link cancelled for booking ${booking._id}`);
+      }
+    }
+
+    // Acknowledge the webhook
+    return res.status(200).send({ status: "success" });
+  } catch (error) {
+    console.error("Error processing Razorpay webhook:", error);
+    return res.status(500).send({ status: "error", message: error.message });
+  }
+};
+
+/**
+ * Admin manual payment verification
+ * @route POST /v1/admin/lab-bookings/:bookingId/verify-payment
+ */
+const verifyPaymentManually = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { paymentId, paymentDate } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Invalid booking ID format"
+      );
+    }
+
+    // Find the booking
+    const booking = await LabBooking.findById(bookingId);
+    if (!booking) {
+      return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
+    }
+
+    // If payment already completed
+    if (booking.paymentStatus === "Completed") {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Payment has already been marked as completed"
+      );
+    }
+
+    // Update payment details
+    booking.paymentStatus = "Completed";
+    booking.paymentDate = paymentDate || new Date();
+
+    if (paymentId) {
+      booking.paymentId = paymentId;
+    }
+
+    // Update booking status if it's still in Requested status
+    if (booking.status === "Requested") {
+      booking.status = "Confirmed";
+      booking.statusHistory.push({
+        status: "Confirmed",
+        timestamp: new Date(),
+        notes: "Payment manually verified by admin",
+        updatedBy: req.user._id,
+      });
+    }
+
+    await booking.save();
+
+    return Response.success(res, booking, 200, "Payment verified successfully");
+  } catch (error) {
+    console.error("Error verifying payment:", error);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      error.message || "Internal server error"
+    );
+  }
+};
+
 module.exports = {
   getAllLabBookings,
   getLabBookingDetailsAdmin,
@@ -671,4 +871,6 @@ module.exports = {
   updatePaymentStatus,
   uploadLabReport,
   getLabBookingStatistics,
+  handleRazorpayWebhook,
+  verifyPaymentManually,
 };

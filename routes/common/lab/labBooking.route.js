@@ -18,6 +18,8 @@ const {
   updatePaymentStatus,
   uploadLabReport,
   getLabBookingStatistics,
+  handleRazorpayWebhook,
+  verifyPaymentManually,
 } = require("../../../controllers/common/lab/adminLabBooking.controller");
 const {
   verifyToken,
@@ -202,6 +204,27 @@ router.post(
   checkPermissions("UPDATE", "Employee"),
   upload.single("reportFile"),
   uploadLabReport
+);
+
+/**
+ * Razorpay webhook handler
+ * @route POST /v1/admin/lab-bookings/razorpay-webhook
+ * Requirements: Valid Razorpay webhook signature
+ * Access: Public (secured by webhook signature verification)
+ */
+router.post("/admin/lab-bookings/razorpay-webhook", handleRazorpayWebhook);
+
+/**
+ * Manual payment verification (admin)
+ * @route POST /v1/admin/lab-bookings/:bookingId/verify-payment
+ * Requirements: bookingId, payment details, authentication, admin permissions
+ * Access: Admin users only
+ */
+router.post(
+  "/admin/lab-bookings/:bookingId/verify-payment",
+  verifyToken,
+  checkPermissions("UPDATE", "Employee"),
+  verifyPaymentManually
 );
 
 module.exports = router;
