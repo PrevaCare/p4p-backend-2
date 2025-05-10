@@ -10,7 +10,7 @@ const InstituteSchema = new mongoose.Schema({
   addresses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Address" }],
   department: { type: String, required: true },
   designation: { type: String, required: true },
-});
+}, { timestamps: true });
 
 const Institute = User.discriminator("Institute", InstituteSchema);
 module.exports = Institute;
