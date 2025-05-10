@@ -27,9 +27,19 @@ const {
 } = require("../../../middlewares/jwt/permission");
 
 // Configure multer for report file uploads
+const fs = require('fs');
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/lab-reports");
+    const uploadPath = path.join(__dirname, 'uploads/lab-reports');
+
+    // Ensure the folder exists
+    fs.mkdir(uploadPath, { recursive: true }, (err) => {
+      if (err) {
+        return cb(err);
+      }
+      cb(null, uploadPath);
+    });
   },
   filename: function (req, file, cb) {
     const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;

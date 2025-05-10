@@ -21,6 +21,15 @@ const getAllLabBookings = async (req, res) => {
     const search = req.query.search;
     const sortBy = req.query.sortBy || "createdAt";
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const rawDate = req.query.date;
+
+    // Replace '+' with spaces, remove trailing ' z'
+    const cleanedDateStr = rawDate.replace(/\+/g, ' ').replace(' z', '');
+
+    // Parse the string into a Date object
+    const parsedDate = new Date(cleanedDateStr);
+
+    console.log(parsedDate.toISOString()); // or parsedDate.toLocaleString()
 
     // Build query
     const query = {};
@@ -41,6 +50,18 @@ const getAllLabBookings = async (req, res) => {
       // Store the search query for later use
       const searchQuery = search;
     }
+
+    if (parsedDate) {
+      const start = new Date(parsedDate);
+      start.setHours(0, 0, 0, 0); // Start of the day in local time
+
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1); // Next day
+
+      query.scheduledDate = { $gte: start, $lt: end };
+    }
+
+
 
     // Sort options
     const sortOptions = {};
