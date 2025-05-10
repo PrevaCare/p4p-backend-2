@@ -3,7 +3,7 @@ const path = require("path");
 const mongoose = require("mongoose");
 const Lab = require("../../../models/lab/lab.model");
 const IndividualLabTest = require("../../../models/lab/individualLabTest.model");
-const LabPackage = require("../../../models/lab/LabPackage.model");
+const LabPackage = require("../../../models/lab/labPackage.model");
 const {
   parseCSV,
   validateAndTransformCSVData,

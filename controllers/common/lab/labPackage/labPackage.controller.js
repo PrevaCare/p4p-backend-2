@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const AppConstant = require("../../../../utils/AppConstant");
 const Response = require("../../../../utils/Response");
-const LabPackage = require("../../../../models/lab/LabPackage.model");
+const LabPackage = require("../../../../models/lab/labPackage.model");
 const {
   labPackageValidationSchema,
 } = require("../../../../validators/lab/labPackage/labPackage.validator");

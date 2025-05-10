@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Lab = require("../../../models/lab/lab.model");
 const IndividualLabTest = require("../../../models/lab/individualLabTest.model");
-const LabPackage = require("../../../models/lab/LabPackage.model");
+const LabPackage = require("../../../models/lab/labPackage.model");
 const City = require("../../../models/lab/city.model");
 const AppConstant = require("../../../utils/AppConstant");
 const Response = require("../../../utils/Response");
@@ -55,7 +55,8 @@ const getTestDetails = async (req, res) => {
     }
 
     console.log(
-      `Returning test with ${testObject.cityAvailability?.length || 0
+      `Returning test with ${
+        testObject.cityAvailability?.length || 0
       } cities (including inactive ones)`
     );
 
@@ -184,16 +185,15 @@ const getLabDetails = async (req, res) => {
 
     // Format available cities
     if (labDetails.availableCities && labDetails.availableCities.length > 0) {
-      labDetails.availableCities = labDetails.availableCities
-        .map((city) => ({
-          cityId: city.cityId._id,
-          cityName: city.cityId.cityName,
-          state: city.cityId.state,
-          pincode: city.cityId.pincode,
-          pinCode_excluded: city.cityId.pinCode_excluded,
-          regions_excluded: city.cityId.regions_excluded,
-          isActive: city.isActive,
-        }));
+      labDetails.availableCities = labDetails.availableCities.map((city) => ({
+        cityId: city.cityId._id,
+        cityName: city.cityId.cityName,
+        state: city.cityId.state,
+        pincode: city.cityId.pincode,
+        pinCode_excluded: city.cityId.pinCode_excluded,
+        regions_excluded: city.cityId.regions_excluded,
+        isActive: city.isActive,
+      }));
     }
 
     // Add counts to the response
