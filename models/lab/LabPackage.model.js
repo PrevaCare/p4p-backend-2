@@ -107,7 +107,7 @@ cityAvailabilitySchema.pre("save", function (next) {
   }
   next();
 });
-
+//change the package name to packageCode
 // Create a compound unique index on packageCode and labId
 labPackage.index({ packageCode: 1, labId: 1 }, { unique: true });
 
