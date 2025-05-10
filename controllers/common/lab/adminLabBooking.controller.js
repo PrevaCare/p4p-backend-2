@@ -22,14 +22,17 @@ const getAllLabBookings = async (req, res) => {
     const sortBy = req.query.sortBy || "createdAt";
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
     const rawDate = req.query.date;
+    let parsedDate;
 
     // Replace '+' with spaces, remove trailing ' z'
-    const cleanedDateStr = rawDate.replace(/\+/g, ' ').replace(' z', '');
+    if (rawDate != null) {
+      const cleanedDateStr = rawDate.replace(/\+/g, ' ').replace(' z', '');
 
-    // Parse the string into a Date object
-    const parsedDate = new Date(cleanedDateStr);
+      // Parse the string into a Date object
+      parsedDate = new Date(cleanedDateStr);
 
-    console.log(parsedDate.toISOString()); // or parsedDate.toLocaleString()
+      console.log(parsedDate.toISOString()); // or parsedDate.toLocaleString()
+    }
 
     // Build query
     const query = {};
@@ -51,7 +54,7 @@ const getAllLabBookings = async (req, res) => {
       const searchQuery = search;
     }
 
-    if (parsedDate) {
+    if (parsedDate && rawDate != null) {
       const start = new Date(parsedDate);
       start.setHours(0, 0, 0, 0); // Start of the day in local time
 
@@ -370,9 +373,8 @@ const generatePaymentLink = async (req, res) => {
 
     // Format the customer name properly
     const customerName =
-      `${booking.bookedby.firstName || ""} ${
-        booking.bookedby.lastName || ""
-      }`.trim() || "Customer";
+      `${booking.bookedby.firstName || ""} ${booking.bookedby.lastName || ""
+        }`.trim() || "Customer";
 
     // Generate a payment link using Razorpay - following their exact API format
     const paymentLinkData = {
@@ -397,9 +399,8 @@ const generatePaymentLink = async (req, res) => {
         service_name: serviceName,
         booking_type: booking.bookingType,
       },
-      callback_url: `${
-        process.env.FRONTEND_URL || "https://preva.care"
-      }/payment/callback?bookingId=${bookingId}`,
+      callback_url: `${process.env.FRONTEND_URL || "https://preva.care"
+        }/payment/callback?bookingId=${bookingId}`,
       callback_method: "get",
       reference_id: reference_id,
     };
@@ -443,10 +444,9 @@ const generatePaymentLink = async (req, res) => {
         res,
         500,
         AppConstant.FAILED,
-        `Error from payment gateway: ${
-          razorpayError.error?.description ||
-          razorpayError.message ||
-          "Unknown payment gateway error"
+        `Error from payment gateway: ${razorpayError.error?.description ||
+        razorpayError.message ||
+        "Unknown payment gateway error"
         }`
       );
     }
