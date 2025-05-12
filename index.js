@@ -44,13 +44,77 @@ const {
 } = require("./cron-jobs/appointments/cancelAppointment.cron");
 const { sendMessage } = require("./helper/otp/sentOtp.helper");
 const planAssignmentRoute = require("./routes/employee/planAssignment.route");
+const medicineScheduleRoutes = require("./routes/patient/medicineSchedule.routes");
 const app = express();
 dotenv.config();
 const port = process.env.PORT;
 
 // Import performance monitoring middleware
 const apiPerformanceMonitor = require("./middlewares/performance/apiPerformanceMonitor");
-const { sendAppointmentNotification } = require("./cron-jobs/appointments/appointmentNotification.cron");
+const {
+  sendAppointmentNotification,
+} = require("./cron-jobs/appointments/appointmentNotification.cron");
+
+// Add browser pool manager for Puppeteer
+const puppeteer = require("puppeteer");
+const genericPool = require("generic-pool");
+
+// Create a browser pool that can be reused across requests
+const browserPool = genericPool.createPool(
+  {
+    create: async () => {
+      console.log("Creating new browser instance for pool");
+      return await puppeteer.launch({
+        headless: true,
+        ignoreHTTPSErrors: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--disable-gpu",
+        ],
+      });
+    },
+    destroy: async (browser) => {
+      console.log("Destroying browser instance");
+      await browser.close();
+    },
+    validate: async (browser) => {
+      // Check if browser is still usable
+      try {
+        // Simple test to check if browser is still functioning
+        const pages = await browser.pages();
+        return true; // Browser is valid
+      } catch (err) {
+        console.log("Browser validation failed:", err.message);
+        return false; // Browser is invalid
+      }
+    },
+  },
+  {
+    min: 2, // Keep at least 2 browsers ready
+    max: 5, // Maximum 5 browser instances
+    idleTimeoutMillis: 30000, // Close idle browsers after 30 seconds
+    acquireTimeoutMillis: 10000, // Wait up to 10 seconds to acquire a browser
+    testOnBorrow: true, // Test browser before lending it
+    testOnReturn: true, // Test browser when returning to pool
+    autostart: true, // Start creating min browsers as soon as pool is created
+  }
+);
+
+// Make the browser pool available globally
+global.browserPool = browserPool;
+
+// Graceful shutdown - close all browser instances
+process.on("SIGINT", async () => {
+  console.log("Closing all browser instances before exit");
+  await browserPool.drain();
+  await browserPool.clear();
+  process.exit(0);
+});
 
 // swagger
 // const swaggerUI = require("swagger-ui-express");
@@ -115,6 +179,7 @@ app.use("/v1/", doctorCategoriesRoute); //  doctor categories route
 app.use("/v1/package-types", packageTypeRoute); // package types and subtypes
 app.use("/v1/employee/plans", planAssignmentRoute);
 app.use("/v1/", superAdminRoute);
+app.use("/v1/", medicineScheduleRoutes); // Medicine schedule routes
 
 // Check for no-shows every 15 minutes
 if (process.env.NODE_ENV !== "development") {
