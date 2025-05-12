@@ -4,6 +4,7 @@ const IndividualLabTest = require("../../../../models/lab/individualLabTest.mode
 const Lab = require("../../../../models/lab/lab.model");
 const City = require("../../../../models/lab/city.model");
 const mongoose = require("mongoose");
+const { uploadToS3 } = require("../../../../middlewares/uploads/awsConfig");
 const cacheManager = require("../../../../utils/cacheManager");
 const {
   individualLabTestValidationSchema,
@@ -21,15 +22,17 @@ const createIndividualLabTest = async (req, res) => {
       testName,
       testCode,
       desc,
-      testIncluded,
-      sampleRequired,
-      preparationRequired,
       gender,
       ageGroup,
-      cityAvailability = [],
     } = req.body;
 
+    const sampleRequired = JSON.parse(req.body.sampleRequired);
+    const preparationRequired = JSON.parse(req.body.preparationRequired);
+    const cityAvailability = JSON.parse(req.body.cityAvailability);
+    const testIncluded = JSON.parse(req.body.testIncluded);
+
     console.log("Request body for creating lab test:", req.body);
+    console.log("Request body for creating lab test:", req.files.logo[0]);
 
     // Basic validation checks
     if (!lab || !testName || !testCode || !category) {
@@ -242,8 +245,10 @@ const createIndividualLabTest = async (req, res) => {
     console.log("processedTestIncluded", processedTestIncluded);
 
     // Create new lab test
+    const logoURL = await uploadToS3(req.files.logo[0]);
     const newLabTest = new IndividualLabTest({
       lab,
+      logo: logoURL.Location,
       testName: testName.trim(),
       testCode: testCode.trim(),
       desc: desc || "",
@@ -653,7 +658,7 @@ const getTestByCategoryOfPaticularLab = async (req, res) => {
     // Use lean() for better performance
     const tests = await IndividualLabTest.find(query)
       .select(
-        "testCode testName category sampleRequired preparationRequired cityAvailability"
+        "testCode testName category sampleRequired preparationRequired cityAvailability logo"
       )
       .populate("cityAvailability.cityId", "cityName pincode")
       .lean()

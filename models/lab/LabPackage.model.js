@@ -65,6 +65,10 @@ const cityAvailabilitySchema = new mongoose.Schema({
 // lab schema
 const labPackage = new mongoose.Schema(
   {
+    logo: {
+      type: String,
+      default: "",
+    },
     labId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lab",
@@ -107,7 +111,7 @@ cityAvailabilitySchema.pre("save", function (next) {
   }
   next();
 });
-
+//change the package name to packageCode
 // Create a compound unique index on packageCode and labId
 labPackage.index({ packageCode: 1, labId: 1 }, { unique: true });
 

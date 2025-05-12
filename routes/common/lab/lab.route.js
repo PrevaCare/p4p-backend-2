@@ -121,6 +121,7 @@ router.post(
   "/admin/lab/pacakge/create",
   verifyToken,
   checkPermissions("CREATE", "Employee"),
+  upload.fields([{ name: "logo", maxCount: 1 }]),
   createLabPackage
 );
 router.patch(
@@ -215,6 +216,7 @@ router.post(
   "/admin/lab/test/create",
   verifyToken,
   checkPermissions("CREATE", "Employee"),
+  upload.fields([{ name: "logo", maxCount: 1 }]),
   modificationRateLimit,
   createIndividualLabTest
 );
