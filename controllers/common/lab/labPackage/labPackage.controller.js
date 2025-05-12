@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const AppConstant = require("../../../../utils/AppConstant");
 const Response = require("../../../../utils/Response");
 const LabPackage = require("../../../../models/lab/labPackage.model");
+const { uploadToS3 } = require("../../../../middlewares/uploads/awsConfig");
 const {
   labPackageValidationSchema,
 } = require("../../../../validators/lab/labPackage/labPackage.validator");
@@ -20,15 +21,19 @@ const createLabPackage = async (req, res) => {
       packageCode,
       desc,
       category,
-      testIncluded,
-      sampleRequired,
-      preparationRequired,
       gender,
       ageGroup,
-      cityAvailability = [],
     } = req.body;
 
-    console.log("req.body ", req.body);
+    console.log("req.body ", req);
+    const body = req.body;
+    const file = req.files.logo[0]; // This is your logo file
+    // Convert stringified fields back to JSON
+    const testIncluded = JSON.parse(body.testIncluded || '[]');
+    const sampleRequired = JSON.parse(body.sampleRequired || '[]');
+    const preparationRequired = JSON.parse(body.preparationRequired || '[]');
+    const cityAvailability = JSON.parse(body.cityAvailability || '[]');
+
 
     // Validation checks for required fields
     if (!labId || !packageName || !packageCode || !category) {
@@ -355,8 +360,11 @@ const createLabPackage = async (req, res) => {
     console.log("processedTestIncluded", processedTestIncluded);
 
     // Create new lab package
+    const logoUrl = await uploadToS3(file);
+
     const newLabPackage = new LabPackage({
       labId,
+      logo: logoUrl.Location,
       packageName: packageName.trim(),
       packageCode: packageCode.trim(),
       desc: desc || "",
@@ -368,6 +376,8 @@ const createLabPackage = async (req, res) => {
       ageGroup: ageGroup || "all age group",
       cityAvailability: processedCityAvailability,
     });
+
+
 
     await newLabPackage.save();
 

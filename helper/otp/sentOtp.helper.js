@@ -212,4 +212,85 @@ const sendEMRCreationMsg = async (mobile) => {
   }
 };
 
-module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor, sendEMRCreationMsg };
+const sendLabTestScheduleMsg = async (mobile) => {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const senderId = process.env.MSG91_SENDER_ID;
+  const route = process.env.MSG91_ROUTE;
+  const templateId = process.env.MSG91_LAB_TEST_SCHEDULED_TEMPLATE;
+  
+  const url = `https://control.msg91.com/api/v5/flow/`;
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        flow_id: templateId,
+        recipients: [
+          {
+            mobiles: `91${mobile}`,
+          },
+        ],
+        sender: senderId,
+        authkey: authKey,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.data.type === "success") {
+      console.log("Lab test schedule msg sent successfully!");
+      return true;
+    } else {
+      //   return new Error(response.data);
+      throw new Error(response.data);
+    }
+  } catch (error) {
+    return new Error(error);
+  }
+};
+
+const sentLabReportReadyMsg = async (mobile) => {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const senderId = process.env.MSG91_SENDER_ID;
+  const route = process.env.MSG91_ROUTE;
+  const templateId = process.env.MSG91_LAB_REPORT_READY_TEMPLATE;
+
+  const url = `https://control.msg91.com/api/v5/flow/`;
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        flow_id: templateId,
+        recipients: [
+          {
+            mobiles: `91${mobile}`,
+          },
+        ],
+        sender: senderId,
+        authkey: authKey,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.data.type === "success") {
+      console.log("Lab Report Ready msg sent successfully!");
+      return true;
+    } else {
+      //   return new Error(response.data);
+      throw new Error(response.data);
+    }
+  } catch (error) {
+    return new Error(error);
+  }
+  
+};
+
+module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor, sendEMRCreationMsg, sendLabTestScheduleMsg , sentLabReportReadyMsg};

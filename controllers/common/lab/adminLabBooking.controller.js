@@ -2,10 +2,14 @@ const mongoose = require("mongoose");
 const AppConstant = require("../../../utils/AppConstant");
 const Response = require("../../../utils/Response");
 const LabBooking = require("../../../models/lab/labBooking.model");
+const Report = require("../../../models/lab/reports.model");
+const User = require("../../../models/common/user.model");
+const { uploadToS3 } = require("../../../middlewares/uploads/awsConfig");
 const {
   labBookingStatusUpdateSchema,
 } = require("../../../validators/lab/labBooking.validator");
 const { razorpayInstance } = require("../../../config/razorpay.config");
+const { sendLabTestScheduleMsg, sentLabReportReadyMsg } = require("../../../helper/otp/sentOtp.helper");
 
 /**
  * Get all lab test/package bookings for admin
@@ -254,7 +258,7 @@ const updateLabBookingStatus = async (req, res) => {
     } = value;
 
     // Find the booking
-    const booking = await LabBooking.findById(bookingId);
+    const booking = await LabBooking.findById(bookingId).populate("bookedFor", "phone firstName lastName");
     if (!booking) {
       return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
     }
@@ -311,6 +315,13 @@ const updateLabBookingStatus = async (req, res) => {
     }
 
     await booking.save();
+    if (status === "Test_Scheduled") {
+      await sendLabTestScheduleMsg(booking.bookedFor.phone);
+    }
+    if (status === "Report_Ready") {
+      await sentLabReportReadyMsg(booking.bookedFor.phone);
+    }
+
 
     return Response.success(res, booking, 200, "Booking updated successfully");
   } catch (error) {
@@ -545,6 +556,7 @@ const updatePaymentStatus = async (req, res) => {
 const uploadLabReport = async (req, res) => {
   try {
     const { bookingId } = req.params;
+    const { reportName, indication, remarks } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
       return Response.error(
@@ -556,7 +568,7 @@ const uploadLabReport = async (req, res) => {
     }
 
     // Check if report file was uploaded
-    if (!req.file) {
+    if (!req.files) {
       return Response.error(
         res,
         400,
@@ -571,8 +583,63 @@ const uploadLabReport = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
     }
 
-    // Update report file path
-    booking.reportFile = req.file.path;
+    // Update report file 
+    const files = req.files.reportFile;
+    const reportFiles = await Promise.all(files.map(async (file) => {
+      const uploadResult = await uploadToS3(file);
+      return {
+        fileName: file.originalname,
+        url: uploadResult.Location,
+      };
+    }));
+    console.log(reportFiles);
+    const bookerFor = booking.bookedFor;
+
+    const user = await User.findById(bookerFor).populate({
+      path: "assignedDoctors",
+      select: "firstName lastName specialization",
+    });
+    // console.log(user);
+    //
+    if (!user.assignedDoctors || user.assignedDoctors.length === 0) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "no doctor assigned to this user !"
+      );
+    }
+
+    const assignedGeneralPhysicianDoctor = user.assignedDoctors.filter(
+      (doctor) => {
+        return doctor.specialization === "General Physician";
+      }
+    );
+
+    if (
+      !assignedGeneralPhysicianDoctor ||
+      assignedGeneralPhysicianDoctor.length === 0
+    ) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "no general physician doctor assigned to this employee !"
+      );
+    }
+
+    const newLabReport = new Report({
+      reportName: req.body.reportName,
+      indication: req.body.indication,
+      remarks: req.body.remarks,
+      doctor: assignedGeneralPhysicianDoctor[0]._id,
+      user: bookerFor,
+
+      documents: reportFiles,
+    });
+
+    const savedLabReport = await newLabReport.save();
+    booking.reportFile = reportFiles;
 
     // Update status to Report_Ready if not already at a later stage
     const statusOrder = [

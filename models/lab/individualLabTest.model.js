@@ -77,6 +77,10 @@ cityAvailabilitySchema.pre("save", function (next) {
 // lab schema
 const individualLabTestSchema = new mongoose.Schema(
   {
+    logo: {
+      type: String,
+      default: "",
+    },
     lab: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lab",

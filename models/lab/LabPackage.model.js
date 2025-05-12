@@ -65,6 +65,10 @@ const cityAvailabilitySchema = new mongoose.Schema({
 // lab schema
 const labPackage = new mongoose.Schema(
   {
+    logo: {
+      type: String,
+      default: "",
+    },
     labId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lab",

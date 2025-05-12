@@ -2,6 +2,7 @@ const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
+const { anyFileUpload } = require("../../../middlewares/uploads/multerConfig.js");
 const {
   createLabBooking,
   getUserLabBookings,
@@ -27,44 +28,7 @@ const {
 } = require("../../../middlewares/jwt/permission");
 
 // Configure multer for report file uploads
-const fs = require('fs');
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, 'uploads/lab-reports');
-
-    // Ensure the folder exists
-    fs.mkdir(uploadPath, { recursive: true }, (err) => {
-      if (err) {
-        return cb(err);
-      }
-      cb(null, uploadPath);
-    });
-  },
-  filename: function (req, file, cb) {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    // Accept pdf and image files
-    const filetypes = /pdf|jpeg|jpg|png/;
-    const extname = filetypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
-    const mimetype = filetypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error("Only PDF and image files are allowed"));
-    }
-  },
-});
 
 // User-facing routes
 /**
@@ -212,7 +176,7 @@ router.post(
   "/admin/lab-bookings/:bookingId/report",
   verifyToken,
   checkPermissions("UPDATE", "Employee"),
-  upload.single("reportFile"),
+  anyFileUpload.fields([{ name: "reportFile", maxCount: 5 }]),
   uploadLabReport
 );
 

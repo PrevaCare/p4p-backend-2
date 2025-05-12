@@ -138,9 +138,18 @@ const LabBookingSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Total amount is required"],
     },
-    reportFile: {
-      type: String,
-    },
+    reportFile: [
+      {
+        fileName: {
+          type: String,
+          required: true,
+        },
+        url: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
     adminNotes: {
       type: String,
     },
