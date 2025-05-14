@@ -380,11 +380,12 @@ const createLabPackage = async (req, res) => {
 
 
 
-    await newLabPackage.save();
+    const savedLabPackage = await newLabPackage.save();
+    console.log("savedLabPackage", savedLabPackage);
 
     return Response.success(
       res,
-      newLabPackage,
+      savedLabPackage,
       201,
       "Lab package created successfully"
     );
