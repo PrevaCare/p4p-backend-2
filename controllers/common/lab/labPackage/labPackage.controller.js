@@ -361,10 +361,11 @@ const createLabPackage = async (req, res) => {
 
     // Create new lab package
     const logoUrl = await uploadToS3(file);
+    console.log("logoUrl", logoUrl);
 
     const newLabPackage = new LabPackage({
       labId,
-      logo: logoUrl.Location,
+      logo: logoUrl.Location || "",
       packageName: packageName.trim(),
       packageCode: packageCode.trim(),
       desc: desc || "",
@@ -379,11 +380,12 @@ const createLabPackage = async (req, res) => {
 
 
 
-    await newLabPackage.save();
+    const savedLabPackage = await newLabPackage.save();
+    console.log("savedLabPackage", savedLabPackage);
 
     return Response.success(
       res,
-      newLabPackage,
+      savedLabPackage,
       201,
       "Lab package created successfully"
     );
