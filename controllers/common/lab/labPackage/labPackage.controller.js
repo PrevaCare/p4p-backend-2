@@ -361,6 +361,7 @@ const createLabPackage = async (req, res) => {
 
     // Create new lab package
     const logoUrl = await uploadToS3(file);
+    console.log("logoUrl", logoUrl);
 
     const newLabPackage = new LabPackage({
       labId,
