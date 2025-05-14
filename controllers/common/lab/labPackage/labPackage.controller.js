@@ -365,7 +365,7 @@ const createLabPackage = async (req, res) => {
 
     const newLabPackage = new LabPackage({
       labId,
-      logo: logoUrl.Location,
+      logo: logoUrl.Location || "",
       packageName: packageName.trim(),
       packageCode: packageCode.trim(),
       desc: desc || "",
