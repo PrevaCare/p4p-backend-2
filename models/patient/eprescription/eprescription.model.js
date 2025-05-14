@@ -24,6 +24,7 @@ const ePrescriptionSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "user is required !"],
     },
+    link: { type: String },
     patient: {
       name: String,
       age: Number,
