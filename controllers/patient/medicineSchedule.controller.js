@@ -6,6 +6,9 @@ const User = require("../../models/common/user.model");
 const mongoose = require("mongoose");
 const AppConstant = require("../../utils/AppConstant");
 const Response = require("../../utils/Response");
+const {
+  employeeMedicinesValidationSchema,
+} = require("../../validators/patient/employeeMedicines.validation");
 
 // 1. Get medicine schedules for Individual User - App API
 exports.getMedicineSchedulesForUser = async (req, res) => {
@@ -196,8 +199,7 @@ exports.createOrUpdateScheduleFromEMR = async (req, res) => {
 
     // Add medicines from allergies
     if (emrDetails.history && emrDetails.history.allergies) {
-      // Correct approach: allergies is an object with nested arrays, not an array itself
-      // Check pastAllergyPrescription array
+      // Handle past allergy prescriptions
       if (
         emrDetails.history.allergies.pastAllergyPrescription &&
         Array.isArray(emrDetails.history.allergies.pastAllergyPrescription) &&
@@ -231,7 +233,7 @@ exports.createOrUpdateScheduleFromEMR = async (req, res) => {
                       timing: [],
                       dosage: "As prescribed",
                     },
-                    changedBy: "Doctor",
+                    changedBy: allergy.pastAllergyPrescriptionBy || "Doctor",
                     changedAt: new Date(),
                   },
                 ],
@@ -241,7 +243,7 @@ exports.createOrUpdateScheduleFromEMR = async (req, res) => {
         );
       }
 
-      // Check newAllergyPrescription array
+      // Handle new allergy prescriptions
       if (
         emrDetails.history.allergies.newAllergyPrescription &&
         Array.isArray(emrDetails.history.allergies.newAllergyPrescription) &&
@@ -419,8 +421,7 @@ exports.syncScheduleWithEMR = async (req, res) => {
     // 3. From allergies
     const allergyMedicines = [];
     if (emrDetails.history && emrDetails.history.allergies) {
-      // Handle new allergies schema structure
-      // Past allergy medications
+      // Handle past allergy prescriptions
       if (
         emrDetails.history.allergies.pastAllergyPrescription &&
         Array.isArray(emrDetails.history.allergies.pastAllergyPrescription) &&
@@ -436,13 +437,14 @@ exports.syncScheduleWithEMR = async (req, res) => {
                 timing: [],
                 instructions: allergy.pastAllergyNotes || "",
                 source: "pastAllergy",
+                prescribedBy: allergy.pastAllergyPrescriptionBy || "Doctor",
               });
             }
           }
         );
       }
 
-      // New allergy medications
+      // Handle new allergy prescriptions
       if (
         emrDetails.history.allergies.newAllergyPrescription &&
         Array.isArray(emrDetails.history.allergies.newAllergyPrescription) &&
@@ -458,6 +460,7 @@ exports.syncScheduleWithEMR = async (req, res) => {
                 timing: [],
                 instructions: allergy.allergyNotes || "",
                 source: "newAllergy",
+                prescribedBy: allergy.allergyPrescriptionBy || "Doctor",
               });
             }
           }
@@ -511,7 +514,7 @@ exports.syncScheduleWithEMR = async (req, res) => {
                 timing: newMed.timing || [],
                 dosage: newMed.dosage || "As prescribed",
               },
-              changedBy: "Doctor",
+              changedBy: newMed.prescribedBy || "Doctor",
               reason: "Added in updated EMR",
               changedAt: new Date(),
             },
@@ -549,7 +552,7 @@ exports.syncScheduleWithEMR = async (req, res) => {
                 timing: newMed.timing || medicineToUpdate.timing,
                 dosage: newMed.dosage || medicineToUpdate.dosage,
               },
-              changedBy: "Doctor",
+              changedBy: newMed.prescribedBy || "Doctor",
               reason: "Updated in new EMR",
               changedAt: new Date(),
             });
@@ -573,7 +576,7 @@ exports.syncScheduleWithEMR = async (req, res) => {
                   timing: medicineToUpdate.timing,
                   dosage: medicineToUpdate.dosage,
                 },
-                changedBy: "Doctor",
+                changedBy: newMed.prescribedBy || "Doctor",
                 reason: "Restarted in new EMR",
                 changedAt: new Date(),
               });
@@ -822,8 +825,7 @@ exports.createMedicineScheduleFromEMR = async (emr, userId, session) => {
 
     // Add medicines from allergies
     if (emr.history && emr.history.allergies) {
-      // Handle new allergies schema structure
-      // Past allergy medications
+      // Handle past allergy prescriptions
       if (
         emr.history.allergies.pastAllergyPrescription &&
         Array.isArray(emr.history.allergies.pastAllergyPrescription) &&
@@ -856,7 +858,7 @@ exports.createMedicineScheduleFromEMR = async (emr, userId, session) => {
                     timing: [],
                     dosage: "As prescribed",
                   },
-                  changedBy: "Doctor",
+                  changedBy: allergy.pastAllergyPrescriptionBy || "Doctor",
                   changedAt: new Date(),
                 },
               ],
@@ -865,7 +867,7 @@ exports.createMedicineScheduleFromEMR = async (emr, userId, session) => {
         });
       }
 
-      // New allergy medications
+      // Handle new allergy prescriptions
       if (
         emr.history.allergies.newAllergyPrescription &&
         Array.isArray(emr.history.allergies.newAllergyPrescription) &&
@@ -933,6 +935,8 @@ exports.hookCreateMedicineSchedule = async (emr) => {
     session = await mongoose.startSession();
     session.startTransaction();
 
+    console.log("Creating medicine schedule for EMR:", emr._id);
+
     // Get all medicine details from EMR
     const schedule = await exports.createMedicineScheduleFromEMR(
       emr,
@@ -941,11 +945,20 @@ exports.hookCreateMedicineSchedule = async (emr) => {
     );
 
     if (schedule) {
+      // Log the medicine details for debugging
+      console.log(
+        `Created schedule with ${schedule.medicines.length} medicines`
+      );
+      if (schedule.medicines.length > 0) {
+        console.log("First medicine:", schedule.medicines[0].drugName);
+      }
+
       await session.commitTransaction();
       session.endSession();
       return schedule;
     } else {
       // No medicines found or other issues
+      console.log("No medicine schedule created - no medicines found in EMR");
       await session.abortTransaction();
       session.endSession();
       return null;
@@ -1259,6 +1272,295 @@ exports.getMedicineHistory = async (req, res) => {
       500,
       AppConstant.FAILED,
       error.message || "Internal server error while retrieving medicine history"
+    );
+  }
+};
+
+// 9. Get medicines for corporate employee from recent EMRs
+exports.getCorporateEmployeeMedicines = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    // Validate parameters
+    const { error } = employeeMedicinesValidationSchema.validate({
+      employeeId,
+    });
+    if (error) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        error.message || "Validation failed!"
+      );
+    }
+
+    // First check if user exists and is a corporate employee
+    const employee = await User.findById(employeeId);
+
+    if (!employee) {
+      return Response.error(res, 404, AppConstant.FAILED, "Employee not found");
+    }
+
+    if (employee.role !== "Employee") {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "User is not a corporate employee"
+      );
+    }
+
+    // Find most recent EMRs for the employee (both male and female formats)
+    let maleEMRs = await AdultMaleEMR.find({ user: employeeId })
+      .select(
+        "_id doctor diagnosis history generalPhysicalExamination createdAt"
+      )
+      .populate("doctor", "firstName lastName")
+      .sort({ createdAt: -1 })
+      .limit(3); // Get latest 3 EMRs
+
+    let femaleEMRs = await AdultFemaleEMR.find({ user: employeeId })
+      .select(
+        "_id doctor diagnosis history generalPhysicalExamination createdAt"
+      )
+      .populate("doctor", "firstName lastName")
+      .sort({ createdAt: -1 })
+      .limit(3); // Get latest 3 EMRs
+
+    // Combine and sort EMRs by createdAt
+    const recentEMRs = [...maleEMRs, ...femaleEMRs]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 3); // Get 3 most recent EMRs
+
+    if (!recentEMRs || recentEMRs.length === 0) {
+      return Response.success(
+        res,
+        { medicines: [] },
+        200,
+        "No EMRs found for the employee"
+      );
+    }
+
+    // Get medicine schedules associated with these EMRs
+    const schedules = await MedicineSchedule.find({
+      user: employeeId,
+      "medicines.source.emrId": { $in: recentEMRs.map((emr) => emr._id) },
+    }).populate({
+      path: "medicines.source.doctor",
+      select: "firstName lastName specialization",
+    });
+
+    // Extract all medicines from these EMRs
+    const allMedicines = [];
+
+    // 1. Add medicines from medicine schedules
+    if (schedules && schedules.length > 0) {
+      schedules.forEach((schedule) => {
+        if (schedule.medicines && schedule.medicines.length > 0) {
+          schedule.medicines.forEach((med) => {
+            // Find the associated EMR
+            const sourceEmr = recentEMRs.find(
+              (emr) =>
+                med.source &&
+                med.source.emrId &&
+                med.source.emrId.toString() === emr._id.toString()
+            );
+
+            if (sourceEmr) {
+              allMedicines.push({
+                drugName: med.drugName,
+                dosage: med.dosage,
+                frequency: med.frequency,
+                instructions: med.instructions,
+                status: med.status,
+                source: "EMR",
+                emrDate: sourceEmr.createdAt,
+                doctor: sourceEmr.doctor
+                  ? `Dr. ${sourceEmr.doctor.firstName} ${sourceEmr.doctor.lastName}`
+                  : "Unknown Doctor",
+                scheduleType: med.scheduleType,
+              });
+            }
+          });
+        }
+      });
+    }
+
+    // 2. Add medicines directly from EMRs if not already in schedules
+    recentEMRs.forEach((emr) => {
+      // Add from diagnosis prescriptions
+      if (emr.diagnosis && emr.diagnosis.length > 0) {
+        emr.diagnosis.forEach((diagnosis) => {
+          if (diagnosis.prescription && diagnosis.prescription.length > 0) {
+            diagnosis.prescription.forEach((prescription) => {
+              // Check if already in allMedicines
+              const exists = allMedicines.some(
+                (med) =>
+                  med.drugName === prescription.drugName &&
+                  med.emrDate.toISOString() === emr.createdAt.toISOString()
+              );
+
+              if (!exists) {
+                allMedicines.push({
+                  drugName: prescription.drugName,
+                  dosage: prescription.quantity,
+                  frequency: prescription.frequency,
+                  instructions: prescription.advice,
+                  status: "Active", // Assume active if in recent EMR
+                  source: "EMR Prescription",
+                  emrDate: emr.createdAt,
+                  doctor: emr.doctor
+                    ? `Dr. ${emr.doctor.firstName} ${emr.doctor.lastName}`
+                    : "Unknown Doctor",
+                  scheduleType: "EMR",
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Add from past history
+      if (
+        emr.history &&
+        emr.history.pastHistory &&
+        emr.history.pastHistory.length > 0
+      ) {
+        emr.history.pastHistory.forEach((history) => {
+          if (history.drugName && history.drugName.length > 0) {
+            history.drugName.forEach((drug, index) => {
+              // Check if already in allMedicines
+              const exists = allMedicines.some(
+                (med) =>
+                  med.drugName === drug &&
+                  med.emrDate.toISOString() === emr.createdAt.toISOString() &&
+                  med.source === "EMR Past History"
+              );
+
+              if (!exists) {
+                allMedicines.push({
+                  drugName: drug,
+                  dosage: "As prescribed",
+                  frequency: history.frequency?.[index] || "As directed",
+                  instructions: history.pastHistoryNotes || "",
+                  status: "Active", // Assume active
+                  source: "EMR Past History",
+                  emrDate: emr.createdAt,
+                  doctor: emr.doctor
+                    ? `Dr. ${emr.doctor.firstName} ${emr.doctor.lastName}`
+                    : "Unknown Doctor",
+                  scheduleType: "EMR",
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Add from allergies
+      if (emr.history && emr.history.allergies) {
+        // From past allergy prescriptions
+        if (
+          emr.history.allergies.pastAllergyPrescription &&
+          Array.isArray(emr.history.allergies.pastAllergyPrescription) &&
+          emr.history.allergies.pastAllergyPrescription.length > 0
+        ) {
+          emr.history.allergies.pastAllergyPrescription.forEach((allergy) => {
+            if (allergy.pastAllergyDrugName) {
+              // Check if already in allMedicines
+              const exists = allMedicines.some(
+                (med) =>
+                  med.drugName === allergy.pastAllergyDrugName &&
+                  med.emrDate.toISOString() === emr.createdAt.toISOString() &&
+                  med.source === "EMR Past Allergy"
+              );
+
+              if (!exists) {
+                allMedicines.push({
+                  drugName: allergy.pastAllergyDrugName,
+                  dosage: "As prescribed",
+                  frequency: allergy.pastAllergyFrequency || "As directed",
+                  instructions: allergy.pastAllergyNotes || "",
+                  status: "Active", // Assume active
+                  source: "EMR Past Allergy",
+                  emrDate: emr.createdAt,
+                  doctor: emr.doctor
+                    ? `Dr. ${emr.doctor.firstName} ${emr.doctor.lastName}`
+                    : "Unknown Doctor",
+                  scheduleType: "EMR",
+                });
+              }
+            }
+          });
+        }
+
+        // From new allergy prescriptions
+        if (
+          emr.history.allergies.newAllergyPrescription &&
+          Array.isArray(emr.history.allergies.newAllergyPrescription) &&
+          emr.history.allergies.newAllergyPrescription.length > 0
+        ) {
+          emr.history.allergies.newAllergyPrescription.forEach((allergy) => {
+            if (allergy.allergyDrugName) {
+              // Check if already in allMedicines
+              const exists = allMedicines.some(
+                (med) =>
+                  med.drugName === allergy.allergyDrugName &&
+                  med.emrDate.toISOString() === emr.createdAt.toISOString() &&
+                  med.source === "EMR New Allergy"
+              );
+
+              if (!exists) {
+                allMedicines.push({
+                  drugName: allergy.allergyDrugName,
+                  dosage: "As prescribed",
+                  frequency: allergy.allergyFrequency || "As directed",
+                  instructions: allergy.allergyNotes || "",
+                  status: "Active", // Assume active
+                  source: "EMR New Allergy",
+                  emrDate: emr.createdAt,
+                  doctor: emr.doctor
+                    ? `Dr. ${emr.doctor.firstName} ${emr.doctor.lastName}`
+                    : "Unknown Doctor",
+                  scheduleType: "EMR",
+                });
+              }
+            }
+          });
+        }
+      }
+    });
+
+    // Group medicines by name
+    const groupedMedicines = {};
+    allMedicines.forEach((med) => {
+      if (!groupedMedicines[med.drugName]) {
+        groupedMedicines[med.drugName] = [];
+      }
+      groupedMedicines[med.drugName].push(med);
+    });
+
+    // For each medicine group, keep the most recent one
+    const latestMedicines = Object.values(groupedMedicines).map((medGroup) => {
+      // Sort by date descending
+      medGroup.sort((a, b) => b.emrDate - a.emrDate);
+      return medGroup[0]; // Return the most recent
+    });
+
+    return Response.success(
+      res,
+      { medicines: latestMedicines },
+      200,
+      "Employee medicines retrieved successfully"
+    );
+  } catch (error) {
+    console.error("Error in getCorporateEmployeeMedicines:", error);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      error.message ||
+        "Internal server error while retrieving employee medicines"
     );
   }
 };

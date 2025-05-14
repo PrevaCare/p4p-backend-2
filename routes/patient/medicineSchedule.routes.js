@@ -59,4 +59,11 @@ router.get(
   medicineScheduleController.getMedicineHistory
 );
 
+// 9. Get corporate employee medicines from recent EMRs
+router.get(
+  "/corporate/employee/:employeeId/medicines",
+  verifyToken,
+  medicineScheduleController.getCorporateEmployeeMedicines
+);
+
 module.exports = router;

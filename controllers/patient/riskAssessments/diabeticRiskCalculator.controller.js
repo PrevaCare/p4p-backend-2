@@ -393,7 +393,7 @@ const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
     };
 
     const responseData = {
-      userProfile: userProfile,
+      // userProfile: userProfile,
       assessments: assessmentsWithRecommendations,
     };
 

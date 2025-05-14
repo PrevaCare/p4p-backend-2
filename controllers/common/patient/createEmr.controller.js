@@ -22,9 +22,39 @@ const medicineScheduleController = require("../../patient/medicineSchedule.contr
 const createEMR = async (req, res) => {
   const session = await mongoose.startSession();
   try {
+    console.log(
+      "EMR Creation Request Body:",
+      JSON.stringify(req.body, null, 2)
+    );
+    console.log("Request Query:", req.query);
+    console.log(
+      "BasicInfo structure:",
+      JSON.stringify(req.body.basicInfo, null, 2)
+    );
+
+    // Try to modify the request body if firstName and lastName are provided but name is not
+    if (
+      req.body.basicInfo &&
+      req.body.basicInfo.firstName &&
+      req.body.basicInfo.lastName &&
+      !req.body.basicInfo.name
+    ) {
+      console.log(
+        "Detected firstName/lastName pattern instead of name, fixing..."
+      );
+      req.body.basicInfo.name = `${req.body.basicInfo.firstName} ${req.body.basicInfo.lastName}`;
+      console.log(
+        "Modified basicInfo:",
+        JSON.stringify(req.body.basicInfo, null, 2)
+      );
+    }
+
     session.startTransaction();
+
+    // Validate the request body
     const { error } = EMRValidationSchema.validate(req.body);
     if (error) {
+      console.log("Validation Error:", error.details);
       return Response.error(
         res,
         400,
@@ -32,11 +62,15 @@ const createEMR = async (req, res) => {
         error.message || "validation failed !"
       );
     }
+
+    console.log("Validation passed successfully");
+
     const { appointmentId } = req.query;
-    // return;
     // check if user exist with userId
+    console.log("Looking for user with ID:", req.body.user);
     const existingUser = await User.findById(req.body.user).session(session);
     if (!existingUser) {
+      console.log("User not found with ID:", req.body.user);
       return Response.error(
         res,
         400,
@@ -45,15 +79,17 @@ const createEMR = async (req, res) => {
       );
     }
 
+    console.log("Found user:", existingUser._id);
+
     const height = req.body.generalPhysicalExamination.height;
     const weight = req.body.generalPhysicalExamination.weight;
     let BMI;
     if (height && weight) {
       BMI = (weight / (height * height)).toFixed(2);
     }
-    // console.log({ ...req.body, BMI });
-    // console.log(new mongoose.Types.ObjectId(req.body.doctor));
+
     if (!req.body.doctor) {
+      console.log("Doctor ID missing in request");
       return Response.error(
         res,
         400,
@@ -61,6 +97,8 @@ const createEMR = async (req, res) => {
         "please select doctor !"
       );
     }
+
+    console.log("Doctor ID provided:", req.body.doctor);
 
     // check if super admin req then update employee assignedDoctor if not present
     if (req.user.role === "Superadmin") {
@@ -82,17 +120,38 @@ const createEMR = async (req, res) => {
         BMI: BMI,
       },
     };
+
+    console.log("Looking for doctor with ID:", req.body.doctor);
     const doctorInfo = await Doctor.findOne(
       { _id: req.body.doctor },
       "firstName lastName education specialization eSign medicalRegistrationNumber"
     ).session(session);
+
+    if (!doctorInfo) {
+      console.log("Doctor not found with ID:", req.body.doctor);
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "Doctor not found with given ID"
+      );
+    }
+
+    console.log("Found doctor:", doctorInfo._id);
+
+    // Safely construct doctor info with fallbacks for missing properties
     const doctorInfoForGenerateEmrFn = {
-      firstName: doctorInfo.firstName,
-      lastName: doctorInfo.lastName,
-      degree: doctorInfo.education?.[0]?.degree || "",
-      specialization: doctorInfo.specialization,
-      medicalRegistrationNumber: doctorInfo.medicalRegistrationNumber,
-      eSign: doctorInfo?.eSign || "",
+      firstName: doctorInfo.firstName || "",
+      lastName: doctorInfo.lastName || "",
+      degree:
+        doctorInfo.education &&
+        Array.isArray(doctorInfo.education) &&
+        doctorInfo.education.length > 0
+          ? doctorInfo.education[0].degree || ""
+          : "",
+      specialization: doctorInfo.specialization || "",
+      medicalRegistrationNumber: doctorInfo.medicalRegistrationNumber || "",
+      eSign: doctorInfo.eSign || "",
     };
     const { prescribedTreatment, ...otherInfo } = emrPdfAndEprescriptionData;
     // await generateEMRPDF({ ...otherInfo, doctor: doctorInfoForGenerateEmrFn });
@@ -355,9 +414,15 @@ const createEMR = async (req, res) => {
     await newEMR.save({ session });
     await session.commitTransaction();
 
-    // Create medicine schedule from the EMR
+    // Create medicine schedule from the EMR and include in response
+    let medicineSchedule = null;
     try {
-      await medicineScheduleController.hookCreateMedicineSchedule(newEMR);
+      medicineSchedule =
+        await medicineScheduleController.hookCreateMedicineSchedule(newEMR);
+      console.log(
+        "Medicine schedule created successfully:",
+        medicineSchedule ? medicineSchedule._id : "None"
+      );
     } catch (scheduleErr) {
       console.error("Error creating medicine schedule:", scheduleErr);
       // Don't fail the whole EMR creation if schedule creation fails
@@ -365,12 +430,19 @@ const createEMR = async (req, res) => {
 
     await sendEMRCreationMsg(existingUser.phone);
 
-    return Response.success(res, null, 201, "EMR created successfully !");
+    return Response.success(
+      res,
+      {
+        emr: newEMR,
+        medicineSchedule: medicineSchedule,
+      },
+      201,
+      "EMR created successfully !"
+    );
   } catch (err) {
     await session.abortTransaction();
 
     // console.log(err);
-    await session.abortTransaction();
 
     return Response.error(
       res,
