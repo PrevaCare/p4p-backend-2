@@ -17,6 +17,7 @@ const patientBpModel = require("../../../models/patient/healthTracker/bp/patient
 const patientBpGoalModel = require("../../../models/patient/healthTracker/bp/patientBpGoal.model");
 const patientAppointmentModel = require("../../../models/patient/patientAppointment/patientAppointment.model");
 const { sendEMRCreationMsg } = require("../../../helper/otp/sentOtp.helper");
+const medicineScheduleController = require("../../patient/medicineSchedule.controller");
 
 const createEMR = async (req, res) => {
   const session = await mongoose.startSession();
@@ -113,8 +114,9 @@ const createEMR = async (req, res) => {
       sx: req.body.history.chiefComplaint,
       vitals: {
         BP: req.body.generalPhysicalExamination?.BP
-          ? `${req.body.generalPhysicalExamination?.BP?.sys || ""}/${req.body.generalPhysicalExamination?.BP?.dia || ""
-          }`
+          ? `${req.body.generalPhysicalExamination?.BP?.sys || ""}/${
+              req.body.generalPhysicalExamination?.BP?.dia || ""
+            }`
           : "",
         PR: req.body.generalPhysicalExamination?.PR || "",
         SpO2: req.body.generalPhysicalExamination?.SPO2 || "",
@@ -122,42 +124,42 @@ const createEMR = async (req, res) => {
       dx:
         Array.isArray(req.body?.diagnosis) && req.body.diagnosis.length > 0
           ? req.body.diagnosis.map((item) => ({
-            dateOfDiagnosis: item?.dateOfDiagnosis || "",
-            diagnosisName: item?.diagnosisName || "",
-          }))
+              dateOfDiagnosis: item?.dateOfDiagnosis || "",
+              diagnosisName: item?.diagnosisName || "",
+            }))
           : [
-            {
-              dateOfDiagnosis: "",
-              diagnosisName: "",
-            },
-          ],
+              {
+                dateOfDiagnosis: "",
+                diagnosisName: "",
+              },
+            ],
       labTest:
         Array.isArray(req.body?.diagnosis) &&
-          req.body.diagnosis.length > 0 &&
-          req.body.diagnosis[0]?.prescription?.length > 0
+        req.body.diagnosis.length > 0 &&
+        req.body.diagnosis[0]?.prescription?.length > 0
           ? req.body.diagnosis[0].prescription.map(
-            (item) => item?.investigations || ""
-          )
+              (item) => item?.investigations || ""
+            )
           : [],
 
       rx:
         Array.isArray(req.body?.diagnosis) &&
-          req.body.diagnosis.length > 0 &&
-          req.body.diagnosis[0]?.prescription?.length > 0
+        req.body.diagnosis.length > 0 &&
+        req.body.diagnosis[0]?.prescription?.length > 0
           ? req.body.diagnosis[0].prescription.map((item) => ({
-            drugName: item?.drugName || "",
-            freequency: item?.freequency || "",
-            duration: item?.duration || "",
-            quantity: item?.quantity || "",
-          }))
+              drugName: item?.drugName || "",
+              freequency: item?.freequency || "",
+              duration: item?.duration || "",
+              quantity: item?.quantity || "",
+            }))
           : [
-            {
-              drugName: "",
-              freequency: "",
-              duration: "",
-              quantity: "",
-            },
-          ],
+              {
+                drugName: "",
+                freequency: "",
+                duration: "",
+                quantity: "",
+              },
+            ],
       advice: req.body.advice ? req.body.advice.split(",") : [],
       followUpSchedule: req.body.followUpSchedule || "",
       consultationMode: req.body.consultationMode,
@@ -200,19 +202,19 @@ const createEMR = async (req, res) => {
     const newEMR =
       existingUser.gender === "F"
         ? new AdultFemaleEMR({
-          ...req.body,
-          generalPhysicalExamination: {
-            ...req.body.generalPhysicalExamination,
-            BMI: BMI,
-          },
-        })
+            ...req.body,
+            generalPhysicalExamination: {
+              ...req.body.generalPhysicalExamination,
+              BMI: BMI,
+            },
+          })
         : new AdultMaleEMR({
-          ...req.body,
-          generalPhysicalExamination: {
-            ...req.body.generalPhysicalExamination,
-            BMI: BMI,
-          },
-        });
+            ...req.body,
+            generalPhysicalExamination: {
+              ...req.body.generalPhysicalExamination,
+              BMI: BMI,
+            },
+          });
 
     // check if appointmentId is present then update the appointment table
     if (appointmentId) {
@@ -241,60 +243,60 @@ const createEMR = async (req, res) => {
     const currentConditions =
       req.body.diagnosis && req.body.diagnosis.length > 0
         ? req.body.diagnosis.map((item) => {
-          return {
-            userId: existingUser._id,
-            emrId: newEMR._id,
-            dateOfDiagnosis: item?.dateOfDiagnosis || null,
-            diagnosisName: item?.diagnosisName || null,
-            drugName:
-              item.prescription && item.prescription.length > 0
-                ? item.prescription.map((presItem) => presItem.drugName)
-                : [],
-            freequency:
-              item.prescription && item.prescription.length > 0
-                ? item.prescription.map((presItem) => presItem.freequency)
-                : [] || null,
-            quantity: item?.quantity || null,
-            referralNeeded: newEMR?.referrals || "",
-            advice: newEMR?.advice || "",
-          };
-        })
+            return {
+              userId: existingUser._id,
+              emrId: newEMR._id,
+              dateOfDiagnosis: item?.dateOfDiagnosis || null,
+              diagnosisName: item?.diagnosisName || null,
+              drugName:
+                item.prescription && item.prescription.length > 0
+                  ? item.prescription.map((presItem) => presItem.drugName)
+                  : [],
+              freequency:
+                item.prescription && item.prescription.length > 0
+                  ? item.prescription.map((presItem) => presItem.freequency)
+                  : [] || null,
+              quantity: item?.quantity || null,
+              referralNeeded: newEMR?.referrals || "",
+              advice: newEMR?.advice || "",
+            };
+          })
         : null;
     //  <============ allergies  ==============>
     const allergies =
       req.body.history.allergies && req.body.history.allergies.length > 0
         ? req.body.history.allergies.map((item) => {
-          return {
-            userId: existingUser._id,
-            emrId: newEMR._id,
-            doctorId: newEMR.doctor,
-            allergyName: item?.allergyName || "",
-            pastAllergyDrugName: item?.pastAllergyDrugName || [],
-            pastAllergyFreequency: item?.pastAllergyFreequency || [],
-            advisedBy: item?.advisedBy || "",
-            advise: item?.advise || "",
-            adviseAllergyDrugName: item?.adviseAllergyDrugName || [],
-            adviseAllergyFreequency: item?.adviseAllergyFreequency || [],
-          };
-        })
+            return {
+              userId: existingUser._id,
+              emrId: newEMR._id,
+              doctorId: newEMR.doctor,
+              allergyName: item?.allergyName || "",
+              pastAllergyDrugName: item?.pastAllergyDrugName || [],
+              pastAllergyFreequency: item?.pastAllergyFreequency || [],
+              advisedBy: item?.advisedBy || "",
+              advise: item?.advise || "",
+              adviseAllergyDrugName: item?.adviseAllergyDrugName || [],
+              adviseAllergyFreequency: item?.adviseAllergyFreequency || [],
+            };
+          })
         : null;
     //  <============ immunizations  ==============>
     const immunizations =
       req.body.immunization && req.body.immunization.length > 0
         ? req.body.immunization.map((item) => {
-          return {
-            userId: existingUser._id,
-            emrId: newEMR._id,
-            doctorId: newEMR.doctor,
-            immunizationType: item?.immunizationType || "",
-            vaccinationName: item?.vaccinationName || "",
-            totalDose: item?.totalDose || null,
-            doseDates: item?.doseDates || null,
-            doctorName: item?.doctorName || "",
-            sideEffects: item?.sideEffects || "",
-            immunizationNotes: item?.immunizationNotes || "",
-          };
-        })
+            return {
+              userId: existingUser._id,
+              emrId: newEMR._id,
+              doctorId: newEMR.doctor,
+              immunizationType: item?.immunizationType || "",
+              vaccinationName: item?.vaccinationName || "",
+              totalDose: item?.totalDose || null,
+              doseDates: item?.doseDates || null,
+              doctorName: item?.doctorName || "",
+              sideEffects: item?.sideEffects || "",
+              immunizationNotes: item?.immunizationNotes || "",
+            };
+          })
         : null;
 
     // <=========== default bp if  have  ========>
@@ -353,6 +355,13 @@ const createEMR = async (req, res) => {
     await newEMR.save({ session });
     await session.commitTransaction();
 
+    // Create medicine schedule from the EMR
+    try {
+      await medicineScheduleController.hookCreateMedicineSchedule(newEMR);
+    } catch (scheduleErr) {
+      console.error("Error creating medicine schedule:", scheduleErr);
+      // Don't fail the whole EMR creation if schedule creation fails
+    }
 
     await sendEMRCreationMsg(existingUser.phone);
 

@@ -22,6 +22,7 @@
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "express-rate-limit": "^7.5.0",
+    "generic-pool": "^3.9.0",
     "joi": "^17.13.1",
     "jsonwebtoken": "^9.0.2",
     "moment-timezone": "^0.5.45",

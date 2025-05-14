@@ -59,23 +59,53 @@ const HistorySchema = new mongoose.Schema({
     {
       sufferingFrom: { type: String },
       drugName: [String],
-      freequency: [String],
+      frequency: [String],
       readings: { type: String },
       pastHistoryNotes: { type: String },
+      fetchedFromEMR: { type: Boolean, default: false },
+      prescribedBy: {
+        type: String,
+        enum: ["Doctor", "Patient"],
+        required: true,
+        default: "Doctor",
+      },
     },
   ],
-  allergies: [
-    {
-      // isAllergy: false,
-      allergyName: String,
-      pastAllergyDrugName: [String],
-      pastAllergyFreequency: [String],
-      advisedBy: { type: String },
-      advise: { type: String },
-      adviseAllergyDrugName: [String],
-      adviseAllergyFreequency: [String],
-    },
-  ],
+  allergies: {
+    // isAllergy: false,
+    pastAllergyPrescription: [
+      {
+        allergyName: String,
+        pastAllergyDrugName: String,
+        pastAllergyFrequency: String,
+        pastAllergyDuration: String,
+        pastAllergyNotes: String,
+        fetchedFromEMR: { type: Boolean, default: false },
+        pastAllergyPrescriptionBy: {
+          type: String,
+          enum: ["Doctor", "Patient"],
+          required: true,
+          default: "Doctor",
+        },
+      },
+    ],
+    newAllergyPrescription: [
+      {
+        allergyName: String,
+        allergyDrugName: String,
+        allergyFrequency: String,
+        allergyDuration: String,
+        allergyNotes: String,
+        allergyPrescriptionBy: {
+          type: String,
+          enum: ["Doctor", "Patient"],
+          required: true,
+          default: "Doctor",
+        },
+      },
+    ],
+  },
+
   // sufferingFrom: { type: String },
   // drugName: [{ type: String }],
   previousSurgeries: { type: String },
@@ -123,7 +153,7 @@ const HistorySchema = new mongoose.Schema({
 const prescriptionSchema = new mongoose.Schema({
   investigations: { type: String, trim: true },
   drugName: { type: String, trim: true },
-  freequency: { type: String, trim: true },
+  frequency: { type: String, trim: true },
   duration: { type: String, trim: true },
   quantity: { type: String, trim: true },
   advice: { type: String, trim: true },
