@@ -9,6 +9,7 @@ const Response = require("../../utils/Response");
 const {
   employeeMedicinesValidationSchema,
 } = require("../../validators/patient/employeeMedicines.validation");
+const puppeteer = require("puppeteer");
 
 // 1. Get medicine schedules for Individual User - App API
 exports.getMedicineSchedulesForUser = async (req, res) => {
@@ -548,9 +549,9 @@ exports.syncScheduleWithEMR = async (req, res) => {
                 dosage: medicineToUpdate.dosage,
               },
               newSchedule: {
-                frequency: newMed.frequency || medicineToUpdate.frequency,
-                timing: newMed.timing || medicineToUpdate.timing,
-                dosage: newMed.dosage || medicineToUpdate.dosage,
+                frequency: changes.frequency || medicineToUpdate.frequency,
+                timing: changes.timing || medicineToUpdate.timing,
+                dosage: changes.dosage || medicineToUpdate.dosage,
               },
               changedBy: newMed.prescribedBy || "Doctor",
               reason: "Updated in new EMR",
@@ -1563,4 +1564,524 @@ exports.getCorporateEmployeeMedicines = async (req, res) => {
         "Internal server error while retrieving employee medicines"
     );
   }
+};
+
+// Generate medicine PDF for a patient
+exports.generateMedicinePDF = async (req, res) => {
+  let browser = null;
+  let pdfFilePath = null;
+  let logoTempPath = null;
+
+  try {
+    const userId = req.body.userId || (req.user && req.user._id);
+
+    if (!userId) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "User ID is required"
+      );
+    }
+
+    // Find only the latest active medicine schedule for the user
+    const medicineSchedule = await MedicineSchedule.findOne({
+      user: userId,
+      isActive: true,
+    })
+      .populate({
+        path: "medicines.source.doctor",
+        select: "firstName lastName education specialization",
+      })
+      .sort({ lastModified: -1 }); // Sort by last modified to get the latest
+
+    if (!medicineSchedule) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "No medicine schedules found for the user"
+      );
+    }
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      return Response.error(res, 404, AppConstant.FAILED, "User not found");
+    }
+
+    // Ensure temp directory exists
+    const fs = require("fs");
+    const path = require("path");
+    const tempDir = path.resolve(__dirname, "../../public/temp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Copy logo to a location accessible by the browser
+    const logoSourcePath = path.resolve(__dirname, "../../public/logo.png");
+    logoTempPath = path.join(tempDir, `temp_logo_${Date.now()}.png`);
+    if (fs.existsSync(logoSourcePath)) {
+      fs.copyFileSync(logoSourcePath, logoTempPath);
+    }
+
+    // Try to load logo as base64
+    let logoBase64 = null;
+    try {
+      const logoPath = path.resolve(__dirname, "../../public/logo1.png");
+      console.log("Looking for logo at:", logoPath);
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+        console.log("Logo loaded successfully");
+      } else {
+        console.error("Logo file not found at path:", logoPath);
+      }
+    } catch (err) {
+      console.error("Error loading logo:", err);
+    }
+
+    // Launch a headless browser for PDF generation
+    console.log("Launching browser for medicine PDF generation");
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+        "--allow-file-access-from-files",
+      ],
+    });
+
+    // Create a new page
+    const page = await browser.newPage();
+
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
+
+    // Allow all requests to proceed, including file access
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      req.continue();
+    });
+
+    // Generate HTML content for medicine schedule - now with a tabular format
+    const htmlContent = getMedicinePDFTableHTML(
+      user,
+      medicineSchedule,
+      logoBase64
+    );
+
+    // Add embedded Bootstrap CSS
+    const bootstrapCSS = `
+      <style>
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #333;
+          line-height: 1.6;
+          font-size: 12px;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 30px;
+          border-bottom: 2px solid #4b90e2;
+          padding-bottom: 15px;
+        }
+        .logo-container {
+          display: flex;
+          align-items: center;
+        }
+        .logo-container img {
+          width: 180px; /* Enlarged logo - bigger */
+          height: auto;
+        }
+        .patient-info {
+          text-align: right;
+        }
+        .patient-name {
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .document-title {
+          font-size: 24px;
+          font-weight: bold;
+          color: #4b90e2;
+          text-align: center;
+          margin: 20px 0;
+        }
+        .schedule-container {
+          margin-bottom: 30px;
+        }
+        .schedule-title {
+          font-size: 20px;
+          color: #2c3e50;
+          margin-bottom: 5px;
+        }
+        .schedule-date {
+          color: #7f8c8d;
+          font-size: 14px;
+          margin-bottom: 15px;
+        }
+        
+        /* Table styling for medicines */
+        .medicine-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 30px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .medicine-table th {
+          background-color: #4b90e2;
+          color: white;
+          text-align: left;
+          padding: 10px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .medicine-table td {
+          padding: 10px;
+          border-bottom: 1px solid #e0e0e0;
+          font-size: 11px;
+        }
+        .medicine-table tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        .medicine-table tr:hover {
+          background-color: #f1f5f9;
+        }
+        .status-pill {
+          display: inline-block;
+          padding: 3px 8px;
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: bold;
+        }
+        .status-active {
+          background-color: #e8f5e9;
+          color: #388e3c;
+        }
+        .status-completed {
+          background-color: #e3f2fd;
+          color: #1976d2;
+        }
+        .status-stopped {
+          background-color: #ffebee;
+          color: #d32f2f;
+        }
+        
+        .footer {
+          margin-top: 30px;
+          text-align: center;
+          font-size: 12px;
+          color: #95a5a6;
+        }
+        
+        @media print {
+          body {
+            padding: 0;
+          }
+          .header, .footer {
+            background-color: #ffffff !important;
+            color: #333 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .medicine-table th {
+            background-color: #4b90e2 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .medicine-table tr:nth-child(even) {
+            background-color: #f9f9f9 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .status-active {
+            background-color: #e8f5e9 !important;
+            color: #388e3c !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .status-completed {
+            background-color: #e3f2fd !important;
+            color: #1976d2 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .status-stopped {
+            background-color: #ffebee !important;
+            color: #d32f2f !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      </style>
+    `;
+
+    const enhancedHtml = htmlContent.replace(
+      "</head>",
+      `${bootstrapCSS}</head>`
+    );
+
+    // Set content and wait for it to load
+    console.log("Setting HTML content");
+    await page.setContent(enhancedHtml, {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
+
+    // Wait for images to load
+    await page
+      .waitForSelector(".logo-container img", { visible: true, timeout: 5000 })
+      .catch(() => {
+        console.log("Logo image may not have loaded, continuing anyway");
+      });
+
+    console.log("Generating PDF...");
+
+    // Take debug screenshot
+    const debugDir = path.resolve(tempDir, "debug");
+    if (!fs.existsSync(debugDir)) {
+      fs.mkdirSync(debugDir, { recursive: true });
+    }
+
+    const safeId = String(userId).replace(/[^a-z0-9]/gi, "");
+    const screenshotPath = path.join(
+      debugDir,
+      `medicine_debug_${safeId}_${Date.now()}.png`
+    );
+
+    await page.screenshot({
+      path: screenshotPath,
+      fullPage: true,
+    });
+
+    console.log("Debug screenshot saved to:", screenshotPath);
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "15mm",
+        bottom: "20mm",
+        left: "15mm",
+      },
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Patient Medicine Schedule</div>`,
+      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div>© 2025 Preva Care</div>
+      </div>`,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+
+    console.log("PDF generated successfully");
+
+    // Close browser before file operations
+    await browser.close();
+    browser = null;
+
+    // Save the PDF to a file
+    const pdfFileName = `MedicineSchedule_${safeId}_${Date.now()}.pdf`;
+    pdfFilePath = path.join(tempDir, pdfFileName);
+    fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+    console.log("PDF saved to:", pdfFilePath);
+
+    // Send the file as a download
+    return res.download(pdfFilePath, pdfFileName, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        if (!res.headersSent) {
+          return Response.error(
+            res,
+            500,
+            AppConstant.FAILED,
+            "Error downloading PDF: " + err.message
+          );
+        }
+      }
+
+      // Clean up the files after sending
+      try {
+        if (fs.existsSync(pdfFilePath)) {
+          fs.unlinkSync(pdfFilePath);
+          console.log("Temporary PDF file deleted");
+        }
+        if (logoTempPath && fs.existsSync(logoTempPath)) {
+          fs.unlinkSync(logoTempPath);
+          console.log("Temporary logo file deleted");
+        }
+      } catch (cleanupErr) {
+        console.error("Error cleaning up files:", cleanupErr);
+      }
+    });
+  } catch (err) {
+    console.error("Error generating medicine PDF:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
+  } finally {
+    // Ensure browser is closed and temp files are cleaned up
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Error closing browser:", closeErr);
+      }
+    }
+
+    // Clean up any temporary logo file
+    if (logoTempPath) {
+      const fs = require("fs");
+      try {
+        if (fs.existsSync(logoTempPath)) {
+          fs.unlinkSync(logoTempPath);
+        }
+      } catch (err) {
+        console.error("Error removing temporary logo:", err);
+      }
+    }
+  }
+};
+
+// HTML template for medicine PDF with tabular format
+const getMedicinePDFTableHTML = (user, medicineSchedule, logoBase64) => {
+  const userName =
+    user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user.email || "Patient";
+
+  // Create a table of medicines
+  const medicinesTableHTML = `
+    <table class="medicine-table">
+      <thead>
+        <tr>
+          <th>Medicine</th>
+          <th>Dosage</th>
+          <th>Frequency</th>
+          <th>Timing</th>
+          <th>Period</th>
+          <th>Status</th>
+          <th>Prescribed By</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${medicineSchedule.medicines
+          .map((med) => {
+            // Format timing array to readable string
+            const timingStr =
+              med.timing && med.timing.length > 0
+                ? med.timing.join(", ")
+                : "As directed";
+
+            // Get doctor name if available
+            let doctorName = "N/A";
+            if (med.source && med.source.doctor) {
+              const doctor = med.source.doctor;
+              if (typeof doctor === "object" && doctor.firstName) {
+                doctorName = `Dr. ${doctor.firstName} ${doctor.lastName || ""}`;
+                if (doctor.specialization) {
+                  doctorName += ` (${doctor.specialization})`;
+                }
+              }
+            }
+
+            // Format start date
+            const startDate = med.startDate
+              ? new Date(med.startDate).toLocaleDateString()
+              : "N/A";
+
+            // Format end date if available
+            const endDate = med.endDate
+              ? new Date(med.endDate).toLocaleDateString()
+              : "Ongoing";
+
+            // Period string
+            const periodStr = `${startDate} to ${endDate}`;
+
+            return `
+            <tr>
+              <td><strong>${med.drugName}</strong>${
+              med.instructions
+                ? `<br><small><em>${med.instructions}</em></small>`
+                : ""
+            }</td>
+              <td>${med.dosage}</td>
+              <td>${med.frequency}</td>
+              <td>${timingStr}</td>
+              <td>${periodStr}</td>
+              <td><span class="status-pill status-${med.status.toLowerCase()}">${
+              med.status
+            }</span></td>
+              <td>${doctorName}</td>
+            </tr>
+          `;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  `;
+
+  // Create the logo HTML - enlarged logo without "Preva Care" text when logo is present
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" alt="Preva Care Logo" style="max-height:90px;" />`
+    : `<span style="font-size:2.2rem; font-weight:bold; color:#4b90e2;">Preva Care</span>`;
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Medicine Schedule</title>
+    </head>
+    <body>
+      <div class="header">
+        <div class="logo-container">
+          ${logoHtml}
+        </div>
+        <div class="patient-info">
+          <div class="patient-name">${userName}</div>
+          <div class="document-date">Date: ${new Date().toLocaleDateString()}</div>
+        </div>
+      </div>
+      
+      <h1 class="document-title">Medicine Schedule</h1>
+      
+      <div class="schedule-container">
+        <h2 class="schedule-title">${medicineSchedule.title}</h2>
+        
+        
+        ${medicinesTableHTML}
+      </div>
+      
+      <div class="footer">
+        <p>This document is generated for informational purposes only.</p>
+        <p>Please follow your doctor's directions regarding medication usage.</p>
+      </div>
+    </body>
+    </html>
+  `;
 };
