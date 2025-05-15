@@ -66,4 +66,25 @@ router.get(
   medicineScheduleController.getCorporateEmployeeMedicines
 );
 
+// 10. Generate medicine PDF for patient
+router.post(
+  "/app/medicine-schedules/pdf",
+  // verifyToken,
+  medicineScheduleController.generateMedicinePDF
+);
+
+// 11. Get medicine PDF by ID
+router.get(
+  "/app/medicine-schedules/pdf/:scheduleId",
+  verifyToken,
+  medicineScheduleController.getMedicinePDFByScheduleId
+);
+
+// 12. Get or generate medicine PDF link by user ID
+router.get(
+  "/app/medicine-schedules/pdf-link/:userId",
+  // verifyToken, - optional for testing
+  medicineScheduleController.getMedicinePDFLinkByUserId
+);
+
 module.exports = router;

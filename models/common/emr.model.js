@@ -43,14 +43,6 @@ const SystemicExaminationSchema = new mongoose.Schema({
   PA: { type: String },
   otherSystemicFindings: { type: String },
 });
-
-// Schema for Treatment
-// const TreatmentSchema = new mongoose.Schema({
-//   drugName: { type: String },
-//   frequency: { type: String },
-//   takingSince: Date,
-// });
-
 // Schema for History
 const HistorySchema = new mongoose.Schema({
   chiefComplaint: { type: String },
@@ -133,23 +125,6 @@ const HistorySchema = new mongoose.Schema({
   mentalHealthAssessment: { type: String },
 });
 
-//
-// {
-//   dateOfDiagnosis: "",
-//   diagnosisName: "",
-//   prescription: [
-//     // {
-//     //   investigations: "",
-//     //   drugName: "",
-//     //   freequency: "",
-//     //   duration: "",
-//     //   quantity: "",
-//     //   advice: "",
-//     //   routeOfAdministration: "",
-//     //   howToTake: "",
-//     // },
-//   ],
-// },
 const prescriptionSchema = new mongoose.Schema({
   investigations: { type: String, trim: true },
   drugName: { type: String, trim: true },
@@ -217,33 +192,6 @@ const EMRSchema = new mongoose.Schema(
     immunization: [ImmunizationSchema],
     generalPhysicalExamination: GeneralPhysicalExaminationSchema,
     systemicExamination: SystemicExaminationSchema,
-    // currentTreatment: [
-    //   {
-    //     drugName: { type: String },
-    //     // frequency: { type: String },
-    //     // takingSince: Date,
-    //     deaseaseSufferingFrom: { type: String },
-    //     provisinalDiagonosis: { type: String },
-    //     dateOfProvisinalDiagonosis: Date,
-    //     referalNeeded: { type: Boolean, default: false },
-    //     notes: { type: String },
-    //   },
-    // ],
-    // provisionalDiagnosis: { type: String },
-
-    // investigations: [{ type: String }],
-    // diagonosis: [
-    //   {
-    //     dateOfDiagonosis: {
-    //       type: Date,
-    //       required: true,
-    //     },
-    //     diagonosisName: {
-    //       type: String,
-    //       required: true,
-    //     },
-    //   },
-    // ],
     diagnosis: {
       type: [diagnosisSchema],
       // required: true,
