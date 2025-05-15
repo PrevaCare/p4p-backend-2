@@ -108,6 +108,38 @@ const surgicalHistorySchema = Joi.object({
   isActive: Joi.boolean().default(true),
 });
 
+// Joi schema for family history
+const familyHistorySchema = Joi.object({
+  father: Joi.object({
+    isAlive: Joi.boolean().default(true),
+    condition: Joi.string().allow(null, ""),
+    diagnosisTimeframe: Joi.string().allow(null, ""),
+    onMedication: Joi.string()
+      .valid("Yes", "No", "Diet controlled")
+      .default("No"),
+    reasonOfDeath: Joi.string().allow(null, ""),
+  }).allow(null),
+  mother: Joi.object({
+    isAlive: Joi.boolean().default(true),
+    condition: Joi.string().allow(null, ""),
+    diagnosisTimeframe: Joi.string().allow(null, ""),
+    onMedication: Joi.string()
+      .valid("Yes", "No", "Diet controlled")
+      .default("No"),
+    reasonOfDeath: Joi.string().allow(null, ""),
+  }).allow(null),
+  familyConditions: Joi.object({
+    suddenCardiacDeath: Joi.boolean().default(false),
+    diabetes: Joi.boolean().default(false),
+    hypertension: Joi.boolean().default(false),
+    alzheimers: Joi.boolean().default(false),
+    parkinsonsDisease: Joi.boolean().default(false),
+    liverCirrhosis: Joi.boolean().default(false),
+    cancer: Joi.boolean().default(false),
+    notes: Joi.string().allow(null, ""),
+  }).allow(null),
+}).allow(null);
+
 // Joi schema for past allergy prescription
 const pastAllergyPrescriptionSchema = Joi.object({
   allergyName: Joi.string().allow(null, ""),
@@ -149,6 +181,7 @@ const historySchema = Joi.object({
   historyOfPresentingIllness: Joi.string().allow(null, ""),
   pastHistory: Joi.array().items(pastHistoryItemSchema).optional(),
   surgicalHistory: Joi.array().items(surgicalHistorySchema).optional(),
+  familyHistory: familyHistorySchema.allow(null),
   allergies: allergiesSchema.allow(null),
   previousSurgeries: Joi.string().allow(null, ""),
   habits: Joi.object({

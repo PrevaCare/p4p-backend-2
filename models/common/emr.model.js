@@ -85,6 +85,42 @@ const SurgicalHistorySchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
 });
 
+// Schema for Family History
+const FamilyHistorySchema = new mongoose.Schema({
+  father: {
+    isAlive: { type: Boolean, default: true },
+    condition: { type: String },
+    diagnosisTimeframe: { type: String },
+    onMedication: {
+      type: String,
+      enum: ["Yes", "No", "Diet controlled"],
+      default: "No",
+    },
+    reasonOfDeath: { type: String },
+  },
+  mother: {
+    isAlive: { type: Boolean, default: true },
+    condition: { type: String },
+    diagnosisTimeframe: { type: String },
+    onMedication: {
+      type: String,
+      enum: ["Yes", "No", "Diet controlled"],
+      default: "No",
+    },
+    reasonOfDeath: { type: String },
+  },
+  familyConditions: {
+    suddenCardiacDeath: { type: Boolean, default: false },
+    diabetes: { type: Boolean, default: false },
+    hypertension: { type: Boolean, default: false },
+    alzheimers: { type: Boolean, default: false },
+    parkinsonsDisease: { type: Boolean, default: false },
+    liverCirrhosis: { type: Boolean, default: false },
+    cancer: { type: Boolean, default: false },
+    notes: { type: String },
+  },
+});
+
 // Schema for History
 const HistorySchema = new mongoose.Schema({
   chiefComplaint: { type: String },
@@ -104,6 +140,7 @@ const HistorySchema = new mongoose.Schema({
     },
   ],
   surgicalHistory: [SurgicalHistorySchema],
+  familyHistory: FamilyHistorySchema,
   allergies: {
     // isAllergy: false,
     pastAllergyPrescription: [
