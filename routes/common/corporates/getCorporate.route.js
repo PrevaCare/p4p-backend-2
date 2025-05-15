@@ -45,6 +45,15 @@ const {
   healthTrackerController,
 } = require("../../../controllers/common/patient/latestHealthData/getLatestHealthData.controller");
 
+const { generateRiskAssessmentPDF } = require("../../../controllers/common/corporates/employees/emr/generateRiskAssessmentPdf.controller.js");
+const { generateHealthAssessmentPDF } = require("../../../controllers/common/corporates/employees/emr/generateHealthAssessmentPdf.controller.js");
+
+// Risk Assessment PDF Route
+router.post("/common/generate-risk-assessment-pdf", verifyToken, generateRiskAssessmentPDF);
+
+// Health Assessment PDF Route
+router.post("/common/generate-health-assessment-pdf", verifyToken, generateHealthAssessmentPDF);
+
 router.get(
   "/common/corporates",
   verifyToken,
