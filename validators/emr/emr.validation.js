@@ -47,6 +47,10 @@ const systemicExaminationSchema = Joi.object({
 // Joi schema for past history items
 const pastHistoryItemSchema = Joi.object({
   sufferingFrom: Joi.string().optional().allow(null, ""),
+  diagnosedIn: Joi.string().optional().allow(null, ""),
+  onMedication: Joi.string()
+    .valid("Yes", "No", "Diet controlled")
+    .default("No"),
   drugName: Joi.array()
     .items(Joi.string().optional().allow(null, ""))
     .optional(),
@@ -57,6 +61,9 @@ const pastHistoryItemSchema = Joi.object({
   pastHistoryNotes: Joi.string().optional().allow(null, ""),
   fetchedFromEMR: Joi.boolean().default(false),
   prescribedBy: Joi.string().valid("Doctor", "Patient").default("Doctor"),
+  isActive: Joi.boolean().default(true).optional(),
+  referringDoctorName: Joi.string().optional().allow(null, ""),
+  anyAdverseReactions: Joi.string().optional().allow(null, ""),
 });
 
 // Joi schema for surgical history medication

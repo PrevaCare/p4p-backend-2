@@ -1,3 +1,4 @@
+const { boolean } = require("joi");
 const mongoose = require("mongoose");
 
 // Schema for Address
@@ -128,15 +129,20 @@ const HistorySchema = new mongoose.Schema({
   pastHistory: [
     {
       sufferingFrom: { type: String },
+      diagnosedIn: { type: String },
+      onMedication: {
+        type: String,
+        enum: ["Yes", "No", "Diet controlled"],
+        default: "No",
+      },
       drugName: [String],
       frequency: [String],
-      readings: { type: String },
-      pastHistoryNotes: { type: String },
-      fetchedFromEMR: { type: Boolean, default: false },
-      isActive: { type: Boolean, default: true },
+      fetchedFromEMR: { type: Boolean, default: true },
       prescribedBy: { type: String, default: "Doctor" },
-      sources: { type: String, default: "Doctor" },
-      givenBy: { type: String, default: "Doctor" },
+      isActive: [Boolean],
+      referringDoctorName: { type: String },
+      pastHistoryNotes: { type: String },
+      anyAdverseReactions: { type: String },
     },
   ],
   surgicalHistory: [SurgicalHistorySchema],
