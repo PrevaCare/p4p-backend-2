@@ -78,6 +78,7 @@ const EmployeeSchema = new mongoose.Schema({
   department: {
     type: String,
     enum: [
+      "STAFF",
       "HR",
       "FIN",
       "IT",

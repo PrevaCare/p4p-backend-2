@@ -345,6 +345,7 @@ const employeeRegisterSchema = Joi.object({
   jobProfile: Joi.string(), // Optional
   department: Joi.string()
     .valid(
+      "STAFF",
       "HR",
       "FIN",
       "IT",
