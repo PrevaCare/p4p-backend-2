@@ -329,13 +329,13 @@ const getInitialEmrFormData = async (req, res) => {
                       adviseAllergyFreequency: [],
                     },
                   ],
-            previousSurgeries: "NONE",
+            previousSurgeries: "",
             habits: {
               smoking: false,
-              packYears: 0,
+              packYears: "",
               alcohol: false,
               alcoholDetails: "",
-              qntPerWeek: 0,
+              qntPerWeek: "",
               substanceAbuse: "NONE",
             },
             bowelAndBladder: "NORMAL AND REGULAR",
@@ -469,7 +469,15 @@ const getInitialEmrFormData = async (req, res) => {
       advice: (latestEmr && latestEmr.advice) || "",
       referrals: (latestEmr && latestEmr.referrals) || "",
       followUpSchedule: (latestEmr && latestEmr.followUpSchedule) || "",
-      gynaecologicalHistory: (latestEmr && latestEmr.gynaecologicalHistory) || {
+      doctorNotes: (latestEmr && latestEmr.doctorNotes) || "",
+      consultationMode: (latestEmr && latestEmr.consultationMode) || "on site",
+      doctor: (latestEmr && latestEmr.doctor) || "",
+    };
+
+    // Only include gynaecologicalHistory if user is female
+    if (userData.gender === "F") {
+      formData.gynaecologicalHistory = (latestEmr &&
+        latestEmr.gynaecologicalHistory) || {
         ageOfMenarche: "",
         cycleDuration: "",
         cycleRegularity: "regular",
@@ -506,11 +514,12 @@ const getInitialEmrFormData = async (req, res) => {
           treatingGynaecologistName: "",
           gynaecologistAddress: "",
         },
-      },
-      doctorNotes: (latestEmr && latestEmr.doctorNotes) || "",
-      consultationMode: (latestEmr && latestEmr.consultationMode) || "on site",
-      doctor: (latestEmr && latestEmr.doctor) || "",
-    };
+      };
+    }
+    // Explicitly remove gynaecologicalHistory if user is not female
+    else if (formData.gynaecologicalHistory) {
+      delete formData.gynaecologicalHistory;
+    }
 
     return Response.success(
       res,

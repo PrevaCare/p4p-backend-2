@@ -1941,35 +1941,42 @@ exports.getMedicinePDFLinkByUserId = async (req, res) => {
     await browser.close();
     browser = null;
 
-    // Save the PDF to a file
+    // Import AWS S3 upload utility
+    const { uploadToS3 } = require("../../middlewares/uploads/awsConfig");
+
+    // Save the PDF to a file (temporary, will be uploaded to S3)
     const safeId = String(userId).replace(/[^a-z0-9]/gi, "");
     const timestamp = Date.now();
     const pdfFileName = `MedicineSchedule_${safeId}_${timestamp}.pdf`;
-    pdfFilePath = path.join(tempDir, pdfFileName);
-    fs.writeFileSync(pdfFilePath, pdfBuffer);
 
-    console.log("PDF saved to:", pdfFilePath);
+    // Upload the PDF buffer directly to S3
+    console.log("Uploading PDF to S3...");
+    const s3UploadResult = await uploadToS3({
+      buffer: pdfBuffer,
+      originalname: pdfFileName,
+      mimetype: "application/pdf",
+    });
 
-    // Create public URL for the PDF
-    const host = req.get("host");
-    const protocol = req.protocol;
-    const publicPdfUrl = `${protocol}://${host}/temp/${pdfFileName}`;
+    console.log("PDF uploaded to S3:", s3UploadResult.Location);
 
-    // Update the medicine schedule with the PDF link
-    medicineSchedule.pdfLink = publicPdfUrl;
+    // Update the medicine schedule with the S3 PDF link
+    medicineSchedule.pdfLink = s3UploadResult.Location;
     await medicineSchedule.save();
 
-    console.log("Medicine schedule updated with PDF link:", publicPdfUrl);
+    console.log(
+      "Medicine schedule updated with S3 PDF link:",
+      s3UploadResult.Location
+    );
 
-    // Return the PDF link in the response
+    // Return the S3 PDF link in the response
     return Response.success(
       res,
       {
-        pdfLink: publicPdfUrl,
+        pdfLink: s3UploadResult.Location,
         scheduleId: medicineSchedule._id,
       },
       200,
-      "PDF link generated successfully"
+      "PDF link generated and uploaded to S3 successfully"
     );
   } catch (err) {
     console.error("Error generating medicine PDF link:", err);
@@ -1998,6 +2005,18 @@ exports.getMedicinePDFLinkByUserId = async (req, res) => {
         }
       } catch (err) {
         console.error("Error removing temporary logo:", err);
+      }
+    }
+
+    // Clean up any temporary PDF file
+    if (pdfFilePath) {
+      const fs = require("fs");
+      try {
+        if (fs.existsSync(pdfFilePath)) {
+          fs.unlinkSync(pdfFilePath);
+        }
+      } catch (err) {
+        console.error("Error removing temporary PDF file:", err);
       }
     }
   }
@@ -2504,49 +2523,30 @@ exports.generateMedicinePDF = async (req, res) => {
     await browser.close();
     browser = null;
 
-    // Save the PDF to a file
+    // Import AWS S3 upload utility
+    const { uploadToS3 } = require("../../middlewares/uploads/awsConfig");
+
+    // Prepare file name for S3 upload
     const safeId = String(userId).replace(/[^a-z0-9]/gi, "");
     const timestamp = Date.now();
     const pdfFileName = `MedicineSchedule_${safeId}_${timestamp}.pdf`;
-    pdfFilePath = path.join(tempDir, pdfFileName);
-    fs.writeFileSync(pdfFilePath, pdfBuffer);
 
-    console.log("PDF saved to:", pdfFilePath);
+    // Upload the PDF buffer directly to S3
+    console.log("Uploading PDF to S3...");
+    const s3UploadResult = await uploadToS3({
+      buffer: pdfBuffer,
+      originalname: pdfFileName,
+      mimetype: "application/pdf",
+    });
 
-    // Create public URL for the PDF
-    const host = req.get("host");
-    const protocol = req.protocol;
-    const publicPdfUrl = `${protocol}://${host}/temp/${pdfFileName}`;
+    console.log("PDF uploaded to S3:", s3UploadResult.Location);
 
-    // Update the medicine schedule with the PDF link
-    medicineSchedule.pdfLink = publicPdfUrl;
+    // Update the medicine schedule with the S3 PDF link
+    medicineSchedule.pdfLink = s3UploadResult.Location;
     await medicineSchedule.save();
 
-    console.log("Medicine schedule updated with PDF link:", publicPdfUrl);
-
-    // Send the file as a download
-    return res.download(pdfFilePath, pdfFileName, (err) => {
-      if (err) {
-        console.error("Download error:", err);
-        if (!res.headersSent) {
-          return Response.error(
-            res,
-            500,
-            AppConstant.FAILED,
-            "Error downloading PDF: " + err.message
-          );
-        }
-      }
-
-      // Clean up the files after sending
-      try {
-        if (logoTempPath && fs.existsSync(logoTempPath)) {
-          fs.unlinkSync(logoTempPath);
-        }
-      } catch (cleanupErr) {
-        console.error("Error cleaning up files:", cleanupErr);
-      }
-    });
+    // Redirect to the S3 PDF link for download
+    return res.redirect(s3UploadResult.Location);
   } catch (err) {
     console.error("Error generating medicine PDF:", err);
     return Response.error(
@@ -2574,6 +2574,18 @@ exports.generateMedicinePDF = async (req, res) => {
         }
       } catch (err) {
         console.error("Error removing temporary logo:", err);
+      }
+    }
+
+    // Clean up any temporary PDF file
+    if (pdfFilePath) {
+      const fs = require("fs");
+      try {
+        if (fs.existsSync(pdfFilePath)) {
+          fs.unlinkSync(pdfFilePath);
+        }
+      } catch (err) {
+        console.error("Error removing temporary PDF file:", err);
       }
     }
   }

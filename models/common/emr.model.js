@@ -55,12 +55,10 @@ const HistorySchema = new mongoose.Schema({
       readings: { type: String },
       pastHistoryNotes: { type: String },
       fetchedFromEMR: { type: Boolean, default: false },
-      prescribedBy: {
-        type: String,
-        enum: ["Doctor", "Patient"],
-        required: true,
-        default: "Doctor",
-      },
+      isActive: { type: Boolean, default: true },
+      prescribedBy: { type: String, default: "Doctor" },
+      sources: { type: String, default: "Doctor" },
+      givenBy: { type: String, default: "Doctor" },
     },
   ],
   allergies: {
