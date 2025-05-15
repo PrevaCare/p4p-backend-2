@@ -16,7 +16,7 @@ exports.getMedicineSchedulesForUser = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Find all active medicine schedules for the user
+    // Find active medicine schedules for the user
     const medicineSchedules = await MedicineSchedule.find({
       user: userId,
       isActive: true,
@@ -28,27 +28,51 @@ exports.getMedicineSchedulesForUser = async (req, res) => {
       .sort({ lastModified: -1 });
 
     if (!medicineSchedules || medicineSchedules.length === 0) {
-      return Response.success(
-        res,
-        { schedules: [] },
-        200,
-        "No medicine schedules found for the user"
-      );
+      return Response.success(res, 200, AppConstant.SUCCESS, {
+        schedules: [],
+        message: "No medicine schedules found for the user",
+      });
     }
 
-    return Response.success(
-      res,
-      { schedules: medicineSchedules },
-      200,
-      "Medicine schedules retrieved successfully"
-    );
+    // Process and return the schedules
+    const processedSchedules = medicineSchedules.map((schedule) => {
+      const data = {
+        _id: schedule._id,
+        title: schedule.title,
+        startDate: schedule.startDate,
+        endDate: schedule.endDate,
+        isActive: schedule.isActive,
+        lastModified: schedule.lastModified,
+        medicines: schedule.medicines.map((medicine) => ({
+          _id: medicine._id,
+          drugName: medicine.drugName,
+          dosage: medicine.dosage,
+          scheduleType: medicine.scheduleType,
+          source: medicine.source,
+          frequency: medicine.frequency,
+          timing: medicine.timing,
+          instructions: medicine.instructions,
+          startDate: medicine.startDate,
+          endDate: medicine.endDate,
+          status: medicine.status,
+        })),
+        createdAt: schedule.createdAt,
+        updatedAt: schedule.updatedAt,
+        pdfLink: schedule.pdfLink || null, // Include PDF link in response
+      };
+      return data;
+    });
+
+    return Response.success(res, 200, AppConstant.SUCCESS, {
+      schedules: processedSchedules,
+    });
   } catch (error) {
-    console.error("Error in getMedicineSchedulesForUser:", error);
+    console.error("Error fetching medicine schedules:", error);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      error.message || "Internal server error while fetching medicine schedules"
+      error.message || "Error fetching medicine schedules"
     );
   }
 };
@@ -454,14 +478,35 @@ exports.syncScheduleWithEMR = async (req, res) => {
         emrDetails.history.allergies.newAllergyPrescription.forEach(
           (allergy) => {
             if (allergy.allergyDrugName) {
-              allergyMedicines.push({
+              medicineSchedule.medicines.push({
                 drugName: allergy.allergyDrugName,
                 dosage: "As prescribed",
+                scheduleType: "EMR",
+                source: {
+                  emrId: emrDetails._id,
+                  doctor: emrDetails.doctor,
+                  organization: {
+                    name: "Hospital",
+                  },
+                },
                 frequency: allergy.allergyFrequency || "As directed",
                 timing: [],
                 instructions: allergy.allergyNotes || "",
-                source: "newAllergy",
-                prescribedBy: allergy.allergyPrescriptionBy || "Doctor",
+                startDate: new Date(),
+                status: "Active",
+                medicineHistory: [
+                  {
+                    drugName: allergy.allergyDrugName,
+                    changeType: "Started",
+                    newSchedule: {
+                      frequency: allergy.allergyFrequency || "As directed",
+                      timing: [],
+                      dosage: "As prescribed",
+                    },
+                    changedBy: allergy.allergyPrescriptionBy || "Doctor",
+                    changedAt: new Date(),
+                  },
+                ],
               });
             }
           }
@@ -1566,14 +1611,14 @@ exports.getCorporateEmployeeMedicines = async (req, res) => {
   }
 };
 
-// Generate medicine PDF for a patient
-exports.generateMedicinePDF = async (req, res) => {
+// Get or generate medicine PDF link for a user
+exports.getMedicinePDFLinkByUserId = async (req, res) => {
   let browser = null;
   let pdfFilePath = null;
   let logoTempPath = null;
 
   try {
-    const userId = req.body.userId || (req.user && req.user._id);
+    const userId = req.params.userId || (req.user && req.user._id);
 
     if (!userId) {
       return Response.error(
@@ -1601,6 +1646,22 @@ exports.generateMedicinePDF = async (req, res) => {
         404,
         AppConstant.FAILED,
         "No medicine schedules found for the user"
+      );
+    }
+
+    // Check if PDF link already exists and is valid
+    if (medicineSchedule.pdfLink) {
+      console.log("Existing PDF link found:", medicineSchedule.pdfLink);
+
+      // Return the existing PDF link
+      return Response.success(
+        res,
+        {
+          pdfLink: medicineSchedule.pdfLink,
+          scheduleId: medicineSchedule._id,
+        },
+        200,
+        "Existing PDF link found"
       );
     }
 
@@ -1670,7 +1731,7 @@ exports.generateMedicinePDF = async (req, res) => {
       req.continue();
     });
 
-    // Generate HTML content for medicine schedule - now with a tabular format
+    // Generate HTML content for medicine schedule
     const htmlContent = getMedicinePDFTableHTML(
       user,
       medicineSchedule,
@@ -1854,25 +1915,6 @@ exports.generateMedicinePDF = async (req, res) => {
 
     console.log("Generating PDF...");
 
-    // Take debug screenshot
-    const debugDir = path.resolve(tempDir, "debug");
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
-    }
-
-    const safeId = String(userId).replace(/[^a-z0-9]/gi, "");
-    const screenshotPath = path.join(
-      debugDir,
-      `medicine_debug_${safeId}_${Date.now()}.png`
-    );
-
-    await page.screenshot({
-      path: screenshotPath,
-      fullPage: true,
-    });
-
-    console.log("Debug screenshot saved to:", screenshotPath);
-
     // Generate PDF
     const pdfBuffer = await page.pdf({
       format: "A4",
@@ -1900,42 +1942,37 @@ exports.generateMedicinePDF = async (req, res) => {
     browser = null;
 
     // Save the PDF to a file
-    const pdfFileName = `MedicineSchedule_${safeId}_${Date.now()}.pdf`;
+    const safeId = String(userId).replace(/[^a-z0-9]/gi, "");
+    const timestamp = Date.now();
+    const pdfFileName = `MedicineSchedule_${safeId}_${timestamp}.pdf`;
     pdfFilePath = path.join(tempDir, pdfFileName);
     fs.writeFileSync(pdfFilePath, pdfBuffer);
 
     console.log("PDF saved to:", pdfFilePath);
 
-    // Send the file as a download
-    return res.download(pdfFilePath, pdfFileName, (err) => {
-      if (err) {
-        console.error("Download error:", err);
-        if (!res.headersSent) {
-          return Response.error(
-            res,
-            500,
-            AppConstant.FAILED,
-            "Error downloading PDF: " + err.message
-          );
-        }
-      }
+    // Create public URL for the PDF
+    const host = req.get("host");
+    const protocol = req.protocol;
+    const publicPdfUrl = `${protocol}://${host}/temp/${pdfFileName}`;
 
-      // Clean up the files after sending
-      try {
-        if (fs.existsSync(pdfFilePath)) {
-          fs.unlinkSync(pdfFilePath);
-          console.log("Temporary PDF file deleted");
-        }
-        if (logoTempPath && fs.existsSync(logoTempPath)) {
-          fs.unlinkSync(logoTempPath);
-          console.log("Temporary logo file deleted");
-        }
-      } catch (cleanupErr) {
-        console.error("Error cleaning up files:", cleanupErr);
-      }
-    });
+    // Update the medicine schedule with the PDF link
+    medicineSchedule.pdfLink = publicPdfUrl;
+    await medicineSchedule.save();
+
+    console.log("Medicine schedule updated with PDF link:", publicPdfUrl);
+
+    // Return the PDF link in the response
+    return Response.success(
+      res,
+      {
+        pdfLink: publicPdfUrl,
+        scheduleId: medicineSchedule._id,
+      },
+      200,
+      "PDF link generated successfully"
+    );
   } catch (err) {
-    console.error("Error generating medicine PDF:", err);
+    console.error("Error generating medicine PDF link:", err);
     return Response.error(
       res,
       500,
@@ -2084,4 +2121,460 @@ const getMedicinePDFTableHTML = (user, medicineSchedule, logoBase64) => {
     </body>
     </html>
   `;
+};
+
+// Get medicine PDF by schedule ID
+exports.getMedicinePDFByScheduleId = async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+
+    if (!scheduleId) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Schedule ID is required"
+      );
+    }
+
+    // Find the medicine schedule by ID
+    const medicineSchedule = await MedicineSchedule.findById(scheduleId);
+
+    if (!medicineSchedule) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "Medicine schedule not found"
+      );
+    }
+
+    // Check if the user has permission to access this schedule
+    if (req.user._id.toString() !== medicineSchedule.user.toString()) {
+      return Response.error(
+        res,
+        403,
+        AppConstant.FAILED,
+        "You don't have permission to access this schedule"
+      );
+    }
+
+    // Check if PDF link exists
+    if (!medicineSchedule.pdfLink) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "PDF not found for this schedule. Generate a PDF first."
+      );
+    }
+
+    // Redirect to the PDF link
+    return res.redirect(medicineSchedule.pdfLink);
+  } catch (err) {
+    console.error("Error retrieving medicine PDF:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
+  }
+};
+
+// Generate medicine PDF for a patient (for download)
+exports.generateMedicinePDF = async (req, res) => {
+  let browser = null;
+  let pdfFilePath = null;
+  let logoTempPath = null;
+
+  try {
+    const userId = req.body.userId || (req.user && req.user._id);
+
+    if (!userId) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "User ID is required"
+      );
+    }
+
+    // Find only the latest active medicine schedule for the user
+    const medicineSchedule = await MedicineSchedule.findOne({
+      user: userId,
+      isActive: true,
+    })
+      .populate({
+        path: "medicines.source.doctor",
+        select: "firstName lastName education specialization",
+      })
+      .sort({ lastModified: -1 }); // Sort by last modified to get the latest
+
+    if (!medicineSchedule) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "No medicine schedules found for the user"
+      );
+    }
+
+    // Check if PDF link already exists and is valid
+    if (medicineSchedule.pdfLink) {
+      console.log("Using existing PDF link:", medicineSchedule.pdfLink);
+
+      // Redirect to the existing PDF for download
+      return res.redirect(medicineSchedule.pdfLink);
+    }
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      return Response.error(res, 404, AppConstant.FAILED, "User not found");
+    }
+
+    // Ensure temp directory exists
+    const fs = require("fs");
+    const path = require("path");
+    const tempDir = path.resolve(__dirname, "../../public/temp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Copy logo to a location accessible by the browser
+    const logoSourcePath = path.resolve(__dirname, "../../public/logo.png");
+    logoTempPath = path.join(tempDir, `temp_logo_${Date.now()}.png`);
+    if (fs.existsSync(logoSourcePath)) {
+      fs.copyFileSync(logoSourcePath, logoTempPath);
+    }
+
+    // Try to load logo as base64
+    let logoBase64 = null;
+    try {
+      const logoPath = path.resolve(__dirname, "../../public/logo1.png");
+      console.log("Looking for logo at:", logoPath);
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+        console.log("Logo loaded successfully");
+      } else {
+        console.error("Logo file not found at path:", logoPath);
+      }
+    } catch (err) {
+      console.error("Error loading logo:", err);
+    }
+
+    // Launch a headless browser for PDF generation
+    console.log("Launching browser for medicine PDF generation");
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+        "--allow-file-access-from-files",
+      ],
+    });
+
+    // Create a new page
+    const page = await browser.newPage();
+
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
+
+    // Allow all requests to proceed, including file access
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      req.continue();
+    });
+
+    // Generate HTML content for medicine schedule
+    const htmlContent = getMedicinePDFTableHTML(
+      user,
+      medicineSchedule,
+      logoBase64
+    );
+
+    // Add embedded Bootstrap CSS
+    const bootstrapCSS = `
+      <style>
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #333;
+          line-height: 1.6;
+          font-size: 12px;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 30px;
+          border-bottom: 2px solid #4b90e2;
+          padding-bottom: 15px;
+        }
+        .logo-container {
+          display: flex;
+          align-items: center;
+        }
+        .logo-container img {
+          width: 180px; /* Enlarged logo - bigger */
+          height: auto;
+        }
+        .patient-info {
+          text-align: right;
+        }
+        .patient-name {
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .document-title {
+          font-size: 24px;
+          font-weight: bold;
+          color: #4b90e2;
+          text-align: center;
+          margin: 20px 0;
+        }
+        .schedule-container {
+          margin-bottom: 30px;
+        }
+        .schedule-title {
+          font-size: 20px;
+          color: #2c3e50;
+          margin-bottom: 5px;
+        }
+        .schedule-date {
+          color: #7f8c8d;
+          font-size: 14px;
+          margin-bottom: 15px;
+        }
+        
+        /* Table styling for medicines */
+        .medicine-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 30px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .medicine-table th {
+          background-color: #4b90e2;
+          color: white;
+          text-align: left;
+          padding: 10px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .medicine-table td {
+          padding: 10px;
+          border-bottom: 1px solid #e0e0e0;
+          font-size: 11px;
+        }
+        .medicine-table tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        .medicine-table tr:hover {
+          background-color: #f1f5f9;
+        }
+        .status-pill {
+          display: inline-block;
+          padding: 3px 8px;
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: bold;
+        }
+        .status-active {
+          background-color: #e8f5e9;
+          color: #388e3c;
+        }
+        .status-completed {
+          background-color: #e3f2fd;
+          color: #1976d2;
+        }
+        .status-stopped {
+          background-color: #ffebee;
+          color: #d32f2f;
+        }
+        
+        .footer {
+          margin-top: 30px;
+          text-align: center;
+          font-size: 12px;
+          color: #95a5a6;
+        }
+        
+        @media print {
+          body {
+            padding: 0;
+          }
+          .header, .footer {
+            background-color: #ffffff !important;
+            color: #333 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .medicine-table th {
+            background-color: #4b90e2 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .medicine-table tr:nth-child(even) {
+            background-color: #f9f9f9 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .status-active {
+            background-color: #e8f5e9 !important;
+            color: #388e3c !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .status-completed {
+            background-color: #e3f2fd !important;
+            color: #1976d2 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .status-stopped {
+            background-color: #ffebee !important;
+            color: #d32f2f !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      </style>
+    `;
+
+    const enhancedHtml = htmlContent.replace(
+      "</head>",
+      `${bootstrapCSS}</head>`
+    );
+
+    // Set content and wait for it to load
+    console.log("Setting HTML content");
+    await page.setContent(enhancedHtml, {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
+
+    // Wait for images to load
+    await page
+      .waitForSelector(".logo-container img", { visible: true, timeout: 5000 })
+      .catch(() => {
+        console.log("Logo image may not have loaded, continuing anyway");
+      });
+
+    console.log("Generating PDF...");
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "15mm",
+        bottom: "20mm",
+        left: "15mm",
+      },
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Patient Medicine Schedule</div>`,
+      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div>© 2025 Preva Care</div>
+      </div>`,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+
+    console.log("PDF generated successfully");
+
+    // Close browser before file operations
+    await browser.close();
+    browser = null;
+
+    // Save the PDF to a file
+    const safeId = String(userId).replace(/[^a-z0-9]/gi, "");
+    const timestamp = Date.now();
+    const pdfFileName = `MedicineSchedule_${safeId}_${timestamp}.pdf`;
+    pdfFilePath = path.join(tempDir, pdfFileName);
+    fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+    console.log("PDF saved to:", pdfFilePath);
+
+    // Create public URL for the PDF
+    const host = req.get("host");
+    const protocol = req.protocol;
+    const publicPdfUrl = `${protocol}://${host}/temp/${pdfFileName}`;
+
+    // Update the medicine schedule with the PDF link
+    medicineSchedule.pdfLink = publicPdfUrl;
+    await medicineSchedule.save();
+
+    console.log("Medicine schedule updated with PDF link:", publicPdfUrl);
+
+    // Send the file as a download
+    return res.download(pdfFilePath, pdfFileName, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        if (!res.headersSent) {
+          return Response.error(
+            res,
+            500,
+            AppConstant.FAILED,
+            "Error downloading PDF: " + err.message
+          );
+        }
+      }
+
+      // Clean up the files after sending
+      try {
+        if (logoTempPath && fs.existsSync(logoTempPath)) {
+          fs.unlinkSync(logoTempPath);
+        }
+      } catch (cleanupErr) {
+        console.error("Error cleaning up files:", cleanupErr);
+      }
+    });
+  } catch (err) {
+    console.error("Error generating medicine PDF:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
+  } finally {
+    // Ensure browser is closed and temp files are cleaned up
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Error closing browser:", closeErr);
+      }
+    }
+
+    // Clean up any temporary logo file
+    if (logoTempPath) {
+      const fs = require("fs");
+      try {
+        if (fs.existsSync(logoTempPath)) {
+          fs.unlinkSync(logoTempPath);
+        }
+      } catch (err) {
+        console.error("Error removing temporary logo:", err);
+      }
+    }
+  }
 };

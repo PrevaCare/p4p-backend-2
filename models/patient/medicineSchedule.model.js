@@ -85,6 +85,10 @@ const MedicineScheduleSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    pdfLink: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

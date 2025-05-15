@@ -144,6 +144,8 @@ app.use("/v1/webhook/razorpay", express.raw({ type: "application/json" }));
 app.use(cors());
 
 app.use(express.static("public"));
+// Ensure the temp directory is accessible for PDF links
+app.use("/temp", express.static(path.join(__dirname, "public/temp")));
 
 app.use("/v1/", userRoute);
 app.use("/v1/", doctorRoute);
