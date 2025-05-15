@@ -20,7 +20,7 @@ const {
   getAllStrokeRiskCalculatorDateAndLowerHigherVal,
 } = require("../../controllers/patient/riskAssessments/strokeRiskCalculate.controller");
 const { verifyToken } = require("../../middlewares/jwt/permission");
-const { upload } = require("../../middlewares/uploads/multerConfig");
+const { upload, anyFileUpload } = require("../../middlewares/uploads/multerConfig");
 const {
   getUserHealthEngagement,
 } = require("../../controllers/employee/employeeHealthEngagement.controller");
@@ -101,7 +101,7 @@ router.post(
   "/admin/corporate/employees/excel",
   verifyToken,
   //   checkPermissions("CREATE", "Superadmin"),
-  upload.fields([{ name: "employees", maxCount: 1 }]),
+  anyFileUpload.fields([{ name: "employees", maxCount: 1 }]),
   addCorporateEmployeesThroughExcel
 );
 

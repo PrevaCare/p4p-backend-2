@@ -5,6 +5,8 @@ const {
 const {
   getEmrPdfByemrId,
   getEPrescriptionPdfById,
+  getEmrPdfLinkByemrId,
+  getEPrescriptionPdfLinkByemrId,
 } = require("../../../controllers/common/corporates/employees/emr/generateEMRPdf.controller");
 const {
   getSingleEmployeeAllEmrForCard,
@@ -77,6 +79,12 @@ router.post(
 
 // test emr pdf create usisng emrid
 router.post("/admin/patient/emr-pdf-view", verifyToken, getEmrPdfByemrId);
+router.post("/admin/patient/emr-pdf-link", verifyToken, getEmrPdfLinkByemrId);
+router.post(
+  "/admin/patient/eprescription-pdf-link",
+  verifyToken,
+  getEPrescriptionPdfLinkByemrId
+);
 router.post(
   "/admin/patient/eprescription-pdf-view",
   verifyToken,

@@ -9,7 +9,7 @@ const {
   labBookingStatusUpdateSchema,
 } = require("../../../validators/lab/labBooking.validator");
 const { razorpayInstance } = require("../../../config/razorpay.config");
-const { sendLabTestScheduleMsg, sentLabReportReadyMsg } = require("../../../helper/otp/sentOtp.helper");
+const { sendLabTestScheduleMsg, sentLabReportReadyMsg, sendCustomLabReportMsg } = require("../../../helper/otp/sentOtp.helper");
 
 /**
  * Get all lab test/package bookings for admin
@@ -600,6 +600,7 @@ const uploadLabReport = async (req, res) => {
       select: "firstName lastName specialization",
     });
     // console.log(user);
+    // await sendCustomLabReportMsg(user.phone, reportFiles);
     //
     if (!user.assignedDoctors || user.assignedDoctors.length === 0) {
       return Response.error(

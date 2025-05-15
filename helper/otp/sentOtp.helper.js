@@ -217,7 +217,7 @@ const sendLabTestScheduleMsg = async (mobile) => {
   const senderId = process.env.MSG91_SENDER_ID;
   const route = process.env.MSG91_ROUTE;
   const templateId = process.env.MSG91_LAB_TEST_SCHEDULED_TEMPLATE;
-  
+
   const url = `https://control.msg91.com/api/v5/flow/`;
 
   try {
@@ -290,7 +290,40 @@ const sentLabReportReadyMsg = async (mobile) => {
   } catch (error) {
     return new Error(error);
   }
-  
+
 };
 
-module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor, sendEMRCreationMsg, sendLabTestScheduleMsg , sentLabReportReadyMsg};
+const sendCustomLabReportMsg = async (mobile, reportFiles) => {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const templateId = process.env.MSG91_LAB_REPORT_TEMPLATE_ID;
+  const senderId = process.env.MSG91_SENDER_ID;
+
+  // Join all links into one string
+  const report_links = reportFiles.map(file => `${file.fileName}: ${file.url}`).join('\n');
+
+  const response = await axios.post(
+    "https://control.msg91.com/api/v5/flow/",
+    {
+      flow_id: templateId,
+      sender: senderId,
+      recipients: [
+        {
+          mobiles: `91${mobile}`,
+          report_links: report_links, // This must match the DLT variable exactly
+        },
+      ],
+    },
+    {
+      headers: {
+        authkey: authKey,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  console.log("SMS Sent:", response.data);
+};
+
+
+
+module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor, sendEMRCreationMsg, sendLabTestScheduleMsg, sentLabReportReadyMsg, sendCustomLabReportMsg };
