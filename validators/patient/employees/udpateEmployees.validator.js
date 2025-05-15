@@ -45,6 +45,7 @@ const employeeUpdateSchema = Joi.object({
   jobProfile: Joi.string().optional(),
   department: Joi.string()
     .valid(
+      "STAFF",
       "HR",
       "FIN",
       "IT",
