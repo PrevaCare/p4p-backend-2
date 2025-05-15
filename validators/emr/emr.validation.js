@@ -59,6 +59,55 @@ const pastHistoryItemSchema = Joi.object({
   prescribedBy: Joi.string().valid("Doctor", "Patient").default("Doctor"),
 });
 
+// Joi schema for surgical history medication
+const surgicalMedicationSchema = Joi.object({
+  medicationName: Joi.string().allow(null, ""),
+  dosage: Joi.string().allow(null, ""),
+  duration: Joi.string().allow(null, ""),
+  adverseEffects: Joi.string().allow(null, ""),
+  isContinued: Joi.boolean().default(true),
+  discontinuedDays: Joi.string().allow(null, ""),
+});
+
+// Joi schema for surgical history blood transfusion
+const bloodTransfusionSchema = Joi.object({
+  required: Joi.boolean().default(false),
+  units: Joi.number().allow(null),
+  details: Joi.string().allow(null, ""),
+});
+
+// Joi schema for surgical history surgeon
+const surgeonSchema = Joi.object({
+  name: Joi.string().allow(null, ""),
+  specialization: Joi.string().allow(null, ""),
+  contact: Joi.string().allow(null, ""),
+});
+
+// Joi schema for surgical history hospital
+const hospitalSchema = Joi.object({
+  name: Joi.string().allow(null, ""),
+  location: Joi.string().allow(null, ""),
+});
+
+// Joi schema for surgical history
+const surgicalHistorySchema = Joi.object({
+  surgeryName: Joi.string().allow(null, ""),
+  indication: Joi.string().allow(null, ""),
+  year: Joi.number().allow(null),
+  procedureType: Joi.string().allow(null, ""),
+  recoveryTime: Joi.string().allow(null, ""),
+  complications: Joi.string().allow(null, ""),
+  onMedication: Joi.string()
+    .valid("Yes", "No", "Diet controlled")
+    .default("No"),
+  medications: Joi.array().items(surgicalMedicationSchema).optional(),
+  bloodTransfusion: bloodTransfusionSchema.allow(null),
+  surgeon: surgeonSchema.allow(null),
+  hospital: hospitalSchema.allow(null),
+  notes: Joi.string().allow(null, ""),
+  isActive: Joi.boolean().default(true),
+});
+
 // Joi schema for past allergy prescription
 const pastAllergyPrescriptionSchema = Joi.object({
   allergyName: Joi.string().allow(null, ""),
@@ -99,6 +148,7 @@ const historySchema = Joi.object({
   chiefComplaint: Joi.string().allow(null, ""),
   historyOfPresentingIllness: Joi.string().allow(null, ""),
   pastHistory: Joi.array().items(pastHistoryItemSchema).optional(),
+  surgicalHistory: Joi.array().items(surgicalHistorySchema).optional(),
   allergies: allergiesSchema.allow(null),
   previousSurgeries: Joi.string().allow(null, ""),
   habits: Joi.object({

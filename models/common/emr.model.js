@@ -43,6 +43,48 @@ const SystemicExaminationSchema = new mongoose.Schema({
   PA: { type: String },
   otherSystemicFindings: { type: String },
 });
+
+// Schema for Surgical History
+const SurgicalHistorySchema = new mongoose.Schema({
+  surgeryName: { type: String },
+  indication: { type: String },
+  year: { type: Number },
+  procedureType: { type: String },
+  recoveryTime: { type: String },
+  complications: { type: String },
+  onMedication: {
+    type: String,
+    enum: ["Yes", "No", "Diet controlled"],
+    default: "No",
+  },
+  medications: [
+    {
+      medicationName: { type: String },
+      dosage: { type: String },
+      duration: { type: String },
+      adverseEffects: { type: String },
+      isContinued: { type: Boolean, default: true },
+      discontinuedDays: { type: String },
+    },
+  ],
+  bloodTransfusion: {
+    required: { type: Boolean, default: false },
+    units: { type: Number },
+    details: { type: String },
+  },
+  surgeon: {
+    name: { type: String },
+    specialization: { type: String },
+    contact: { type: String },
+  },
+  hospital: {
+    name: { type: String },
+    location: { type: String },
+  },
+  notes: { type: String },
+  isActive: { type: Boolean, default: true },
+});
+
 // Schema for History
 const HistorySchema = new mongoose.Schema({
   chiefComplaint: { type: String },
@@ -61,6 +103,7 @@ const HistorySchema = new mongoose.Schema({
       givenBy: { type: String, default: "Doctor" },
     },
   ],
+  surgicalHistory: [SurgicalHistorySchema],
   allergies: {
     // isAllergy: false,
     pastAllergyPrescription: [

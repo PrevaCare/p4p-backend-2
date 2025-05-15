@@ -241,6 +241,9 @@ const getInitialEmrFormData = async (req, res) => {
       }
     );
 
+    // Initialize empty surgicalHistory array
+    const surgicalHistory = [];
+
     // Construct form data object
     const formData = {
       user: userId,
@@ -307,6 +310,7 @@ const getInitialEmrFormData = async (req, res) => {
                 pastHistoryNotes: "",
               },
             ],
+            surgicalHistory: [],
             allergies:
               allergies && allergies.length > 0
                 ? allergies.map((item) => ({
