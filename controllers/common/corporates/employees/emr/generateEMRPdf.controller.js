@@ -1336,16 +1336,27 @@ const getEPrescriptionPdfById = async (req, res) => {
     const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
     const patientId = existingEPrescription.user;
 
-    // Get the latest medicine schedule for this patient
-    const latestMedicineSchedule = await MedicineSchedule.findOne({
-      user: patientId,
-      isActive: true,
-    }).sort({ lastModified: -1 });
+    try {
+      // Get the latest medicine schedule for this patient
+      const latestMedicineSchedule = await MedicineSchedule.findOne({
+        user: patientId,
+        isActive: true,
+      }).sort({ lastModified: -1 });
 
-    // If found, add to the prescription data
-    if (latestMedicineSchedule) {
-      existingEPrescription.medicineSchedule = latestMedicineSchedule;
-      console.log("Latest medicine schedule fetched successfully");
+      // If found, add to the prescription data
+      if (latestMedicineSchedule) {
+        existingEPrescription.medicineSchedule = latestMedicineSchedule;
+        console.log("Latest medicine schedule fetched successfully");
+        console.log("Medicine count:", latestMedicineSchedule.medicines.length);
+      } else {
+        console.log(
+          "No active medicine schedule found for patient:",
+          patientId
+        );
+      }
+    } catch (err) {
+      console.error("Error fetching medicine schedule:", err);
+      // Continue execution even if medicine schedule fetch fails
     }
 
     // Ensure temp directory exists
@@ -1755,6 +1766,31 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
       "E-Prescription not found"
     );
   }
+
+  // Fetch the latest medicine schedule for the patient
+  const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
+  const patientId = existingEPrescription.user;
+
+  try {
+    // Get the latest medicine schedule for this patient
+    const latestMedicineSchedule = await MedicineSchedule.findOne({
+      user: patientId,
+      isActive: true,
+    }).sort({ lastModified: -1 });
+
+    // If found, add to the prescription data
+    if (latestMedicineSchedule) {
+      existingEPrescription.medicineSchedule = latestMedicineSchedule;
+      console.log("Latest medicine schedule fetched successfully for PDF link");
+      console.log("Medicine count:", latestMedicineSchedule.medicines.length);
+    } else {
+      console.log("No active medicine schedule found for patient:", patientId);
+    }
+  } catch (err) {
+    console.error("Error fetching medicine schedule for PDF link:", err);
+    // Continue execution even if medicine schedule fetch fails
+  }
+
   const pdfLink = existingEPrescription.link;
   if (pdfLink) {
     return res.send(pdfLink);
@@ -2870,13 +2906,14 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
       <div class="section-container">
         <h4 class="section-title">Medicine Schedule</h4>
         <div class="table-container">
-          <table class="multi-col">
+          <table class="multi-col" style="width: 100%; table-layout: auto;">
             <thead>
               <tr>
-                <th>Medicine</th>
-                <th>Frequency</th>
-                <th>Duration</th>
-                <th>Status</th>
+                <th style="width: 25%;">Medicine</th>
+                <th style="width: 15%;">Frequency</th>
+                <th style="width: 15%;">Dosage</th>
+                <th style="width: 35%;">Instructions</th>
+                <th style="width: 10%;">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -2884,10 +2921,11 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
                 .map(
                   (med) => `
                 <tr>
-                  <td>${sanitizeHtml(med.name || "")}</td>
+                  <td>${sanitizeHtml(med.drugName || "")}</td>
                   <td>${sanitizeHtml(med.frequency || "")}</td>
-                  <td>${sanitizeHtml(med.duration || "")}</td>
-                  <td>${med.status === "active" ? "Active" : "Inactive"}</td>
+                  <td>${sanitizeHtml(med.dosage || "")}</td>
+                  <td>${sanitizeHtml(med.instructions || "")}</td>
+                  <td>${med.status || "Active"}</td>
                 </tr>
               `
                 )
