@@ -277,26 +277,32 @@ const getInitialEmrFormData = async (req, res) => {
             ...latestEmr.history,
             allergies:
               allergies && allergies.length > 0
-                ? allergies?.map((item) => ({
-                    allergyName: item.allergyName || "",
-                    pastAllergyDrugName: item.pastAllergyDrugName || [],
-                    pastAllergyFreequency: item.pastAllergyFreequency || [],
-                    advisedBy: item.advisedBy || "",
-                    advise: item.advise || "",
-                    adviseAllergyDrugName: item.adviseAllergyDrugName || [],
-                    adviseAllergyFreequency: item.adviseAllergyFreequency || [],
-                  }))
-                : [
-                    {
-                      allergyName: "",
-                      pastAllergyDrugName: [],
-                      pastAllergyFreequency: [],
-                      advisedBy: "",
-                      advise: "",
-                      adviseAllergyDrugName: [],
-                      adviseAllergyFreequency: [],
-                    },
-                  ],
+                ? {
+                    pastAllergyPrescription: allergies.map((item) => ({
+                      allergyName: item.allergyName || "",
+                      symptoms: [],
+                      diagnosedBy: item.advisedBy || "",
+                      triggers: [],
+                      pastAllergyNotes: item.advise || "",
+                      pastAllergyPrescriptionBy: "Doctor",
+                      drugs:
+                        item.pastAllergyDrugName && item.pastAllergyFreequency
+                          ? item.pastAllergyDrugName.map((drug, index) => ({
+                              drugName: drug,
+                              isContinued: true,
+                              frequency:
+                                item.pastAllergyFreequency[index] || "",
+                              duration: "",
+                              fetchedFromEMR: true,
+                            }))
+                          : [],
+                    })),
+                    newAllergyPrescription: [],
+                  }
+                : {
+                    pastAllergyPrescription: [],
+                    newAllergyPrescription: [],
+                  },
           }
         : {
             chiefComplaint: "",
@@ -313,26 +319,32 @@ const getInitialEmrFormData = async (req, res) => {
             surgicalHistory: [],
             allergies:
               allergies && allergies.length > 0
-                ? allergies.map((item) => ({
-                    allergyName: item.allergyName || "",
-                    pastAllergyDrugName: item.pastAllergyDrugName || [],
-                    pastAllergyFreequency: item.pastAllergyFreequency || [],
-                    advisedBy: item.advisedBy || "",
-                    advise: item.advise || "",
-                    adviseAllergyDrugName: item.adviseAllergyDrugName || [],
-                    adviseAllergyFreequency: item.adviseAllergyFreequency || [],
-                  }))
-                : [
-                    {
-                      allergyName: "",
-                      pastAllergyDrugName: [],
-                      pastAllergyFreequency: [],
-                      advisedBy: "",
-                      advise: "",
-                      adviseAllergyDrugName: [],
-                      adviseAllergyFreequency: [],
-                    },
-                  ],
+                ? {
+                    pastAllergyPrescription: allergies.map((item) => ({
+                      allergyName: item.allergyName || "",
+                      symptoms: [],
+                      diagnosedBy: item.advisedBy || "",
+                      triggers: [],
+                      pastAllergyNotes: item.advise || "",
+                      pastAllergyPrescriptionBy: "Doctor",
+                      drugs:
+                        item.pastAllergyDrugName && item.pastAllergyFreequency
+                          ? item.pastAllergyDrugName.map((drug, index) => ({
+                              drugName: drug,
+                              isContinued: true,
+                              frequency:
+                                item.pastAllergyFreequency[index] || "",
+                              duration: "",
+                              fetchedFromEMR: true,
+                            }))
+                          : [],
+                    })),
+                    newAllergyPrescription: [],
+                  }
+                : {
+                    pastAllergyPrescription: [],
+                    newAllergyPrescription: [],
+                  },
             previousSurgeries: "",
             habits: {
               smoking: false,

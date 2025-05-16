@@ -147,29 +147,39 @@ const familyHistorySchema = Joi.object({
   }).allow(null),
 }).allow(null);
 
+// Joi schema for allergy drug
+const allergyDrugSchema = Joi.object({
+  drugName: Joi.string().allow(null, ""),
+  isContinued: Joi.boolean().default(true),
+  frequency: Joi.string().allow(null, ""),
+  duration: Joi.string().allow(null, ""),
+  fetchedFromEMR: Joi.boolean().default(true),
+});
+
 // Joi schema for past allergy prescription
 const pastAllergyPrescriptionSchema = Joi.object({
   allergyName: Joi.string().allow(null, ""),
-  pastAllergyDrugName: Joi.string().allow(null, ""),
-  pastAllergyFrequency: Joi.string().allow(null, ""),
-  pastAllergyDuration: Joi.string().allow(null, ""),
+  symptoms: Joi.array().items(Joi.string().allow(null, "")).optional(),
+  diagnosedBy: Joi.string().allow(null, ""),
+  triggers: Joi.array().items(Joi.string().allow(null, "")).optional(),
   pastAllergyNotes: Joi.string().allow(null, ""),
-  fetchedFromEMR: Joi.boolean().default(false),
   pastAllergyPrescriptionBy: Joi.string()
     .valid("Doctor", "Patient")
     .default("Doctor"),
+  drugs: Joi.array().items(allergyDrugSchema).optional(),
 });
 
 // Joi schema for new allergy prescription
 const newAllergyPrescriptionSchema = Joi.object({
   allergyName: Joi.string().allow(null, ""),
-  allergyDrugName: Joi.string().allow(null, ""),
-  allergyFrequency: Joi.string().allow(null, ""),
-  allergyDuration: Joi.string().allow(null, ""),
-  allergyNotes: Joi.string().allow(null, ""),
-  allergyPrescriptionBy: Joi.string()
+  symptoms: Joi.array().items(Joi.string().allow(null, "")).optional(),
+  diagnosedBy: Joi.string().allow(null, ""),
+  triggers: Joi.array().items(Joi.string().allow(null, "")).optional(),
+  pastAllergyNotes: Joi.string().allow(null, ""),
+  pastAllergyPrescriptionBy: Joi.string()
     .valid("Doctor", "Patient")
     .default("Doctor"),
+  drugs: Joi.array().items(allergyDrugSchema).optional(),
 });
 
 // Joi schema for allergies

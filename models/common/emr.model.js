@@ -152,32 +152,49 @@ const HistorySchema = new mongoose.Schema({
     pastAllergyPrescription: [
       {
         allergyName: String,
-        pastAllergyDrugName: String,
-        pastAllergyFrequency: String,
-        pastAllergyDuration: String,
+        symptoms: [String],
+        diagnosedBy: String,
+        triggers: [String],
         pastAllergyNotes: String,
-        fetchedFromEMR: { type: Boolean, default: false },
         pastAllergyPrescriptionBy: {
           type: String,
           enum: ["Doctor", "Patient"],
           required: true,
           default: "Doctor",
         },
+        drugs: [
+          {
+            drugName: String,
+            isContinued: { type: Boolean, default: true },
+            frequency: String,
+            duration: String,
+            fetchedFromEMR: { type: Boolean, default: true },
+          },
+        ],
       },
     ],
     newAllergyPrescription: [
       {
         allergyName: String,
-        allergyDrugName: String,
-        allergyFrequency: String,
-        allergyDuration: String,
-        allergyNotes: String,
-        allergyPrescriptionBy: {
+        symptoms: [String],
+        diagnosedBy: String,
+        triggers: [String],
+        pastAllergyNotes: String,
+        pastAllergyPrescriptionBy: {
           type: String,
           enum: ["Doctor", "Patient"],
           required: true,
           default: "Doctor",
         },
+        drugs: [
+          {
+            drugName: String,
+            isContinued: { type: Boolean, default: true },
+            frequency: String,
+            duration: String,
+            fetchedFromEMR: { type: Boolean, default: true },
+          },
+        ],
       },
     ],
   },

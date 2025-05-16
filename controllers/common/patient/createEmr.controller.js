@@ -323,21 +323,61 @@ const createEMR = async (req, res) => {
         : null;
     //  <============ allergies  ==============>
     const allergies =
-      req.body.history.allergies && req.body.history.allergies.length > 0
-        ? req.body.history.allergies.map((item) => {
-            return {
-              userId: existingUser._id,
-              emrId: newEMR._id,
-              doctorId: newEMR.doctor,
-              allergyName: item?.allergyName || "",
-              pastAllergyDrugName: item?.pastAllergyDrugName || [],
-              pastAllergyFreequency: item?.pastAllergyFreequency || [],
-              advisedBy: item?.advisedBy || "",
-              advise: item?.advise || "",
-              adviseAllergyDrugName: item?.adviseAllergyDrugName || [],
-              adviseAllergyFreequency: item?.adviseAllergyFreequency || [],
-            };
-          })
+      req.body.history.allergies &&
+      (req.body.history.allergies.pastAllergyPrescription ||
+        req.body.history.allergies.newAllergyPrescription)
+        ? [
+            // Process past allergy prescriptions
+            ...(req.body.history.allergies.pastAllergyPrescription || []).map(
+              (item) => {
+                // Extract drug information for the allergy model
+                const pastAllergyDrugName = item.drugs
+                  ? item.drugs.map((drug) => drug.drugName)
+                  : [];
+                const pastAllergyFreequency = item.drugs
+                  ? item.drugs.map((drug) => drug.frequency)
+                  : [];
+
+                return {
+                  userId: existingUser._id,
+                  emrId: newEMR._id,
+                  doctorId: newEMR.doctor,
+                  allergyName: item?.allergyName || "",
+                  pastAllergyDrugName: pastAllergyDrugName,
+                  pastAllergyFreequency: pastAllergyFreequency,
+                  advisedBy: item?.diagnosedBy || "",
+                  advise: item?.pastAllergyNotes || "",
+                  adviseAllergyDrugName: [],
+                  adviseAllergyFreequency: [],
+                };
+              }
+            ),
+            // Process new allergy prescriptions
+            ...(req.body.history.allergies.newAllergyPrescription || []).map(
+              (item) => {
+                // Extract drug information for the allergy model
+                const adviseAllergyDrugName = item.drugs
+                  ? item.drugs.map((drug) => drug.drugName)
+                  : [];
+                const adviseAllergyFreequency = item.drugs
+                  ? item.drugs.map((drug) => drug.frequency)
+                  : [];
+
+                return {
+                  userId: existingUser._id,
+                  emrId: newEMR._id,
+                  doctorId: newEMR.doctor,
+                  allergyName: item?.allergyName || "",
+                  pastAllergyDrugName: [],
+                  pastAllergyFreequency: [],
+                  advisedBy: item?.diagnosedBy || "",
+                  advise: item?.pastAllergyNotes || "",
+                  adviseAllergyDrugName: adviseAllergyDrugName,
+                  adviseAllergyFreequency: adviseAllergyFreequency,
+                };
+              }
+            ),
+          ]
         : null;
     //  <============ immunizations  ==============>
     const immunizations =
