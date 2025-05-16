@@ -1332,6 +1332,22 @@ const getEPrescriptionPdfById = async (req, res) => {
       );
     }
 
+    // Fetch the latest medicine schedule for the patient
+    const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
+    const patientId = existingEPrescription.user;
+
+    // Get the latest medicine schedule for this patient
+    const latestMedicineSchedule = await MedicineSchedule.findOne({
+      user: patientId,
+      isActive: true,
+    }).sort({ lastModified: -1 });
+
+    // If found, add to the prescription data
+    if (latestMedicineSchedule) {
+      existingEPrescription.medicineSchedule = latestMedicineSchedule;
+      console.log("Latest medicine schedule fetched successfully");
+    }
+
     // Ensure temp directory exists
     const tempDir = path.resolve(__dirname, "../../../../../public/temp");
     if (!fs.existsSync(tempDir)) {
@@ -2830,6 +2846,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
     advice = [],
     followUpSchedule = "",
     consultationMode = "",
+    medicineSchedule = null, // Add the medicine schedule parameter
   } = prescriptionData || {};
 
   const formatDate = (date) => {
@@ -2841,6 +2858,46 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
     : `<div style="background:#ffffff; padding:10px; border-radius:10px; font-weight:bold; color:#4b90e2; text-align:center;">
          <span style="font-size:1.5rem;">Preva Care</span>
        </div>`;
+
+  // Create medicine schedule HTML if available
+  let medicineScheduleHtml = "";
+  if (
+    medicineSchedule &&
+    medicineSchedule.medicines &&
+    medicineSchedule.medicines.length > 0
+  ) {
+    medicineScheduleHtml = `
+      <div class="section-container">
+        <h4 class="section-title">Medicine Schedule</h4>
+        <div class="table-container">
+          <table class="multi-col">
+            <thead>
+              <tr>
+                <th>Medicine</th>
+                <th>Frequency</th>
+                <th>Duration</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${medicineSchedule.medicines
+                .map(
+                  (med) => `
+                <tr>
+                  <td>${sanitizeHtml(med.name || "")}</td>
+                  <td>${sanitizeHtml(med.frequency || "")}</td>
+                  <td>${sanitizeHtml(med.duration || "")}</td>
+                  <td>${med.status === "active" ? "Active" : "Inactive"}</td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
 
   return `
 <!DOCTYPE html>
@@ -3058,32 +3115,45 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
   <body>
     <div class="header">
       <div class="doctor-info">
-        <h2>Dr. ${doctor.firstName || ""} ${doctor.lastName || ""}</h2>
+        <h2>${doctor.name || "Doctor"}</h2>
+        <p>${doctor.education || ""}</p>
         <p>${doctor.specialization || ""}</p>
-        <p>${doctor.degree || ""}</p>
-        <p>Reg. No: ${doctor.medicalRegistrationNumber || ""}</p>
-        <p>Consultation Mode: ${consultationMode}</p>
-        <p>Date: ${formatDate(date)}</p>
+        <p>${doctor.registrationNumber || ""}</p>
       </div>
       <div class="logo">
         ${logoHtml}
-        <div class="logo-address">Registered Office : P-1 GROUND FLOOR B/P P-1 TO P-20 NDSE II OPP. LI/11 , Delhi, India - 110049</div>
+        <div class="logo-address">
+          <small>Preva Care<br />Electronic Medical Record System</small>
+        </div>
       </div>
     </div>
 
-    <h1 class="title">E-Prescription</h1>
+    <div class="container">
+      <div class="title">PRESCRIPTION</div>
 
-    <div class="container-fluid px-4">
-      <!-- Patient Info -->
       <div class="section-container">
-      <h4 class="section-title">Patient Information</h4>
-      <div class="table-container">
+        <h4 class="section-title">Patient Information</h4>
+        <div class="table-container">
           <table>
-          <tbody>
-              <tr><th>Patient Name</th><td>${patient.name || ""}</td></tr>
-              <tr><th>Age</th><td>${patient.age || ""} years</td></tr>
-              <tr><th>Gender</th><td>${patient.gender || ""}</td></tr>
-              <tr><th>Prescription ID</th><td>${prescriptionID || ""}</td></tr>
+            <tbody>
+              <tr>
+                <th>Name</th>
+                <td>${patient.name || ""}</td>
+              </tr>
+              <tr>
+                <th>Age / Gender</th>
+                <td>${patient.age || ""} ${
+    patient.gender === "M" ? "Male" : patient.gender === "F" ? "Female" : ""
+  }</td>
+              </tr>
+              <tr>
+                <th>Date</th>
+                <td>${formatDate(date)}</td>
+              </tr>
+              <tr>
+                <th>Prescription ID</th>
+                <td>${prescriptionID || ""}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -3253,6 +3323,8 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
       `
           : ""
       }
+
+      ${medicineScheduleHtml}
     </div>
 
     <div class="footer">
