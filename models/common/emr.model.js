@@ -112,7 +112,42 @@ const FamilyHistorySchema = new mongoose.Schema({
       enum: ["Yes", "No", "Diet controlled"],
       default: "No",
     },
+    medications: [
+      {
+        medicationName: { type: String },
+        duration: { type: String },
+        frequency: { type: String },
+        adverseEffects: { type: String },
+      },
+    ],
+    surgicalHistory: [
+      {
+        procedureName: { type: String },
+        indication: { type: String },
+        doctorName: { type: String },
+        hospital: { type: String },
+        year: { type: Number },
+        insuranceCovered: { type: Boolean, default: false },
+        insuranceProvider: { type: String },
+        claimFiled: { type: Boolean, default: false },
+        claimAmount: { type: String },
+        policyNumber: { type: String },
+        onMedication: {
+          type: String,
+          enum: ["Yes", "No", "Diet controlled"],
+          default: "No",
+        },
+        medications: [
+          {
+            medicationName: { type: String },
+            duration: { type: String },
+            frequency: { type: String },
+          },
+        ],
+      },
+    ],
     reasonOfDeath: { type: String },
+    yearOfDeath: { type: Number },
   },
   mother: {
     isAlive: { type: Boolean, default: true },
@@ -123,7 +158,42 @@ const FamilyHistorySchema = new mongoose.Schema({
       enum: ["Yes", "No", "Diet controlled"],
       default: "No",
     },
+    medications: [
+      {
+        medicationName: { type: String },
+        duration: { type: String },
+        frequency: { type: String },
+        adverseEffects: { type: String },
+      },
+    ],
+    surgicalHistory: [
+      {
+        procedureName: { type: String },
+        indication: { type: String },
+        doctorName: { type: String },
+        hospital: { type: String },
+        year: { type: Number },
+        insuranceCovered: { type: Boolean, default: false },
+        insuranceProvider: { type: String },
+        claimFiled: { type: Boolean, default: false },
+        claimAmount: { type: String },
+        policyNumber: { type: String },
+        onMedication: {
+          type: String,
+          enum: ["Yes", "No", "Diet controlled"],
+          default: "No",
+        },
+        medications: [
+          {
+            medicationName: { type: String },
+            duration: { type: String },
+            frequency: { type: String },
+          },
+        ],
+      },
+    ],
     reasonOfDeath: { type: String },
+    yearOfDeath: { type: Number },
   },
   familyConditions: {
     suddenCardiacDeath: { type: Boolean, default: false },

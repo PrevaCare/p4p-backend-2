@@ -131,6 +131,39 @@ const surgicalHistorySchema = Joi.object({
   isActive: Joi.boolean().default(true),
 });
 
+// Joi schema for parent medication
+const parentMedicationSchema = Joi.object({
+  medicationName: Joi.string().allow(null, ""),
+  duration: Joi.string().allow(null, ""),
+  frequency: Joi.string().allow(null, ""),
+  adverseEffects: Joi.string().allow(null, ""),
+});
+
+// Joi schema for parent surgical history medication
+const parentSurgicalMedicationSchema = Joi.object({
+  medicationName: Joi.string().allow(null, ""),
+  duration: Joi.string().allow(null, ""),
+  frequency: Joi.string().allow(null, ""),
+});
+
+// Joi schema for parent surgical history
+const parentSurgicalHistorySchema = Joi.object({
+  procedureName: Joi.string().allow(null, ""),
+  indication: Joi.string().allow(null, ""),
+  doctorName: Joi.string().allow(null, ""),
+  hospital: Joi.string().allow(null, ""),
+  year: Joi.number().allow(null),
+  insuranceCovered: Joi.boolean().default(false),
+  insuranceProvider: Joi.string().allow(null, ""),
+  claimFiled: Joi.boolean().default(false),
+  claimAmount: Joi.string().allow(null, ""),
+  policyNumber: Joi.string().allow(null, ""),
+  onMedication: Joi.string()
+    .valid("Yes", "No", "Diet controlled")
+    .default("No"),
+  medications: Joi.array().items(parentSurgicalMedicationSchema).optional(),
+});
+
 // Joi schema for family history
 const familyHistorySchema = Joi.object({
   father: Joi.object({
@@ -140,7 +173,10 @@ const familyHistorySchema = Joi.object({
     onMedication: Joi.string()
       .valid("Yes", "No", "Diet controlled")
       .default("No"),
+    medications: Joi.array().items(parentMedicationSchema).optional(),
+    surgicalHistory: Joi.array().items(parentSurgicalHistorySchema).optional(),
     reasonOfDeath: Joi.string().allow(null, ""),
+    yearOfDeath: Joi.number().allow(null),
   }).allow(null),
   mother: Joi.object({
     isAlive: Joi.boolean().default(true),
@@ -149,7 +185,10 @@ const familyHistorySchema = Joi.object({
     onMedication: Joi.string()
       .valid("Yes", "No", "Diet controlled")
       .default("No"),
+    medications: Joi.array().items(parentMedicationSchema).optional(),
+    surgicalHistory: Joi.array().items(parentSurgicalHistorySchema).optional(),
     reasonOfDeath: Joi.string().allow(null, ""),
+    yearOfDeath: Joi.number().allow(null),
   }).allow(null),
   familyConditions: Joi.object({
     suddenCardiacDeath: Joi.boolean().default(false),
