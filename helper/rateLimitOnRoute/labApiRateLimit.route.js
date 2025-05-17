@@ -39,18 +39,12 @@ const modificationRateLimit = rateLimit({
   legacyHeaders: false,
 });
 
-// Rate limit for upload operations (5 requests per 5 minutes)
-const uploadRateLimit = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 5, // 5 requests per 5 minutes
-  message: {
-    status: 429,
-    success: false,
-    message: "Too many upload requests, please try again after 5 minutes",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Upload rate limiter removed to fix certificate upload issues
+
+// Empty implementation that doesn't limit uploads
+const uploadRateLimit = (req, res, next) => {
+  next();
+};
 
 module.exports = {
   searchRateLimit,

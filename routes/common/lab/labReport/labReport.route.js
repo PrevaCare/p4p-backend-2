@@ -60,7 +60,6 @@ router.post(
   ]),
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
-  uploadRateLimit,
   createReport
 );
 
