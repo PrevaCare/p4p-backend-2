@@ -72,6 +72,14 @@ const SurgicalHistorySchema = new mongoose.Schema({
     required: { type: Boolean, default: false },
     units: { type: Number },
     details: { type: String },
+    patientBloodGroup: {
+      type: String,
+      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known"],
+    },
+    transfusedBloodGroup: {
+      type: String,
+      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known"],
+    },
   },
   surgeon: {
     name: { type: String },
@@ -81,6 +89,13 @@ const SurgicalHistorySchema = new mongoose.Schema({
   hospital: {
     name: { type: String },
     location: { type: String },
+  },
+  insurance: {
+    covered: { type: Boolean, default: false },
+    providerName: { type: String },
+    claimFiled: { type: Boolean, default: false },
+    claimAmount: { type: String },
+    policyNumber: { type: String },
   },
   notes: { type: String },
   isActive: { type: Boolean, default: true },

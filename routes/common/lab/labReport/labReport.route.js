@@ -16,14 +16,22 @@ const {
 const {
   getPaginatedLabReportsByUserId,
   getLabReportPdf,
+  deleteLabReport,
 } = require("../../../../controllers/common/lab/labReport/getPaginatedLabReport.controller.js");
 
 const {
   checkPermissions,
   verifyToken,
 } = require("../../../../middlewares/jwt/permission.js");
-const { upload, pdfUpload, anyFileUpload } = require("../../../../middlewares/uploads/multerConfig.js");
-const { uploadRateLimit, retrievalRateLimit } = require("../../../../helper/rateLimitOnRoute/labApiRateLimit.route.js");
+const {
+  upload,
+  pdfUpload,
+  anyFileUpload,
+} = require("../../../../middlewares/uploads/multerConfig.js");
+const {
+  uploadRateLimit,
+  retrievalRateLimit,
+} = require("../../../../helper/rateLimitOnRoute/labApiRateLimit.route.js");
 
 router.post(
   "/app/lab-report",
@@ -46,7 +54,10 @@ router.post(
 
 router.post(
   "/admin/report",
-  anyFileUpload.fields([{ name: "logo", maxCount: 1 }, { name: "labReportFile" }]),
+  anyFileUpload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "labReportFile" },
+  ]),
   verifyToken,
   // checkPermissions("CREATE", "Employee"), // admin and doctor
   uploadRateLimit,
@@ -84,10 +95,14 @@ router.get(
   getPaginatedLabReportsByUserId
 );
 
-router.get(
-  "/admin/lab-report/:reportId/pdf",
+router.get("/admin/lab-report/:reportId/pdf", verifyToken, getLabReportPdf);
+
+// Delete lab report route
+router.delete(
+  "/admin/lab-report/:reportId",
   verifyToken,
-  getLabReportPdf
+  // checkPermissions("DELETE", "Employee"), // admin, doctor, and super admin
+  deleteLabReport
 );
 
 module.exports = router;

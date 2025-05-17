@@ -51,16 +51,41 @@ const createEMR = async (req, res) => {
 
     session.startTransaction();
 
+    // For tele-consultation, allow empty systemic examination fields
+    const isTeleConsultation = req.body.consultationMode === "online";
+    console.log("Consultation mode:", req.body.consultationMode);
+    console.log("Is tele consultation:", isTeleConsultation);
+
+    if (isTeleConsultation && req.body.systemicExamination) {
+      // Allow empty values for systemic examination fields in tele-consultation
+      console.log(
+        "Tele-consultation detected, making systemic examination optional"
+      );
+    }
+
     // Validate the request body
     const { error } = EMRValidationSchema.validate(req.body);
     if (error) {
-      console.log("Validation Error:", error.details);
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        error.message || "validation failed !"
-      );
+      // If validation error is related to systemic examination and it's a tele consultation, ignore it
+      if (
+        isTeleConsultation &&
+        error.details &&
+        error.details[0] &&
+        error.details[0].path &&
+        error.details[0].path.includes("systemicExamination")
+      ) {
+        console.log(
+          "Ignoring systemic examination validation for tele-consultation"
+        );
+      } else {
+        console.log("Validation Error:", error.details);
+        return Response.error(
+          res,
+          400,
+          AppConstant.FAILED,
+          error.message || "validation failed !"
+        );
+      }
     }
 
     console.log("Validation passed successfully");

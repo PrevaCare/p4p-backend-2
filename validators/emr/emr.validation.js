@@ -81,6 +81,12 @@ const bloodTransfusionSchema = Joi.object({
   required: Joi.boolean().default(false),
   units: Joi.number().allow(null),
   details: Joi.string().allow(null, ""),
+  patientBloodGroup: Joi.string()
+    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known")
+    .allow(null, ""),
+  transfusedBloodGroup: Joi.string()
+    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known")
+    .allow(null, ""),
 });
 
 // Joi schema for surgical history surgeon
@@ -94,6 +100,15 @@ const surgeonSchema = Joi.object({
 const hospitalSchema = Joi.object({
   name: Joi.string().allow(null, ""),
   location: Joi.string().allow(null, ""),
+});
+
+// Joi schema for insurance details
+const insuranceSchema = Joi.object({
+  covered: Joi.boolean().default(false),
+  providerName: Joi.string().allow(null, ""),
+  claimFiled: Joi.boolean().default(false),
+  claimAmount: Joi.string().allow(null, ""),
+  policyNumber: Joi.string().allow(null, ""),
 });
 
 // Joi schema for surgical history
@@ -111,6 +126,7 @@ const surgicalHistorySchema = Joi.object({
   bloodTransfusion: bloodTransfusionSchema.allow(null),
   surgeon: surgeonSchema.allow(null),
   hospital: hospitalSchema.allow(null),
+  insurance: insuranceSchema.allow(null),
   notes: Joi.string().allow(null, ""),
   isActive: Joi.boolean().default(true),
 });
