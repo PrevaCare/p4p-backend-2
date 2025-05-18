@@ -97,35 +97,35 @@ const generateHealthAssessmentPDF = async (req, res) => {
       const bootstrapCSS = `
       <style>
         @page { 
-          size: A4; 
+          size: A4;
           margin: 0;
         }
-        @media print {
-          html, body {
-            margin: 0;
-            padding: 0;
-          }
+        html {
+          zoom: 0.75;
         }
         body { 
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; 
-          margin: 0; 
-          padding: 40px 20px; 
-          color: #333; 
-          line-height: 1.6; 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #333;
+          line-height: 1.6;
           font-size: 12px;
-          min-height: 100vh;
-          position: relative;
+          background-color: white;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
+        .main-container {
+          padding: 30px;
+          position: relative;
+        }
         .header { 
-          background: #ffffff; 
-          padding: 20px; 
-          color: #333; 
-          margin-bottom: 30px; 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: flex-start; 
+          background: #ffffff;
+          padding: 20px;
+          color: #333;
+          margin-bottom: 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
           border-bottom: 4px solid #0096F2;
           page-break-inside: avoid;
         }
@@ -142,26 +142,27 @@ const generateHealthAssessmentPDF = async (req, res) => {
           font-size: 14px;
           color: #666;
         }
-        .logo { 
-          display: flex; 
-          flex-direction: column; 
-          align-items: flex-end; 
-          min-width: 120px; 
+        .logo {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          min-width: 150px;
           margin-left: 20px;
         }
-        .logo img { 
-          max-height: 46px; 
-          object-fit: contain; 
-          background-color: #ffffff; 
-          padding: 10px; 
-          border-radius: 10px;
+        .logo img {
+          width: 120px;
+          height: auto;
+          object-fit: contain;
+          background-color: #ffffff;
+          padding: 5px;
+          border-radius: 8px;
         }
-        .logo-address { 
-          font-size: 0.7rem; 
-          color: #666; 
-          text-align: right; 
-          margin-top: 0.5rem; 
-          max-width: 200px; 
+        .logo-address {
+          font-size: 10px;
+          color: #666;
+          text-align: right;
+          margin-top: 8px;
+          max-width: 200px;
           word-wrap: break-word;
         }
         .title { 
@@ -269,10 +270,21 @@ const generateHealthAssessmentPDF = async (req, res) => {
       </style>
     `;
 
-      const enhancedHtml = htmlContent.replace(
-        "</head>",
-        `${bootstrapCSS}</head>`
-      );
+      const enhancedHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>Health Assessment Report</title>
+            ${bootstrapCSS}
+          </head>
+          <body>
+            <div class="main-container">
+              ${htmlContent}
+            </div>
+          </body>
+        </html>
+      `;
 
       // Set content
       await page.setContent(enhancedHtml, {
@@ -282,21 +294,19 @@ const generateHealthAssessmentPDF = async (req, res) => {
       console.log('Page content set successfully');
 
       // Wait for any dynamic content to settle
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Generate PDF
+      // Generate PDF with adjusted settings
       const pdfBuffer = await page.pdf({
         format: "A4",
         printBackground: true,
         margin: {
-          top: "40mm",
-          right: "20mm",
-          bottom: "40mm",
-          left: "20mm"
+          top: "10mm",
+          right: "10mm",
+          bottom: "10mm",
+          left: "10mm"
         },
-        displayHeaderFooter: true,
-        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Health Assessment Report</div>',
-        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        displayHeaderFooter: false,
         preferCSSPageSize: true,
         timeout: 30000
       });
