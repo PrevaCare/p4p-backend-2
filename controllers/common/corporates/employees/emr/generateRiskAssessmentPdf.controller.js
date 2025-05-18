@@ -62,7 +62,7 @@ const generateRiskAssessmentPDF = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files",
-        "--remote-debugging-port=9222",
+        "--remote-debugging-port=8000",
       ],
     });
 
@@ -412,22 +412,22 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Coronary Heart Disease Risk Assessment</h4>
             ${renderTable(
-              coronaryHeartData,
-              ["Date", "Risk Percentage", "Risk Level"],
-              (assessment) => `
+    coronaryHeartData,
+    ["Date", "Risk Percentage", "Risk Level"],
+    (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.riskPercentage}%</td>
                         <td class="risk-level-cell">
                             <span class="risk-level ${getRiskLevelClass(
-                              assessment.riskLevel
-                            )}">
+      assessment.riskLevel
+    )}">
                                 ${assessment.riskLevel || "Not Available"}
                             </span>
                         </td>
                     </tr>
                 `
-            )}
+  )}
         </div>
     `);
 
@@ -436,22 +436,22 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Diabetic Risk Assessment</h4>
             ${renderTable(
-              diabeticRiskScoreData,
-              ["Date", "Total Score", "Risk Level"],
-              (assessment) => `
+    diabeticRiskScoreData,
+    ["Date", "Total Score", "Risk Level"],
+    (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.totalScore}</td>
                         <td class="risk-level-cell">
                             <span class="risk-level ${getRiskLevelClass(
-                              assessment.riskLevel
-                            )}">
+      assessment.riskLevel
+    )}">
                                 ${assessment.riskLevel || "Not Available"}
                             </span>
                         </td>
                     </tr>
                 `
-            )}
+  )}
         </div>
     `);
 
@@ -460,9 +460,9 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Stroke Risk Assessment</h4>
             ${renderTable(
-              strokeRiskScoreData,
-              ["Date", "Lower Risk Score", "Higher Risk Score", "Description"],
-              (assessment) => `
+    strokeRiskScoreData,
+    ["Date", "Lower Risk Score", "Higher Risk Score", "Description"],
+    (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.lowerRiskScore}</td>
@@ -470,7 +470,7 @@ function getRiskAssessmentHTML(data) {
                         <td>${assessment.desc || "Not Available"}</td>
                     </tr>
                 `
-            )}
+  )}
         </div>
     `);
 
@@ -479,22 +479,22 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Liver Risk Assessment</h4>
             ${renderTable(
-              liverRiskScoreData,
-              ["Date", "Risk Score", "Risk Level"],
-              (assessment) => `
+    liverRiskScoreData,
+    ["Date", "Risk Score", "Risk Level"],
+    (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.riskScore}</td>
                         <td class="risk-level-cell">
                             <span class="risk-level ${getRiskLevelClass(
-                              assessment.riskLevel
-                            )}">
+      assessment.riskLevel
+    )}">
                                 ${assessment.riskLevel || "Not Available"}
                             </span>
                         </td>
                     </tr>
                 `
-            )}
+  )}
         </div>
     `);
 

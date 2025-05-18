@@ -54,7 +54,7 @@ const generateHealthAssessmentPDF = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files",
-        "--remote-debugging-port=9222",
+        "--remote-debugging-port=8000",
       ],
     });
     const page = await browser.newPage();
@@ -71,23 +71,169 @@ const generateHealthAssessmentPDF = async (req, res) => {
 
     const bootstrapCSS = `
       <style>
-        @page { size: A4; margin: 15mm; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; margin: 0; padding: 0; color: #333; line-height: 1.6; font-size: 12px; }
-        .header { background: #ffffff; padding: 1.5rem; color: #333; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #0096F2; }
-        .logo { display: flex; flex-direction: column; align-items: flex-end; min-width: 120px; margin-left: 1rem; }
-        .logo img { max-height: 46px; object-fit: contain; background-color: #ffffff; padding: 10px; border-radius: 10px; }
-        .logo-address { font-size: 0.7rem; color: #666; text-align: right; margin-top: 0.5rem; max-width: 200px; word-wrap: break-word; }
-        .title { text-align: center; margin: 1.5rem 0; font-size: 1.2rem; font-weight: 700; color: #0096F2; text-transform: uppercase; }
-        .section-title { background-color: #0096F2; color: white; padding: 8px 12px; font-weight: 600; font-size: 0.8rem; margin-bottom: 0; border-radius: 4px 4px 0 0; }
-        .section-container { margin-bottom: 1.5rem; page-break-inside: avoid; break-inside: avoid; }
-        .table-container { margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px; overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; margin: 0; table-layout: fixed; }
-        thead { display: table-header-group; }
-        tfoot { display: table-footer-group; }
-        tr { break-inside: avoid; page-break-inside: avoid; }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; word-wrap: break-word; overflow-wrap: break-word; vertical-align: middle; }
-        th { background-color: #f8f9fa; color: #333; font-weight: 600; }
-        .footer { background: #0096F2; color: white; text-align: center; padding: 0.8rem 0; font-size: 0.9rem; margin-top: 2rem; border-radius: 4px; }
+        @page { 
+          size: A4; 
+          margin: 0;
+          margin-top: 40px;
+        }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; 
+          margin: 0; 
+          padding: 40px 20px; 
+          color: #333; 
+          line-height: 1.6; 
+          font-size: 12px;
+          min-height: 100vh;
+          position: relative;
+        }
+        .header { 
+          background: #ffffff; 
+          padding: 20px; 
+          color: #333; 
+          margin-bottom: 30px; 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: flex-start; 
+          border-bottom: 4px solid #0096F2;
+          page-break-inside: avoid;
+        }
+        .patient-info {
+          flex: 1;
+        }
+        .patient-info h2 {
+          margin: 0 0 10px 0;
+          font-size: 18px;
+          color: #333;
+        }
+        .patient-info p {
+          margin: 5px 0;
+          font-size: 14px;
+          color: #666;
+        }
+        .logo { 
+          display: flex; 
+          flex-direction: column; 
+          align-items: flex-end; 
+          min-width: 120px; 
+          margin-left: 20px;
+        }
+        .logo img { 
+          max-height: 46px; 
+          object-fit: contain; 
+          background-color: #ffffff; 
+          padding: 10px; 
+          border-radius: 10px;
+        }
+        .logo-address { 
+          font-size: 0.7rem; 
+          color: #666; 
+          text-align: right; 
+          margin-top: 0.5rem; 
+          max-width: 200px; 
+          word-wrap: break-word;
+        }
+        .title { 
+          text-align: center; 
+          margin: 20px 0; 
+          font-size: 24px; 
+          font-weight: 700; 
+          color: #0096F2; 
+          text-transform: uppercase;
+          page-break-after: avoid;
+        }
+        .section-container { 
+          margin-bottom: 30px; 
+          page-break-inside: avoid;
+          page-break-before: auto;
+          padding-top: 20px;
+        }
+        .section-container:first-of-type {
+          padding-top: 0;
+        }
+        .section-title { 
+          background-color: #0096F2; 
+          color: white; 
+          padding: 12px 15px; 
+          font-weight: 600; 
+          font-size: 14px; 
+          margin: 0; 
+          border-radius: 4px 4px 0 0;
+          page-break-after: avoid;
+        }
+        .table-container { 
+          margin: 0; 
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+          border-radius: 0 0 4px 4px; 
+          overflow: hidden;
+          page-break-inside: avoid;
+        }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin: 0; 
+          background: white;
+        }
+        thead { 
+          display: table-header-group;
+        }
+        tbody {
+          page-break-inside: avoid;
+        }
+        tr { 
+          page-break-inside: avoid;
+        }
+        th, td { 
+          padding: 12px 15px; 
+          text-align: left; 
+          border-bottom: 1px solid #eee; 
+          font-size: 12px;
+          word-wrap: break-word; 
+          max-width: 300px;
+        }
+        th { 
+          background-color: #f8f9fa; 
+          color: #333; 
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        td {
+          vertical-align: top;
+        }
+        .footer { 
+          background: #0096F2; 
+          color: white; 
+          text-align: center; 
+          padding: 15px 0; 
+          font-size: 12px; 
+          margin-top: 40px; 
+          border-radius: 4px;
+          position: relative;
+          page-break-inside: avoid;
+        }
+        .container-fluid {
+          padding: 0 20px;
+        }
+        @media print {
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .section-container {
+            margin-top: 20px;
+          }
+          .section-title {
+            background-color: #0096F2 !important;
+            color: white !important;
+          }
+          .footer {
+            background-color: #0096F2 !important;
+            color: white !important;
+            position: fixed;
+            bottom: 40px;
+            left: 20px;
+            right: 20px;
+          }
+        }
       </style>
     `;
     const enhancedHtml = htmlContent.replace(
@@ -101,10 +247,24 @@ const generateHealthAssessmentPDF = async (req, res) => {
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
+      margin: {
+        top: "40mm",
+        right: "20mm",
+        bottom: "40mm",
+        left: "20mm"
+      },
       displayHeaderFooter: true,
-      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Health Assessment Report</div>`,
-      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">Page <span class='pageNumber'></span> of <span class='totalPages'></span><div>© 2025 Preva Care</div></div>`,
+      headerTemplate: `
+        <div style="font-size:10px; text-align:center; width:100%; padding-top: 20px; margin-bottom: 20px; color: #666;">
+          Health Assessment Report
+        </div>
+      `,
+      footerTemplate: `
+        <div style="font-size:8px; text-align:center; width:100%; padding-bottom: 20px; margin-top: 20px; color: #666;">
+          Page <span class='pageNumber'></span> of <span class='totalPages'></span>
+          <div style="margin-top:5px;">© 2025 Preva Care</div>
+        </div>
+      `,
       preferCSSPageSize: true,
       timeout: 60000,
     });
@@ -131,7 +291,7 @@ const generateHealthAssessmentPDF = async (req, res) => {
     if (browser) {
       try {
         await browser.close();
-      } catch (closeErr) {}
+      } catch (closeErr) { }
     }
   }
 };
@@ -198,91 +358,88 @@ function getHealthAssessmentHTML(data) {
       <div class="section-container">
         <h4 class="section-title">Current Conditions</h4>
         ${renderTable(
-          currentConditionData,
-          [
-            "Diagnosis",
-            "Date of Diagnosis",
-            "Treatment Advised",
-            "Referral Needed",
-            "Notes",
-          ],
-          (item) => `
+    currentConditionData,
+    [
+      "Diagnosis",
+      "Date of Diagnosis",
+      "Treatment Advised",
+      "Referral Needed",
+      "Notes",
+    ],
+    (item) => `
             <tr>
               <td>${item.diagnosisName || "-"}</td>
               <td>${formatDate(item.dateOfDiagnosis)}</td>
-              <td>${
-                item.prescription && item.prescription.length > 0
-                  ? item.prescription
-                      .map((p) => `${p.drugName} (${p.freequency})`)
-                      .join(", ")
-                  : "NONE"
-              }</td>
+              <td>${item.prescription && item.prescription.length > 0
+        ? item.prescription
+          .map((p) => `${p.drugName} (${p.freequency})`)
+          .join(", ")
+        : "NONE"
+      }</td>
               <td>${item.referralNeeded || "-"}</td>
               <td>${item.advice || "-"}</td>
             </tr>
           `
-        )}
+  )}
       </div>
       <div class="section-container">
         <h4 class="section-title">Allergies</h4>
         ${renderTable(
-          allergiesData,
-          ["Allergy", "Past Drugs", "Advised By", "Advice"],
-          (item) => `
+    allergiesData,
+    ["Allergy", "Past Drugs", "Advised By", "Advice"],
+    (item) => `
             <tr>
               <td>${item.allergyName || "-"}</td>
-              <td>${
-                item.pastAllergyDrugName && item.pastAllergyDrugName.length > 0
-                  ? item.pastAllergyDrugName
-                      .map(
-                        (drug, idx) =>
-                          `${drug} (${item.pastAllergyFreequency[idx] || "-"})`
-                      )
-                      .join(", ")
-                  : "None"
-              }</td>
+              <td>${item.pastAllergyDrugName && item.pastAllergyDrugName.length > 0
+        ? item.pastAllergyDrugName
+          .map(
+            (drug, idx) =>
+              `${drug} (${item.pastAllergyFreequency[idx] || "-"})`
+          )
+          .join(", ")
+        : "None"
+      }</td>
               <td>${item.advisedBy || "-"}</td>
               <td>${item.advise || "-"}</td>
             </tr>
           `
-        )}
+  )}
       </div>
       <div class="section-container">
         <h4 class="section-title">Immunization</h4>
         ${renderTable(
-          immunizationData,
-          [
-            "Vaccination Name",
-            "Type",
-            "No Of Doses",
-            "Next Dose Date",
-            "Doctor Name",
-            "Side Effects",
-            "Notes",
-          ],
-          (item) => `
+    immunizationData,
+    [
+      "Vaccination Name",
+      "Type",
+      "No Of Doses",
+      "Next Dose Date",
+      "Doctor Name",
+      "Side Effects",
+      "Notes",
+    ],
+    (item) => `
             <tr>
               <td>${item.vaccinationName || "-"}</td>
               <td>${item.immunizationType || "-"}</td>
               <td>${item.totalDose || "-"}</td>
-              <td>${
-                item.doseDates && item.doseDates.length > 0
-                  ? item.doseDates
-                      .map((d) =>
-                        d.date
-                          ? dayjs(d.date).format("DD-MM-YYYY") +
-                            ` [${d.status}]`
-                          : "N/A"
-                      )
-                      .join(", ")
-                  : "NA"
-              }</td>
+              <td>${item.doseDates && item.doseDates.length > 0
+        ? item.doseDates
+          .map((d) =>
+            d.date
+              ? dayjs(d.date).format("DD-MM-YYYY") +
+              ` [${d.status}]`
+              : "N/A"
+          )
+          .join(", ")
+        : "NA"
+      }</td>
               <td>${item.doctorName || "-"}</td>
               <td>${item.sideEffects || "N/A"}</td>
               <td>${item.immunizationNotes || "N/A"}</td>
             </tr>
           `
-        )}
+  )}
       </div>
     </div>
     <div class="footer">
