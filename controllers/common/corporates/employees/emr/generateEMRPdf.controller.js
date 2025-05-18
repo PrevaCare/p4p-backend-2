@@ -110,352 +110,357 @@ const generateEMRPDF = async (emrPdfData) => {
 
     // Launch browser with proper error handling
     console.log(
-      "Launching browser for EMR PDF generation with custom port 9222 instead of default 8000"
+      "Launching browser for EMR PDF generation"
     );
-    browser = await puppeteer.launch({
-      headless: "new",
-      timeout: 60000, // Increase timeout to 60 seconds
-      ignoreDefaultArgs: ['--disable-extensions'],
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--allow-file-access-from-files',
-        '--remote-debugging-port=9222'
-      ],
-      protocolTimeout: 60000 // Add protocol timeout
-    });
+    try {
+      const options = {
+        headless: "new",
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins',
+          '--disable-site-isolation-trials'
+        ],
+        timeout: 60000,
+        protocolTimeout: 60000
+      };
 
-    const page = await browser.newPage();
+      // Check if we're in a Linux environment (likely production)
+      if (process.platform === 'linux') {
+        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+        console.log('Using executable path:', options.executablePath);
+      }
 
-    // Set viewport
-    await page.setViewport({
-      width: 1200,
-      height: 800,
-    });
+      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
+      browser = await puppeteer.launch(options);
 
-    // Allow all requests to proceed, including file access
-    await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      req.continue();
-    });
+      if (!browser) {
+        throw new Error('Browser launch returned null');
+      }
 
-    // Generate HTML content with logo path
-    const htmlContent = getEmrHTML(emrPdfData, logoUrl);
+      console.log('Browser launched successfully');
 
-    // Add embedded Bootstrap CSS to avoid external dependency
-    const bootstrapCSS = `
-      <style>
-        @page {
-          size: A4;
-          margin: 15mm;
-        }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-          margin: 0;
-          padding: 0;
-          color: #333;
-          line-height: 1.6;
-          font-size: 12px;
-        }
-        .header {
-          background: #ffffff;
-          padding: 1.5rem;
-          color: #333;
-          margin-bottom: 1rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 4px solid #0096F2;
-          page-break-inside: avoid;
-          page-break-after: avoid;
-        }
-        .doctor-info {
-          flex: 1;
-        }
-        .doctor-info h2 {
-          margin: 0;
-          font-weight: 700;
-          font-size: 1.2rem;
-          word-wrap: break-word;
-          color: #333;
-        }
-        .doctor-info p {
-          margin: 0.05rem 0;
-          font-size: 0.8rem;
-          word-wrap: break-word;
-          color: #666;
-        }
-        .logo {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          min-width: 120px;
-          margin-left: 1rem;
-        }
-        .logo img {
-          max-height: 46px;
-          object-fit: contain;
-          background-color: #ffffff;
-          padding: 10px;
-          border-radius: 10px;
-        }
-        .logo-address {
-          font-size: 0.7rem;
-          color: #666;
-          text-align: right;
-          margin-top: 0.5rem;
-          max-width: 200px;
-          word-wrap: break-word;
-        }
-        .title {
-          text-align: center;
-          margin: 1.5rem 0;
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: #0096F2;
-          text-transform: uppercase;
-          page-break-after: avoid;
-          word-wrap: break-word;
-        }
-        .section-title {
-          background-color: #0096F2;
-          color: white;
-          padding: 8px 12px;
-          font-weight: 600;
-          font-size: 0.8rem;
-          margin-bottom: 0;
-          border-radius: 4px 4px 0 0;
-          page-break-after: avoid;
-          word-wrap: break-word;
-        }
-        .section-container {
-          page-break-inside: avoid;
-          margin-bottom: 1.5rem;
-        }
-        .table-container {
-          margin-bottom: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          border-radius: 0 0 4px 4px;
-          page-break-inside: avoid;
-          overflow: hidden;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 0;
-          table-layout: fixed;
-        }
-        th, td {
-          padding: 8px 12px;
-          text-align: left;
-          border-bottom: 1px solid #eee;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          vertical-align: top;
-        }
-        th {
-          background-color: #f8f9fa;
-          color: #333;
-          font-weight: 600;
-          width: 25%;
-        }
-        td {
-          width: 75%;
-          white-space: pre-wrap;
-        }
-        tr:last-child td {
-          border-bottom: none;
-        }
-        .vital-signs-table td:first-child {
-          font-weight: 500;
-          width: 30%;
-        }
-        .diagnosis-table th {
-          text-align: left;
-        }
-        .footer {
-          background: #0096F2;
-          color: white;
-          text-align: center;
-          padding: 0.8rem 0;
-          font-size: 0.9rem;
-          margin-top: 2rem;
-          border-radius: 4px;
-          page-break-inside: avoid;
-          page-break-before: auto;
-          word-wrap: break-word;
-        }
-        .signature-section {
-          margin-top: 2rem;
-          padding: 1rem;
-          text-align: right;
-          page-break-inside: avoid;
-        }
-        .signature-image {
-          max-width: 150px;
-          height: auto;
-        }
+      const page = await browser.newPage();
+      console.log('New page created');
 
-        /* Multi-column tables */
-        table.multi-col th {
-          width: auto;
-        }
-        table.multi-col td {
-          width: auto;
-        }
+      // Set viewport
+      await page.setViewport({
+        width: 1200,
+        height: 800,
+      });
 
-        /* Long text handling */
-        .long-text {
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          max-width: 100%;
-        }
+      // Allow all requests to proceed, including file access
+      await page.setRequestInterception(true);
+      page.on("request", (req) => {
+        req.continue();
+      });
 
-        /* Print-specific styles */
-        @media print {
-          .header, .footer {
-            background-color: #0096F2 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+      // Generate HTML content with logo path
+      const htmlContent = getEmrHTML(emrPdfData, logoUrl);
+
+      // Add embedded Bootstrap CSS to avoid external dependency
+      const bootstrapCSS = `
+        <style>
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            font-size: 12px;
+          }
+          .header {
+            background: #ffffff;
+            padding: 1.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 4px solid #0096F2;
+            page-break-inside: avoid;
+            page-break-after: avoid;
+          }
+          .doctor-info {
+            flex: 1;
+          }
+          .doctor-info h2 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.2rem;
+            word-wrap: break-word;
+            color: #333;
+          }
+          .doctor-info p {
+            margin: 0.05rem 0;
+            font-size: 0.8rem;
+            word-wrap: break-word;
+            color: #666;
+          }
+          .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 120px;
+            margin-left: 1rem;
+          }
+          .logo img {
+            max-height: 46px;
+            object-fit: contain;
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 10px;
+          }
+          .logo-address {
+            font-size: 0.7rem;
+            color: #666;
+            text-align: right;
+            margin-top: 0.5rem;
+            max-width: 200px;
+            word-wrap: break-word;
+          }
+          .title {
+            text-align: center;
+            margin: 1.5rem 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #0096F2;
+            text-transform: uppercase;
+            page-break-after: avoid;
+            word-wrap: break-word;
           }
           .section-title {
-            background-color: #0096F2 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          th {
-            background-color: #f8f9fa !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            background-color: #0096F2;
+            color: white;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            margin-bottom: 0;
+            border-radius: 4px 4px 0 0;
+            page-break-after: avoid;
+            word-wrap: break-word;
           }
           .section-container {
-            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 1.5rem;
           }
-          h4 {
-            break-after: avoid;
+          .table-container {
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 0 0 4px 4px;
+            page-break-inside: avoid;
+            overflow: hidden;
           }
           table {
-            break-inside: avoid;
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            table-layout: fixed;
           }
-          tr {
-            break-inside: avoid;
-          }
-          td, th {
+          th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            vertical-align: top;
           }
-        }
-      </style>
-    `;
+          th {
+            background-color: #f8f9fa;
+            color: #333;
+            font-weight: 600;
+            width: 25%;
+          }
+          td {
+            width: 75%;
+            white-space: pre-wrap;
+          }
+          tr:last-child td {
+            border-bottom: none;
+          }
+          .vital-signs-table td:first-child {
+            font-weight: 500;
+            width: 30%;
+          }
+          .diagnosis-table th {
+            text-align: left;
+          }
+          .footer {
+            background: #0096F2;
+            color: white;
+            text-align: center;
+            padding: 0.8rem 0;
+            font-size: 0.9rem;
+            margin-top: 2rem;
+            border-radius: 4px;
+            page-break-inside: avoid;
+            page-break-before: auto;
+            word-wrap: break-word;
+          }
+          .signature-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            text-align: right;
+            page-break-inside: avoid;
+          }
+          .signature-image {
+            max-width: 150px;
+            height: auto;
+          }
 
-    // Inject bootstrap CSS directly into HTML to avoid loading from CDN
-    const enhancedHtml = htmlContent.replace(
-      "</head>",
-      `${bootstrapCSS}</head>`
-    );
+          /* Multi-column tables */
+          table.multi-col th {
+            width: auto;
+          }
+          table.multi-col td {
+            width: auto;
+          }
 
-    // Set content with proper timeout
-    await page.setContent(enhancedHtml, {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
+          /* Long text handling */
+          .long-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 100%;
+          }
 
-    // Wait for images to load
-    await page
-      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
-      .catch(() => {
-        console.log("Logo image may not have loaded, continuing anyway");
+          /* Print-specific styles */
+          @media print {
+            .header, .footer {
+              background-color: #0096F2 !important;
+              color: white !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .section-title {
+              background-color: #0096F2 !important;
+              color: white !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            th {
+              background-color: #f8f9fa !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .section-container {
+              break-inside: avoid;
+            }
+            h4 {
+              break-after: avoid;
+            }
+            table {
+              break-inside: avoid;
+            }
+            tr {
+              break-inside: avoid;
+            }
+            td, th {
+              word-wrap: break-word;
+              overflow-wrap: break-word;
+            }
+          }
+        </style>
+      `;
+
+      // Inject bootstrap CSS directly into HTML to avoid loading from CDN
+      const enhancedHtml = htmlContent.replace(
+        "</head>",
+        `${bootstrapCSS}</head>`
+      );
+
+      // Set content with proper timeout and wait conditions
+      await page.setContent(enhancedHtml, {
+        waitUntil: ["networkidle0", "domcontentloaded"],
+        timeout: 30000,
       });
+      console.log('Page content set successfully');
 
-    // Take screenshot for debugging
-    const safeFilename = (emrPdfData.basicInfo?.name || "unnamed")
-      .replace(/[^a-z0-9]/gi, "_")
-      .toLowerCase();
+      // Wait for any dynamic content to settle
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const screenshotPath = path.join(
-      debugDir,
-      `emr_debug_${safeFilename}_${Date.now()}.png`
-    );
-    await page.screenshot({
-      path: screenshotPath,
-      fullPage: true,
-    });
-
-    console.log("Debug screenshot saved to:", screenshotPath);
-
-    // Generate PDF with increased timeout
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "15mm",
-        bottom: "20mm",
-        left: "15mm",
-      },
-      displayHeaderFooter: true,
-      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Preva Care EMR</div>`,
-      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
-        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div>© 2025 Preva Care</div>
-      </div>`,
-      preferCSSPageSize: true,
-      timeout: 60000,
-    });
-
-    // Save file with proper path for debugging
-    const fileName = `emr_pdf_${safeFilename}_${Date.now()}.pdf`;
-    const filePath = path.join(tempDir, fileName);
-    fs.writeFileSync(filePath, pdfBuffer);
-
-    console.log("PDF saved to:", filePath);
-
-    // Upload PDF to S3
-    try {
-      const s3UploadResult = await uploadToS3({
-        buffer: pdfBuffer,
-        originalname: fileName,
-        mimetype: "application/pdf",
+      // Generate PDF with consistent settings
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "20mm",
+          right: "15mm",
+          bottom: "20mm",
+          left: "15mm",
+        },
+        displayHeaderFooter: true,
+        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Electronic Medical Record</div>',
+        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        preferCSSPageSize: true,
+        timeout: 30000,
       });
-      console.log("PDF uploaded to S3:", s3UploadResult);
-    } catch (uploadErr) {
-      console.error("Error uploading PDF to S3:", uploadErr);
-      // Continue execution even if S3 upload fails
-    }
+      console.log('PDF generated successfully');
 
-    // Clean up temporary logo file
-    try {
-      if (fs.existsSync(logoTempPath)) {
-        fs.unlinkSync(logoTempPath);
+      // Save file with proper path for debugging
+      const fileName = `emr_pdf_${safeFilename}_${Date.now()}.pdf`;
+      const filePath = path.join(tempDir, fileName);
+      fs.writeFileSync(filePath, pdfBuffer);
+
+      console.log("PDF saved to:", filePath);
+
+      // Upload PDF to S3
+      try {
+        const s3UploadResult = await uploadToS3({
+          buffer: pdfBuffer,
+          originalname: fileName,
+          mimetype: "application/pdf",
+        });
+        console.log("PDF uploaded to S3:", s3UploadResult);
+      } catch (uploadErr) {
+        console.error("Error uploading PDF to S3:", uploadErr);
+        // Continue execution even if S3 upload fails
       }
+
+      // Clean up temporary logo file
+      try {
+        if (fs.existsSync(logoTempPath)) {
+          fs.unlinkSync(logoTempPath);
+        }
+      } catch (err) {
+        console.error("Error removing temporary logo:", err);
+      }
+
+      // Close browser before returning buffer
+      await browser.close();
+      browser = null;
+
+      return pdfBuffer;
     } catch (err) {
-      console.error("Error removing temporary logo:", err);
+      console.error("Error in PDF generation:", err);
+      throw err;
+    } finally {
+      if (browser) {
+        try {
+          await browser.close();
+          console.log('Browser closed successfully');
+        } catch (closeErr) {
+          console.error("Error closing browser:", closeErr);
+        }
+      }
+      // Clean up temp files
+      if (logoTempPath && fs.existsSync(logoTempPath)) {
+        try {
+          fs.unlinkSync(logoTempPath);
+        } catch (err) {
+          console.error("Error removing temporary logo:", err);
+        }
+      }
     }
-
-    // Close browser before returning buffer
-    await browser.close();
-    browser = null;
-
-    return pdfBuffer;
   } catch (err) {
     console.error("PDF Generation Error:", err);
     throw err; // Re-throw to allow proper handling in calling function
-  } finally {
-    // Ensure browser is closed even if an error occurs
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (closeErr) {
-        console.error("Error closing browser:", closeErr);
-      }
-    }
   }
 };
 
@@ -1401,368 +1406,133 @@ const getEPrescriptionPdfById = async (req, res) => {
 
     // Launch browser
     console.log(
-      "Launching browser for EPrescription PDF with custom port 9222 instead of default 8000"
+      "Launching browser for E-Prescription PDF generation"
     );
     try {
-      browser = await puppeteer.launch({
+      const options = {
         headless: "new",
-        timeout: 60000, // Increase timeout to 60 seconds
-        ignoreDefaultArgs: ['--disable-extensions'],
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
           '--disable-gpu',
-          '--allow-file-access-from-files',
-          '--remote-debugging-port=8000'
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins',
+          '--disable-site-isolation-trials'
         ],
-        protocolTimeout: 60000 // Add protocol timeout
+        timeout: 60000,
+        protocolTimeout: 60000
+      };
+
+      // Check if we're in a Linux environment (likely production)
+      if (process.platform === 'linux') {
+        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+        console.log('Using executable path:', options.executablePath);
+      }
+
+      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
+      browser = await puppeteer.launch(options);
+
+      if (!browser) {
+        throw new Error('Browser launch returned null');
+      }
+
+      console.log('Browser launched successfully');
+
+      const page = await browser.newPage();
+      console.log('New page created');
+
+      // Set viewport
+      await page.setViewport({
+        width: 1200,
+        height: 800,
       });
+
+      // Set content with proper timeout and wait conditions
+      await page.setContent(enhancedHtml, {
+        waitUntil: ["networkidle0", "domcontentloaded"],
+        timeout: 30000,
+      });
+      console.log('Page content set successfully');
+
+      // Wait for any dynamic content to settle
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Generate PDF with consistent settings
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "20mm",
+          right: "15mm",
+          bottom: "20mm",
+          left: "15mm",
+        },
+        displayHeaderFooter: true,
+        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Electronic Prescription</div>',
+        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        preferCSSPageSize: true,
+        timeout: 30000,
+      });
+      console.log('PDF generated successfully');
+
+      // Close browser before file operations
+      await browser.close();
+      browser = null;
+      console.log('Browser closed successfully');
+
+      // Save the file to disk
+      const pdfFileName = `Prescription_${existingEPrescription._id}_${Date.now()}.pdf`;
+      pdfFilePath = path.join(tempDir, pdfFileName);
+      fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+      let pdfLink;
+      if (!existingEPrescription.link) {
+        try {
+          const s3UploadResult = await uploadToS3({
+            buffer: pdfBuffer,
+            originalname: pdfFileName,
+            mimetype: "application/pdf",
+          });
+          console.log("PDF uploaded to S3:", s3UploadResult);
+          pdfLink = s3UploadResult.Location;
+          await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
+            link: pdfLink,
+          });
+        } catch (uploadErr) {
+          console.error("Error uploading PDF to S3:", uploadErr);
+          // Continue execution even if S3 upload fails
+        }
+      }
+
+      return res.send(pdfLink);
+
     } catch (err) {
-      console.error("Error launching browser:", err);
-    }
-
-    const page = await browser.newPage();
-
-    // Set viewport
-    await page.setViewport({
-      width: 1200,
-      height: 800,
-    });
-
-    try {
-      const logoPath = path.resolve(
-        __dirname,
-        "../../../../../public/logo1.png"
+      console.error('Error in PDF generation:', err);
+      return Response.error(
+        res,
+        500,
+        AppConstant.FAILED,
+        "Failed to generate e-prescription PDF: " + err.message
       );
-      console.log("Looking for logo at:", logoPath);
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-        console.log("Logo loaded successfully");
-      } else {
-        console.error("Logo file not found at path:", logoPath);
-      }
-    } catch (err) {
-      console.error("Error loading logo:", err);
-    }
-
-    // Generate HTML content
-    const htmlContent = getPrescriptionHTML(existingEPrescription, logoBase64);
-
-    // Add embedded Bootstrap CSS
-    const bootstrapCSS = `
-      <style>
-        @page {
-          size: A4;
-          margin: 15mm;
-        }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-          margin: 0;
-          padding: 0;
-          color: #333;
-          line-height: 1.6;
-          font-size: 12px;
-        }
-        .header {
-          background: #ffffff;
-          padding: 1.5rem;
-          color: #333;
-          margin-bottom: 1rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 4px solid #0096F2;
-          page-break-inside: avoid;
-          page-break-after: avoid;
-        }
-        .doctor-info {
-          flex: 1;
-        }
-        .doctor-info h2 {
-          margin: 0;
-          font-weight: 700;
-          font-size: 1.2rem;
-          word-wrap: break-word;
-          color: #333;
-        }
-        .doctor-info p {
-          margin: 0.05rem 0;
-          font-size: 0.8rem;
-          word-wrap: break-word;
-          color: #666;
-        }
-        .logo {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          min-width: 120px;
-          margin-left: 1rem;
-        }
-        .logo img {
-          max-height: 46px;
-          object-fit: contain;
-          background-color: #ffffff;
-          padding: 10px;
-          border-radius: 10px;
-        }
-        .logo-address {
-          font-size: 0.7rem;
-          color: #666;
-          text-align: right;
-          margin-top: 0.5rem;
-          max-width: 200px;
-          word-wrap: break-word;
-        }
-        .title {
-          text-align: center;
-          margin: 1.5rem 0;
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: #0096F2;
-          text-transform: uppercase;
-          page-break-after: avoid;
-          word-wrap: break-word;
-        }
-        .section-title {
-          background-color: #0096F2;
-          color: white;
-          padding: 8px 12px;
-          font-weight: 600;
-          font-size: 0.8rem;
-          margin-bottom: 0;
-          border-radius: 4px 4px 0 0;
-          page-break-after: avoid;
-          word-wrap: break-word;
-        }
-        .section-container {
-          page-break-inside: avoid;
-          margin-bottom: 1.5rem;
-        }
-        .table-container {
-          margin-bottom: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          border-radius: 0 0 4px 4px;
-          page-break-inside: avoid;
-          overflow: hidden;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 0;
-          table-layout: fixed;
-        }
-        th, td {
-          padding: 8px 12px;
-          text-align: left;
-          border-bottom: 1px solid #eee;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          vertical-align: top;
-        }
-        th {
-          background-color: #f8f9fa;
-          color: #333;
-          font-weight: 600;
-          width: 25%;
-        }
-        td {
-          width: 75%;
-          white-space: pre-wrap;
-        }
-        tr:last-child td {
-          border-bottom: none;
-        }
-        .footer {
-          background: #0096F2;
-          color: white;
-          text-align: center;
-          padding: 0.8rem 0;
-          font-size: 0.9rem;
-          margin-top: 2rem;
-          border-radius: 4px;
-          page-break-inside: avoid;
-          page-break-before: auto;
-          word-wrap: break-word;
-        }
-        .signature-section {
-          margin-top: 2rem;
-          padding: 1rem;
-          text-align: right;
-          page-break-inside: avoid;
-        }
-        .signature-image {
-          max-width: 150px;
-          height: auto;
-        }
-
-        /* Multi-column tables */
-        table.multi-col th {
-          width: auto;
-        }
-        table.multi-col td {
-          width: auto;
-        }
-
-        /* Long text handling */
-        .long-text {
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          max-width: 100%;
-        }
-
-        /* Print-specific styles */
-        @media print {
-          .header, .footer {
-            background-color: #ffffff !important;
-            color: #333 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .section-title {
-            background-color: #0096F2 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          th {
-            background-color: #f8f9fa !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .section-container {
-            break-inside: avoid;
-          }
-          h4 {
-            break-after: avoid;
-          }
-          table {
-            break-inside: avoid;
-          }
-          tr {
-            break-inside: avoid;
-          }
-          td, th {
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-          }
-          .doctor-info h2 {
-            color: #333 !important;
-          }
-          .doctor-info p {
-            color: #666 !important;
-          }
-          .logo-address {
-            color: #666 !important;
-          }
-        }
-      </style>
-    `;
-
-    const enhancedHtml = htmlContent.replace(
-      "</head>",
-      `${bootstrapCSS}</head>`
-    );
-
-    // Allow all requests to proceed, including file access
-    await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      req.continue();
-    });
-
-    // Set content and wait for it to load
-    await page.setContent(enhancedHtml, {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
-
-    // Wait for images to load
-    await page
-      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
-      .catch(() => {
-        console.log("Logo image may not have loaded, continuing anyway");
-      });
-
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "15mm",
-        bottom: "20mm",
-        left: "15mm",
-      },
-      displayHeaderFooter: true,
-      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
-      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
-        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div>© 2025 Preva Care</div>
-      </div>`,
-      preferCSSPageSize: true,
-      timeout: 60000,
-    });
-
-    // Close browser before file operations
-    await browser.close();
-    browser = null;
-
-    // Save the file to disk
-    const pdfFileName = `Prescription_${existingEPrescription._id
-      }_${Date.now()}.pdf`;
-    pdfFilePath = path.join(tempDir, pdfFileName);
-    fs.writeFileSync(pdfFilePath, pdfBuffer);
-
-    if (!existingEPrescription.link) {
-      try {
-        const s3UploadResult = await uploadToS3({
-          buffer: pdfBuffer,
-          originalname: pdfFileName,
-          mimetype: "application/pdf",
-        });
-        console.log("PDF uploaded to S3:", s3UploadResult);
-        const pdfLink = s3UploadResult.Location;
-        await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
-          link: pdfLink,
-        });
-      } catch (uploadErr) {
-        console.error("Error uploading PDF to S3:", uploadErr);
-        // Continue execution even if S3 upload fails
-      }
-    }
-
-    // Use res.download instead of res.send
-    return res.download(pdfFilePath, pdfFileName, (err) => {
-      if (err) {
-        console.error("Download error:", err);
-        if (!res.headersSent) {
-          return Response.error(
-            res,
-            500,
-            AppConstant.FAILED,
-            "Error downloading PDF: " + err.message
-          );
+    } finally {
+      if (browser) {
+        try {
+          await browser.close();
+          console.log('Browser closed successfully');
+        } catch (closeErr) {
+          console.error('Error closing browser:', closeErr);
         }
       }
-
-      // Clean up the files after sending
-      try {
-        if (fs.existsSync(pdfFilePath)) {
-          fs.unlinkSync(pdfFilePath);
-          console.log("Temporary PDF file deleted");
-        }
-        if (fs.existsSync(logoTempPath)) {
+      // Clean up temp files
+      if (logoTempPath && fs.existsSync(logoTempPath)) {
+        try {
           fs.unlinkSync(logoTempPath);
-          console.log("Temporary logo file deleted");
+        } catch (err) {
+          console.error("Error removing temporary logo:", err);
         }
-      } catch (cleanupErr) {
-        console.error("Error cleaning up files:", cleanupErr);
       }
-    });
+    }
   } catch (err) {
     console.error("E-Prescription PDF generation error:", err);
     return Response.error(

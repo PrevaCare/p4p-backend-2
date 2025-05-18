@@ -45,36 +45,66 @@ const generateHealthAssessmentPDF = async (req, res) => {
     }
 
     console.log(
-      "Launching browser for Health Assessment PDF with custom port 9222 instead of default 8000"
+      "Launching browser for Health Assessment PDF generation"
     );
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--allow-file-access-from-files",
-        "--remote-debugging-port=8000",
-      ],
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1200, height: 800 });
+    try {
+      const options = {
+        headless: "new",
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins',
+          '--disable-site-isolation-trials'
+        ],
+        timeout: 60000,
+        protocolTimeout: 60000
+      };
 
-    const htmlContent = getHealthAssessmentHTML({
-      currentConditionData,
-      allergiesData,
-      immunizationData,
-      patientName,
-      employeeId,
-      logoBase64,
-    });
+      // Check if we're in a Linux environment (likely production)
+      if (process.platform === 'linux') {
+        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+        console.log('Using executable path:', options.executablePath);
+      }
 
-    const bootstrapCSS = `
+      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
+      browser = await puppeteer.launch(options);
+
+      if (!browser) {
+        throw new Error('Browser launch returned null');
+      }
+
+      console.log('Browser launched successfully');
+
+      // Create a new page
+      const page = await browser.newPage();
+      console.log('New page created');
+
+      // Set viewport
+      await page.setViewport({ width: 1200, height: 800 });
+
+      const htmlContent = getHealthAssessmentHTML({
+        currentConditionData,
+        allergiesData,
+        immunizationData,
+        patientName,
+        employeeId,
+        logoBase64,
+      });
+
+      const bootstrapCSS = `
       <style>
         @page { 
           size: A4; 
           margin: 0;
-          margin-top: 40px;
+        }
+        @media print {
+          html, body {
+            margin: 0;
+            padding: 0;
+          }
         }
         body { 
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; 
@@ -85,6 +115,8 @@ const generateHealthAssessmentPDF = async (req, res) => {
           font-size: 12px;
           min-height: 100vh;
           position: relative;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
         .header { 
           background: #ffffff; 
@@ -236,63 +268,72 @@ const generateHealthAssessmentPDF = async (req, res) => {
         }
       </style>
     `;
-    const enhancedHtml = htmlContent.replace(
-      "</head>",
-      `${bootstrapCSS}</head>`
-    );
-    await page.setContent(enhancedHtml, {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "40mm",
-        right: "20mm",
-        bottom: "40mm",
-        left: "20mm"
-      },
-      displayHeaderFooter: true,
-      headerTemplate: `
-        <div style="font-size:10px; text-align:center; width:100%; padding-top: 20px; margin-bottom: 20px; color: #666;">
-          Health Assessment Report
-        </div>
-      `,
-      footerTemplate: `
-        <div style="font-size:8px; text-align:center; width:100%; padding-bottom: 20px; margin-top: 20px; color: #666;">
-          Page <span class='pageNumber'></span> of <span class='totalPages'></span>
-          <div style="margin-top:5px;">© 2025 Preva Care</div>
-        </div>
-      `,
-      preferCSSPageSize: true,
-      timeout: 60000,
-    });
-    await browser.close();
-    browser = null;
-    const pdfFileName = `HealthAssessment_${employeeId}_${Date.now()}.pdf`;
-    pdfFilePath = path.join(tempDir, pdfFileName);
-    fs.writeFileSync(pdfFilePath, pdfBuffer);
-    try {
-      const s3UploadResult = await uploadToS3({
-        buffer: pdfBuffer,
-        originalname: pdfFileName,
-        mimetype: "application/pdf",
+
+      const enhancedHtml = htmlContent.replace(
+        "</head>",
+        `${bootstrapCSS}</head>`
+      );
+
+      // Set content
+      await page.setContent(enhancedHtml, {
+        waitUntil: ["networkidle0", "domcontentloaded"],
+        timeout: 30000,
       });
-      return res.send(s3UploadResult.Location);
-    } catch (uploadErr) {
-      return res.download(pdfFilePath, pdfFileName);
+      console.log('Page content set successfully');
+
+      // Wait for any dynamic content to settle
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Generate PDF
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "40mm",
+          right: "20mm",
+          bottom: "40mm",
+          left: "20mm"
+        },
+        displayHeaderFooter: true,
+        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Health Assessment Report</div>',
+        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        preferCSSPageSize: true,
+        timeout: 30000
+      });
+      console.log('PDF generated successfully');
+
+      const pdfFileName = `HealthAssessment_${employeeId}_${Date.now()}.pdf`;
+      pdfFilePath = path.join(tempDir, pdfFileName);
+      fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+      try {
+        const s3UploadResult = await uploadToS3({
+          buffer: pdfBuffer,
+          originalname: pdfFileName,
+          mimetype: "application/pdf",
+        });
+        return res.send(s3UploadResult.Location);
+      } catch (uploadErr) {
+        console.error('Error uploading to S3:', uploadErr);
+        return res.download(pdfFilePath, pdfFileName);
+      }
+    } catch (err) {
+      console.error('Error in PDF generation:', err);
+      throw err;
+    } finally {
+      if (browser) {
+        try {
+          await browser.close();
+          console.log('Browser closed successfully');
+        } catch (closeErr) {
+          console.error('Error closing browser:', closeErr);
+        }
+      }
     }
   } catch (err) {
     return res
       .status(500)
       .json({ error: "Failed to generate PDF", details: err.message });
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (closeErr) { }
-    }
   }
 };
 

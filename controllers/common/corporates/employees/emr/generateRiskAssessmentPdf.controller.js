@@ -53,279 +53,274 @@ const generateRiskAssessmentPDF = async (req, res) => {
 
     // Launch browser
     console.log(
-      "Launching browser for Risk Assessment PDF generation with custom port 9222 instead of default 8000"
+      "Launching browser for Risk Assessment PDF generation"
     );
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--allow-file-access-from-files",
-        "--remote-debugging-port=8000",
-      ],
-    });
-
-    const page = await browser.newPage();
-
-    // Set viewport
-    await page.setViewport({
-      width: 1200,
-      height: 800,
-    });
-
-    // Generate HTML content
-    const htmlContent = getRiskAssessmentHTML({
-      coronaryHeartData,
-      diabeticRiskScoreData,
-      strokeRiskScoreData,
-      liverRiskScoreData,
-      patientName,
-      employeeId,
-      logoBase64,
-    });
-
-    // Add embedded Bootstrap CSS
-    const bootstrapCSS = `
-      <style>
-        @page {
-          size: A4;
-          margin: 15mm;
-        }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-          margin: 0;
-          padding: 0;
-          color: #333;
-          line-height: 1.6;
-          font-size: 12px;
-        }
-        .header {
-          background: #ffffff;
-          padding: 1.5rem;
-          color: #333;
-          margin-bottom: 1rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 4px solid #0096F2;
-        }
-        .logo {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          min-width: 120px;
-          margin-left: 1rem;
-        }
-        .logo img {
-          max-height: 46px;
-          object-fit: contain;
-          background-color: #ffffff;
-          padding: 10px;
-          border-radius: 10px;
-        }
-        .logo-address {
-          font-size: 0.7rem;
-          color: #666;
-          text-align: right;
-          margin-top: 0.5rem;
-          max-width: 200px;
-          word-wrap: break-word;
-        }
-        .title {
-          text-align: center;
-          margin: 1.5rem 0;
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: #0096F2;
-          text-transform: uppercase;
-        }
-        .section-title {
-          background-color: #0096F2;
-          color: white;
-          padding: 8px 12px;
-          font-weight: 600;
-          font-size: 0.8rem;
-          margin-bottom: 0;
-          border-radius: 4px 4px 0 0;
-        }
-        .section-container {
-          margin-bottom: 1.5rem;
-          page-break-inside: avoid;
-          break-inside: avoid;
-        }
-        .table-container {
-          margin-bottom: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          border-radius: 0 0 4px 4px;
-          overflow: hidden;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 0;
-          table-layout: fixed;
-        }
-        thead { display: table-header-group; }
-        tfoot { display: table-footer-group; }
-        tr {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
-        th, td {
-          padding: 8px 12px;
-          text-align: left;
-          border-bottom: 1px solid #eee;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          vertical-align: middle;
-        }
-        th {
-          background-color: #f8f9fa;
-          color: #333;
-          font-weight: 600;
-        }
-        td.risk-level-cell {
-          width: 160px;
-          min-width: 120px;
-          max-width: 180px;
-          text-align: center;
-        }
-        .risk-level {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 100px;
-          min-height: 48px;
-          font-weight: bold;
-          font-size: 1rem;
-          border-radius: 8px;
-          margin: 0 auto;
-        }
-        .risk-level.low {
-          background-color: #d4edda;
-          color: #155724;
-        }
-        .risk-level.moderate {
-          background-color: #fff3cd;
-          color: #856404;
-        }
-        .risk-level.high {
-          background-color: #f8d7da;
-          color: #721c24;
-        }
-        .risk-level.very-high {
-          background-color: #dc3545;
-          color: white;
-        }
-        .footer {
-          background: #0096F2;
-          color: white;
-          text-align: center;
-          padding: 0.8rem 0;
-          font-size: 0.9rem;
-          margin-top: 2rem;
-          border-radius: 4px;
-        }
-        .page-break {
-          page-break-after: always;
-        }
-      </style>
-    `;
-
-    const enhancedHtml = htmlContent.replace(
-      "</head>",
-      `${bootstrapCSS}</head>`
-    );
-
-    // Set content and wait for it to load
-    await page.setContent(enhancedHtml, {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
-
-    // Wait for images to load
-    await page
-      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
-      .catch(() => {
-        console.log("Logo image may not have loaded, continuing anyway");
-      });
-
-    const safeFilename = (patientName || "unnamed")
-      .replace(/[^a-z0-9]/gi, "_")
-      .toLowerCase();
-
-    const screenshotPath = path.join(
-      debugDir,
-      `emr_debug_${safeFilename}_${Date.now()}.png`
-    );
-    await page.screenshot({
-      path: screenshotPath,
-      fullPage: true,
-    });
-
-    console.log("Debug screenshot saved to:", screenshotPath);
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "15mm",
-        bottom: "20mm",
-        left: "15mm",
-      },
-      displayHeaderFooter: true,
-      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Risk Assessment Report</div>`,
-      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
-        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div>© 2025 Preva Care</div>
-      </div>`,
-      preferCSSPageSize: true,
-      timeout: 60000,
-    });
-
-    // Close browser before file operations
-    await browser.close();
-    browser = null;
-
-    // Save the file to disk
-    const pdfFileName = `RiskAssessment_${employeeId}_${Date.now()}.pdf`;
-    pdfFilePath = path.join(tempDir, pdfFileName);
-    fs.writeFileSync(pdfFilePath, pdfBuffer);
-
-    // Upload PDF to S3
     try {
-      const s3UploadResult = await uploadToS3({
-        buffer: pdfBuffer,
-        originalname: pdfFileName,
-        mimetype: "application/pdf",
+      const options = {
+        headless: "new",
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins',
+          '--disable-site-isolation-trials'
+        ],
+        timeout: 60000,
+        protocolTimeout: 60000
+      };
+
+      // Check if we're in a Linux environment (likely production)
+      if (process.platform === 'linux') {
+        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+        console.log('Using executable path:', options.executablePath);
+      }
+
+      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
+      browser = await puppeteer.launch(options);
+
+      if (!browser) {
+        throw new Error('Browser launch returned null');
+      }
+
+      console.log('Browser launched successfully');
+
+      // Create a new page
+      const page = await browser.newPage();
+      console.log('New page created');
+
+      // Set viewport
+      await page.setViewport({ width: 1200, height: 800 });
+
+      // Generate HTML content
+      const htmlContent = getRiskAssessmentHTML({
+        coronaryHeartData,
+        diabeticRiskScoreData,
+        strokeRiskScoreData,
+        liverRiskScoreData,
+        patientName,
+        employeeId,
+        logoBase64,
       });
-      console.log("PDF uploaded to S3:", s3UploadResult);
-      return res.send(s3UploadResult.Location);
-    } catch (uploadErr) {
-      console.error("Error uploading PDF to S3:", uploadErr);
-      // If S3 upload fails, send the file directly
-      return res.download(pdfFilePath, pdfFileName, (err) => {
-        if (err) {
-          console.error("Download error:", err);
-          return res.status(500).json({
-            error: "Failed to download PDF",
-            details: err.message,
-          });
-        }
-        // Clean up files after sending
+
+      // Add embedded Bootstrap CSS
+      const bootstrapCSS = `
+        <style>
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            font-size: 12px;
+          }
+          .header {
+            background: #ffffff;
+            padding: 1.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 4px solid #0096F2;
+          }
+          .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            min-width: 120px;
+            margin-left: 1rem;
+          }
+          .logo img {
+            max-height: 46px;
+            object-fit: contain;
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 10px;
+          }
+          .logo-address {
+            font-size: 0.7rem;
+            color: #666;
+            text-align: right;
+            margin-top: 0.5rem;
+            max-width: 200px;
+            word-wrap: break-word;
+          }
+          .title {
+            text-align: center;
+            margin: 1.5rem 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #0096F2;
+            text-transform: uppercase;
+          }
+          .section-title {
+            background-color: #0096F2;
+            color: white;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            margin-bottom: 0;
+            border-radius: 4px 4px 0 0;
+          }
+          .section-container {
+            margin-bottom: 1.5rem;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .table-container {
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 0 0 4px 4px;
+            overflow: hidden;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            table-layout: fixed;
+          }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
+          tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            vertical-align: middle;
+          }
+          th {
+            background-color: #f8f9fa;
+            color: #333;
+            font-weight: 600;
+          }
+          td.risk-level-cell {
+            width: 160px;
+            min-width: 120px;
+            max-width: 180px;
+            text-align: center;
+          }
+          .risk-level {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 100px;
+            min-height: 48px;
+            font-weight: bold;
+            font-size: 1rem;
+            border-radius: 8px;
+            margin: 0 auto;
+          }
+          .risk-level.low {
+            background-color: #d4edda;
+            color: #155724;
+          }
+          .risk-level.moderate {
+            background-color: #fff3cd;
+            color: #856404;
+          }
+          .risk-level.high {
+            background-color: #f8d7da;
+            color: #721c24;
+          }
+          .risk-level.very-high {
+            background-color: #dc3545;
+            color: white;
+          }
+          .footer {
+            background: #0096F2;
+            color: white;
+            text-align: center;
+            padding: 0.8rem 0;
+            font-size: 0.9rem;
+            margin-top: 2rem;
+            border-radius: 4px;
+          }
+          .page-break {
+            page-break-after: always;
+          }
+        </style>
+      `;
+
+      const enhancedHtml = htmlContent.replace(
+        "</head>",
+        `${bootstrapCSS}</head>`
+      );
+
+      // Set content
+      await page.setContent(enhancedHtml, {
+        waitUntil: ["networkidle0", "domcontentloaded"],
+        timeout: 30000,
+      });
+      console.log('Page content set successfully');
+
+      // Wait for any dynamic content to settle
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Generate PDF
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "20mm",
+          right: "15mm",
+          bottom: "20mm",
+          left: "15mm",
+        },
+        displayHeaderFooter: true,
+        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Risk Assessment Report</div>',
+        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        preferCSSPageSize: true,
+        timeout: 30000,
+      });
+      console.log('PDF generated successfully');
+
+      const pdfFileName = `RiskAssessment_${employeeId}_${Date.now()}.pdf`;
+      pdfFilePath = path.join(tempDir, pdfFileName);
+      fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+      try {
+        const s3UploadResult = await uploadToS3({
+          buffer: pdfBuffer,
+          originalname: pdfFileName,
+          mimetype: "application/pdf",
+        });
+        console.log("PDF uploaded to S3:", s3UploadResult);
+        return res.send(s3UploadResult.Location);
+      } catch (uploadErr) {
+        console.error("Error uploading PDF to S3:", uploadErr);
+        return res.download(pdfFilePath, pdfFileName);
+      }
+    } catch (err) {
+      console.error('Error in PDF generation:', err);
+      throw err;
+    } finally {
+      if (browser) {
         try {
-          if (fs.existsSync(pdfFilePath)) {
-            fs.unlinkSync(pdfFilePath);
-          }
-          if (fs.existsSync(logoTempPath)) {
-            fs.unlinkSync(logoTempPath);
-          }
-        } catch (cleanupErr) {
-          console.error("Error cleaning up files:", cleanupErr);
+          await browser.close();
+          console.log('Browser closed successfully');
+        } catch (closeErr) {
+          console.error('Error closing browser:', closeErr);
         }
-      });
+      }
+      // Clean up temp files
+      if (logoTempPath && fs.existsSync(logoTempPath)) {
+        try {
+          fs.unlinkSync(logoTempPath);
+        } catch (err) {
+          console.error("Error removing temporary logo:", err);
+        }
+      }
     }
   } catch (err) {
     console.error("PDF generation error:", err);
@@ -333,22 +328,6 @@ const generateRiskAssessmentPDF = async (req, res) => {
       error: "Failed to generate PDF",
       details: err.message,
     });
-  } finally {
-    // Ensure browser is closed and temp files are cleaned up
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (closeErr) {
-        console.error("Error closing browser:", closeErr);
-      }
-    }
-    if (logoTempPath && fs.existsSync(logoTempPath)) {
-      try {
-        fs.unlinkSync(logoTempPath);
-      } catch (err) {
-        console.error("Error removing temporary logo:", err);
-      }
-    }
   }
 };
 
