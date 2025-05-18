@@ -128,10 +128,30 @@ const generateEMRPDF = async (emrPdfData) => {
         protocolTimeout: 60000
       };
 
-      // Check if we're in a Linux environment (likely production)
-      if (process.platform === 'linux') {
-        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-        console.log('Using executable path:', options.executablePath);
+      // Check for Chrome executable in different locations
+      const possiblePaths = [
+        process.env.PUPPETEER_EXECUTABLE_PATH, // First check if explicitly set in env
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable'
+      ];
+
+      let executablePath = null;
+      for (const path of possiblePaths) {
+        if (path && fs.existsSync(path)) {
+          executablePath = path;
+          break;
+        }
+      }
+
+      if (executablePath) {
+        console.log('Using Chrome executable path:', executablePath);
+        options.executablePath = executablePath;
+      } else {
+        console.log('No Chrome executable found in standard locations, using bundled Chromium');
+        // Let Puppeteer use its bundled version
+        delete options.executablePath;
       }
 
       console.log('Launching browser with options:', JSON.stringify(options, null, 2));
