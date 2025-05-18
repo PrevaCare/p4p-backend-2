@@ -2,7 +2,9 @@ const fs = require("fs");
 const dayjs = require("dayjs");
 const path = require("path");
 const puppeteer = require("puppeteer");
-const { uploadToS3 } = require("../../../../../middlewares/uploads/awsConfig.js");
+const {
+  uploadToS3,
+} = require("../../../../../middlewares/uploads/awsConfig.js");
 
 const generateHealthAssessmentPDF = async (req, res) => {
   let browser = null;
@@ -15,7 +17,7 @@ const generateHealthAssessmentPDF = async (req, res) => {
       allergiesData = [],
       immunizationData = [],
       patientName = "",
-      employeeId = ""
+      employeeId = "",
     } = req.body;
 
     // Ensure temp directory exists
@@ -30,7 +32,10 @@ const generateHealthAssessmentPDF = async (req, res) => {
 
     // Load logo as base64
     try {
-      const logoPath = path.resolve(__dirname, "../../../../../public/logo1.png");
+      const logoPath = path.resolve(
+        __dirname,
+        "../../../../../public/logo1.png"
+      );
       if (fs.existsSync(logoPath)) {
         const logoBuffer = fs.readFileSync(logoPath);
         logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
@@ -39,6 +44,9 @@ const generateHealthAssessmentPDF = async (req, res) => {
       console.error("Error loading logo:", err);
     }
 
+    console.log(
+      "Launching browser for Health Assessment PDF with custom port 9222 instead of default 8000"
+    );
     browser = await puppeteer.launch({
       headless: "new",
       args: [
@@ -46,6 +54,7 @@ const generateHealthAssessmentPDF = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files",
+        "--remote-debugging-port=9222",
       ],
     });
     const page = await browser.newPage();
@@ -57,7 +66,7 @@ const generateHealthAssessmentPDF = async (req, res) => {
       immunizationData,
       patientName,
       employeeId,
-      logoBase64
+      logoBase64,
     });
 
     const bootstrapCSS = `
@@ -81,8 +90,14 @@ const generateHealthAssessmentPDF = async (req, res) => {
         .footer { background: #0096F2; color: white; text-align: center; padding: 0.8rem 0; font-size: 0.9rem; margin-top: 2rem; border-radius: 4px; }
       </style>
     `;
-    const enhancedHtml = htmlContent.replace("</head>", `${bootstrapCSS}</head>`);
-    await page.setContent(enhancedHtml, { waitUntil: "networkidle0", timeout: 60000 });
+    const enhancedHtml = htmlContent.replace(
+      "</head>",
+      `${bootstrapCSS}</head>`
+    );
+    await page.setContent(enhancedHtml, {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -99,22 +114,41 @@ const generateHealthAssessmentPDF = async (req, res) => {
     pdfFilePath = path.join(tempDir, pdfFileName);
     fs.writeFileSync(pdfFilePath, pdfBuffer);
     try {
-      const s3UploadResult = await uploadToS3({ buffer: pdfBuffer, originalname: pdfFileName, mimetype: 'application/pdf' });
+      const s3UploadResult = await uploadToS3({
+        buffer: pdfBuffer,
+        originalname: pdfFileName,
+        mimetype: "application/pdf",
+      });
       return res.send(s3UploadResult.Location);
     } catch (uploadErr) {
       return res.download(pdfFilePath, pdfFileName);
     }
   } catch (err) {
-    return res.status(500).json({ error: "Failed to generate PDF", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Failed to generate PDF", details: err.message });
   } finally {
-    if (browser) { try { await browser.close(); } catch (closeErr) { } }
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {}
+    }
   }
 };
 
 function getHealthAssessmentHTML(data) {
-  const { currentConditionData = [], allergiesData = [], immunizationData = [], patientName = "", employeeId = "", logoBase64 = "" } = data;
-  const formatDate = (date) => date ? dayjs(date).format("DD/MM/YYYY") : "";
-  const logoHtml = logoBase64 ? `<img src="${logoBase64}" alt="Preva Care Logo" style="max-height:40px; background-color:#ffffff; padding:10px; border-radius:10px;" />` : `<div style="background:#ffffff; padding:10px; border-radius:10px; font-weight:bold; color:#4b90e2; text-align:center;"><span style="font-size:1.5rem;">Preva Care</span></div>`;
+  const {
+    currentConditionData = [],
+    allergiesData = [],
+    immunizationData = [],
+    patientName = "",
+    employeeId = "",
+    logoBase64 = "",
+  } = data;
+  const formatDate = (date) => (date ? dayjs(date).format("DD/MM/YYYY") : "");
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" alt="Preva Care Logo" style="max-height:40px; background-color:#ffffff; padding:10px; border-radius:10px;" />`
+    : `<div style="background:#ffffff; padding:10px; border-radius:10px; font-weight:bold; color:#4b90e2; text-align:center;"><span style="font-size:1.5rem;">Preva Care</span></div>`;
 
   const noDataMessage = `
     <div style="text-align: center; padding: 30px; color: #666; background: #f9f9f9; border-radius: 4px; margin: 10px 0;">
@@ -130,7 +164,7 @@ function getHealthAssessmentHTML(data) {
       <div class="table-container">
         <table>
           <thead>
-            <tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>
+            <tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>
           </thead>
           <tbody>
             ${data.map(rowRenderer).join("")}
@@ -164,51 +198,91 @@ function getHealthAssessmentHTML(data) {
       <div class="section-container">
         <h4 class="section-title">Current Conditions</h4>
         ${renderTable(
-    currentConditionData,
-    ["Diagnosis", "Date of Diagnosis", "Treatment Advised", "Referral Needed", "Notes"],
-    item => `
+          currentConditionData,
+          [
+            "Diagnosis",
+            "Date of Diagnosis",
+            "Treatment Advised",
+            "Referral Needed",
+            "Notes",
+          ],
+          (item) => `
             <tr>
               <td>${item.diagnosisName || "-"}</td>
               <td>${formatDate(item.dateOfDiagnosis)}</td>
-              <td>${item.prescription && item.prescription.length > 0 ? item.prescription.map(p => `${p.drugName} (${p.freequency})`).join(", ") : "NONE"}</td>
+              <td>${
+                item.prescription && item.prescription.length > 0
+                  ? item.prescription
+                      .map((p) => `${p.drugName} (${p.freequency})`)
+                      .join(", ")
+                  : "NONE"
+              }</td>
               <td>${item.referralNeeded || "-"}</td>
               <td>${item.advice || "-"}</td>
             </tr>
           `
-  )}
+        )}
       </div>
       <div class="section-container">
         <h4 class="section-title">Allergies</h4>
         ${renderTable(
-    allergiesData,
-    ["Allergy", "Past Drugs", "Advised By", "Advice"],
-    item => `
+          allergiesData,
+          ["Allergy", "Past Drugs", "Advised By", "Advice"],
+          (item) => `
             <tr>
               <td>${item.allergyName || "-"}</td>
-              <td>${item.pastAllergyDrugName && item.pastAllergyDrugName.length > 0 ? item.pastAllergyDrugName.map((drug, idx) => `${drug} (${item.pastAllergyFreequency[idx] || "-"})`).join(", ") : "None"}</td>
+              <td>${
+                item.pastAllergyDrugName && item.pastAllergyDrugName.length > 0
+                  ? item.pastAllergyDrugName
+                      .map(
+                        (drug, idx) =>
+                          `${drug} (${item.pastAllergyFreequency[idx] || "-"})`
+                      )
+                      .join(", ")
+                  : "None"
+              }</td>
               <td>${item.advisedBy || "-"}</td>
               <td>${item.advise || "-"}</td>
             </tr>
           `
-  )}
+        )}
       </div>
       <div class="section-container">
         <h4 class="section-title">Immunization</h4>
         ${renderTable(
-    immunizationData,
-    ["Vaccination Name", "Type", "No Of Doses", "Next Dose Date", "Doctor Name", "Side Effects", "Notes"],
-    item => `
+          immunizationData,
+          [
+            "Vaccination Name",
+            "Type",
+            "No Of Doses",
+            "Next Dose Date",
+            "Doctor Name",
+            "Side Effects",
+            "Notes",
+          ],
+          (item) => `
             <tr>
               <td>${item.vaccinationName || "-"}</td>
               <td>${item.immunizationType || "-"}</td>
               <td>${item.totalDose || "-"}</td>
-              <td>${item.doseDates && item.doseDates.length > 0 ? item.doseDates.map(d => d.date ? dayjs(d.date).format("DD-MM-YYYY") + ` [${d.status}]` : "N/A").join(", ") : "NA"}</td>
+              <td>${
+                item.doseDates && item.doseDates.length > 0
+                  ? item.doseDates
+                      .map((d) =>
+                        d.date
+                          ? dayjs(d.date).format("DD-MM-YYYY") +
+                            ` [${d.status}]`
+                          : "N/A"
+                      )
+                      .join(", ")
+                  : "NA"
+              }</td>
               <td>${item.doctorName || "-"}</td>
               <td>${item.sideEffects || "N/A"}</td>
               <td>${item.immunizationNotes || "N/A"}</td>
             </tr>
           `
-  )}
+        )}
       </div>
     </div>
     <div class="footer">
@@ -219,4 +293,4 @@ function getHealthAssessmentHTML(data) {
 `;
 }
 
-module.exports = { generateHealthAssessmentPDF }; 
+module.exports = { generateHealthAssessmentPDF };

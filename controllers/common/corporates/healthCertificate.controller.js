@@ -1278,6 +1278,9 @@ const generateHealthCertificateCompanyFn = async (certificateData, res) => {
     }
 
     // Launch browser
+    console.log(
+      "Launching browser for Health Certificate PDF with custom port 9222 instead of default 8000"
+    );
     browser = await puppeteer.launch({
       headless: true,
       ignoreHTTPSErrors: true,
@@ -1289,6 +1292,7 @@ const generateHealthCertificateCompanyFn = async (certificateData, res) => {
         "--no-first-run",
         "--no-zygote",
         "--disable-gpu",
+        "--remote-debugging-port=9222",
       ],
     });
 
@@ -1314,7 +1318,6 @@ const generateHealthCertificateCompanyFn = async (certificateData, res) => {
         left: "15mm",
       },
       displayHeaderFooter: true,
-      // headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Corporate Health Certificate</div>`,
       footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
         Page <span class="pageNumber"></span> of <span class="totalPages"></span>
       </div>`,

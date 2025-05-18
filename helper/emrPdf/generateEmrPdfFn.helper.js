@@ -14,6 +14,9 @@ const axios = require("axios");
 const generateEMRPDFFn = async (emrPdfData, res) => {
   try {
     // Launch a headless browser with proper arguments for server environment
+    console.log(
+      "Launching browser for EMR PDF function with custom port 9222 instead of default 8000"
+    );
     const browser = await puppeteer.launch({
       headless: "new",
       args: [
@@ -22,6 +25,7 @@ const generateEMRPDFFn = async (emrPdfData, res) => {
         "--disable-dev-shm-usage",
         "--disable-accelerated-2d-canvas",
         "--disable-gpu",
+        "--remote-debugging-port=9222",
       ],
     });
 
@@ -307,7 +311,7 @@ const generatePrescriptionPDFFn = async (prescription, res) => {
     doc.text(`LAB TEST : ${prescription.labTest.join(", ")}`, 70, doc.y + 20);
     if (prescription.consultationMode !== "online")
       doc.text(
-        `VITALS:  BP : ${prescription.vitals.BP} mmHg          PR: ${prescription.vitals.PR} bpm          SpO2: ${prescription.vitals.SpO2} %`,
+        `VITALS:  BP : ${prescription.vitals.BP} mmHg          PR: ${prescription.vitals.PR} bpm          SpO2: ${prescription.vitals.SpO2} %`,
         70,
         doc.y + 20
       );

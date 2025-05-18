@@ -109,6 +109,9 @@ const generateEMRPDF = async (emrPdfData) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser with proper error handling
+    console.log(
+      "Launching browser for EMR PDF generation with custom port 9222 instead of default 8000"
+    );
     browser = await puppeteer.launch({
       headless: "new",
       args: [
@@ -116,6 +119,7 @@ const generateEMRPDF = async (emrPdfData) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files", // Important for accessing local files
+        "--remote-debugging-port=9222", // Use port 9222 instead of default 8000
       ],
     });
 
@@ -499,6 +503,7 @@ const getEmrPdfLinkByemrId = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files",
+        "--remote-debugging-port=9222", // Use port 9222 instead of default 8000
       ],
     });
 
@@ -897,6 +902,9 @@ const getEmrPdfByemrId = async (req, res) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser
+    console.log(
+      "Launching browser for EMR PDF view with custom port 9222 instead of default 8000"
+    );
     browser = await puppeteer.launch({
       headless: "new",
       args: [
@@ -904,6 +912,7 @@ const getEmrPdfByemrId = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files",
+        "--remote-debugging-port=9222", // Use port 9222 instead of default 8000
       ],
     });
 
@@ -1377,6 +1386,9 @@ const getEPrescriptionPdfById = async (req, res) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser
+    console.log(
+      "Launching browser for EPrescription PDF with custom port 9222 instead of default 8000"
+    );
     browser = await puppeteer.launch({
       headless: "new",
       args: [
@@ -1384,6 +1396,7 @@ const getEPrescriptionPdfById = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files",
+        "--remote-debugging-port=9222", // Use port 9222 instead of default 8000
       ],
     });
 
@@ -1812,6 +1825,9 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser
+    console.log(
+      "Launching browser for EPrescription PDF link with custom port 9222 instead of default 8000"
+    );
     browser = await puppeteer.launch({
       headless: "new",
       args: [
@@ -1819,6 +1835,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--allow-file-access-from-files",
+        "--remote-debugging-port=9222", // Use port 9222 instead of default 8000
       ],
     });
 

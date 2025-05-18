@@ -63,7 +63,9 @@ const genericPool = require("generic-pool");
 const browserPool = genericPool.createPool(
   {
     create: async () => {
-      console.log("Creating new browser instance for pool");
+      console.log(
+        "Creating new browser instance for pool using port 9222 instead of default 8000"
+      );
       return await puppeteer.launch({
         headless: true,
         ignoreHTTPSErrors: true,
@@ -75,6 +77,7 @@ const browserPool = genericPool.createPool(
           "--no-first-run",
           "--no-zygote",
           "--disable-gpu",
+          "--remote-debugging-port=9222",
         ],
       });
     },
