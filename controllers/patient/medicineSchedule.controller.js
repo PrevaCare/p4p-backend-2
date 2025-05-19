@@ -2304,7 +2304,7 @@ exports.generateMedicinePDF = async (req, res) => {
         "--disable-accelerated-2d-canvas",
         "--disable-gpu",
         "--allow-file-access-from-files",
-        "--remote-debugging-port=9222", // Use port 9222 instead of default 8000
+        "--remote-debugging-port=8000", // Use port 9222 instead of default 8000
       ],
     });
 

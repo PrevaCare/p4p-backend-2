@@ -965,7 +965,7 @@ const getEmrPdfByemrId = async (req, res) => {
         '--no-zygote',
         '--disable-gpu',
         '--allow-file-access-from-files',
-        '--remote-debugging-port=9222'
+        '--remote-debugging-port=8000'
       ],
       protocolTimeout: 60000 // Add protocol timeout
     });
@@ -1687,7 +1687,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
           '--allow-file-access-from-files',
           '--disable-web-security',
           '--disable-features=IsolateOrigins,site-per-process',
-          '--remote-debugging-port=0'  // Let Chrome pick an available port
+          '--remote-debugging-port=8000'  // Let Chrome pick an available port
         ],
         protocolTimeout: 90000 // Add protocol timeout
       });

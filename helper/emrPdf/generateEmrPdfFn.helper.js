@@ -25,7 +25,7 @@ const generateEMRPDFFn = async (emrPdfData, res) => {
         "--disable-dev-shm-usage",
         "--disable-accelerated-2d-canvas",
         "--disable-gpu",
-        "--remote-debugging-port=9222",
+        "--remote-debugging-port=8000",
       ],
     });
 

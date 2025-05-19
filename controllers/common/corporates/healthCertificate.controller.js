@@ -1292,7 +1292,7 @@ const generateHealthCertificateCompanyFn = async (certificateData, res) => {
         "--no-first-run",
         "--no-zygote",
         "--disable-gpu",
-        "--remote-debugging-port=9222",
+        "--remote-debugging-port=8000",
       ],
     });
 
