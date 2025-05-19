@@ -115,6 +115,11 @@ const generateEMRPDF = async (emrPdfData) => {
     try {
       const options = {
         headless: "new",
+        executablePath: process.platform === 'win32'
+          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+          : process.platform === 'linux'
+            ? '/usr/bin/chromium-browser'
+            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -530,6 +535,11 @@ const getEmrPdfLinkByemrId = async (req, res) => {
     // Launch browser
     browser = await puppeteer.launch({
       headless: "new",
+      executablePath: process.platform === 'win32'
+        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+        : process.platform === 'linux'
+          ? '/usr/bin/chromium-browser'
+          : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -939,6 +949,11 @@ const getEmrPdfByemrId = async (req, res) => {
     );
     browser = await puppeteer.launch({
       headless: "new",
+      executablePath: process.platform === 'win32'
+        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+        : process.platform === 'linux'
+          ? '/usr/bin/chromium-browser'
+          : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       timeout: 60000, // Increase timeout to 60 seconds
       ignoreDefaultArgs: ['--disable-extensions'],
       args: [
@@ -1431,6 +1446,11 @@ const getEPrescriptionPdfById = async (req, res) => {
     try {
       const options = {
         headless: "new",
+        executablePath: process.platform === 'win32'
+          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+          : process.platform === 'linux'
+            ? '/usr/bin/chromium-browser'
+            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -1646,7 +1666,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
       const executablePath = process.platform === 'win32'
         ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
         : process.platform === 'linux'
-          ? '/usr/bin/google-chrome'
+          ? '/usr/bin/chromium-browser'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
       console.log('Using Chrome executable path:', executablePath);
