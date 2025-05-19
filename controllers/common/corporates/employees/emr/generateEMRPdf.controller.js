@@ -1660,14 +1660,15 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
 
     // Launch browser
     console.log(
-      "Launching browser for EPrescription PDF link with custom port 9222 instead of default 8000"
+      "Launching browser for EPrescription 1 PDF link with custom port 9222 instead of default 8000"
     );
     try {
-      const executablePath = process.platform === 'win32'
-        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-        : process.platform === 'linux'
-          ? '/usr/bin/chromium-browser'
+      const executablePath = process.platform === 'linux'
+        ? '/usr/bin/chromium-browser'
+        : process.platform === 'win32'
+          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+
 
       console.log('Using Chrome executable path:', executablePath);
 
