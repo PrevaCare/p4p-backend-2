@@ -115,11 +115,12 @@ const generateEMRPDF = async (emrPdfData) => {
     try {
       const options = {
         headless: "new",
-        executablePath: process.platform === 'win32'
-          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-          : process.platform === 'linux'
-            ? '/usr/bin/google-chrome'
-            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ||
+          (process.platform === 'win32'
+            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+            : process.platform === 'linux'
+              ? '/usr/bin/google-chrome'
+              : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -1446,11 +1447,12 @@ const getEPrescriptionPdfById = async (req, res) => {
     try {
       const options = {
         headless: "new",
-        executablePath: process.platform === 'win32'
-          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-          : process.platform === 'linux'
-            ? '/usr/bin/google-chrome'
-            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ||
+          (process.platform === 'win32'
+            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+            : process.platform === 'linux'
+              ? '/usr/bin/google-chrome'
+              : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
