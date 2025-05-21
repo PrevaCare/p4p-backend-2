@@ -1671,27 +1671,30 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
 
 
       console.log('Using Chrome executable path:', executablePath);
-
-      browser = await puppeteer.launch({
-        headless: "new",
-        executablePath: executablePath,
-        timeout: 90000, // Increase timeout to 90 seconds
-        ignoreDefaultArgs: ['--disable-extensions'],
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--allow-file-access-from-files',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
-          '--remote-debugging-port=8000'  // Let Chrome pick an available port
-        ],
-        protocolTimeout: 90000 // Add protocol timeout
-      });
+      try {
+        browser = await puppeteer.launch({
+          headless: "new",
+          executablePath: executablePath,
+          timeout: 90000, // Increase timeout to 90 seconds
+          ignoreDefaultArgs: ['--disable-extensions'],
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+            '--allow-file-access-from-files',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--remote-debugging-port=8000'  // Let Chrome pick an available port
+          ],
+          protocolTimeout: 90000 // Add protocol timeout
+        });
+      } catch (err) {
+        console.error("Error launching browser:", err);
+      }
 
       if (!browser) {
         throw new Error('Browser launch returned null');
