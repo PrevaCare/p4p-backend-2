@@ -59,7 +59,7 @@ const generateRiskAssessmentPDF = async (req, res) => {
         executablePath: process.platform === 'win32'
           ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
           : process.platform === 'linux'
-            ? '/usr/bin/chromium-browser'
+            ? '/usr/bin/google-chrome'
             : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
           '--no-sandbox',
@@ -77,7 +77,7 @@ const generateRiskAssessmentPDF = async (req, res) => {
       // Check for Chrome executable in different locations
       const possiblePaths = [
         process.env.PUPPETEER_EXECUTABLE_PATH, // First check if explicitly set in env
-        '/usr/bin/chromium-browser',
+        '/usr/bin/google-chrome',
         '/usr/bin/chromium',
         '/usr/bin/google-chrome',
         '/usr/bin/google-chrome-stable'

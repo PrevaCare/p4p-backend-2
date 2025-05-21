@@ -53,7 +53,7 @@ const generateHealthAssessmentPDF = async (req, res) => {
         executablePath: process.platform === 'win32'
           ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
           : process.platform === 'linux'
-            ? '/usr/bin/chromium-browser'
+            ? '/usr/bin/google-chrome'
             : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
           '--no-sandbox',
@@ -70,7 +70,7 @@ const generateHealthAssessmentPDF = async (req, res) => {
 
       // Check if we're in a Linux environment (likely production)
       if (process.platform === 'linux') {
-        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome';
         console.log('Using executable path:', options.executablePath);
       }
 

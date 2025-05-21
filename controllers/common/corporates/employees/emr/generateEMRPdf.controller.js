@@ -118,7 +118,7 @@ const generateEMRPDF = async (emrPdfData) => {
         executablePath: process.platform === 'win32'
           ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
           : process.platform === 'linux'
-            ? '/usr/bin/chromium-browser'
+            ? '/usr/bin/google-chrome'
             : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
           '--no-sandbox',
@@ -136,7 +136,7 @@ const generateEMRPDF = async (emrPdfData) => {
       // Check for Chrome executable in different locations
       const possiblePaths = [
         process.env.PUPPETEER_EXECUTABLE_PATH, // First check if explicitly set in env
-        '/usr/bin/chromium-browser',
+        '/usr/bin/google-chrome',
         '/usr/bin/chromium',
         '/usr/bin/google-chrome',
         '/usr/bin/google-chrome-stable'
@@ -532,13 +532,13 @@ const getEmrPdfLinkByemrId = async (req, res) => {
     // Generate an absolute file URL for the copied logo
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
-    // Launch browser
+    // Launch browser 
     browser = await puppeteer.launch({
       headless: "new",
       executablePath: process.platform === 'win32'
         ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
         : process.platform === 'linux'
-          ? '/usr/bin/chromium-browser'
+          ? '/usr/bin/google-chrome'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       args: [
         "--no-sandbox",
@@ -952,7 +952,7 @@ const getEmrPdfByemrId = async (req, res) => {
       executablePath: process.platform === 'win32'
         ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
         : process.platform === 'linux'
-          ? '/usr/bin/chromium-browser'
+          ? '/usr/bin/google-chrome'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       timeout: 60000, // Increase timeout to 60 seconds
       ignoreDefaultArgs: ['--disable-extensions'],
@@ -1449,7 +1449,7 @@ const getEPrescriptionPdfById = async (req, res) => {
         executablePath: process.platform === 'win32'
           ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
           : process.platform === 'linux'
-            ? '/usr/bin/chromium-browser'
+            ? '/usr/bin/google-chrome'
             : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
           '--no-sandbox',
@@ -1466,7 +1466,7 @@ const getEPrescriptionPdfById = async (req, res) => {
 
       // Check if we're in a Linux environment (likely production)
       if (process.platform === 'linux') {
-        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome';
         console.log('Using executable path:', options.executablePath);
       }
 
@@ -1664,7 +1664,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     );
     try {
       const executablePath = process.platform === 'linux'
-        ? '/usr/bin/chromium-browser'
+        ? '/usr/bin/google-chrome'
         : process.platform === 'win32'
           ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
