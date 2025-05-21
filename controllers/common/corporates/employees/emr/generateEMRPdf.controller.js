@@ -1676,7 +1676,12 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
       try {
         browser = await puppeteer.launch({
           headless: "new",
-          executablePath: executablePath,
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ||
+            (process.platform === 'win32'
+              ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+              : process.platform === 'linux'
+                ? '/usr/bin/google-chrome'
+                : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
           timeout: 90000, // Increase timeout to 90 seconds
           ignoreDefaultArgs: ['--disable-extensions'],
           args: [
