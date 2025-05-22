@@ -394,8 +394,9 @@ const generateEMRPDF = async (emrPdfData) => {
       console.log("PDF saved to:", filePath);
 
       // Upload PDF to S3
+      let s3UploadResult = null;
       try {
-        const s3UploadResult = await uploadToS3({
+        s3UploadResult = await uploadToS3({
           buffer: pdfBuffer,
           originalname: fileName,
           mimetype: "application/pdf",
@@ -404,6 +405,16 @@ const generateEMRPDF = async (emrPdfData) => {
       } catch (uploadErr) {
         console.error("Error uploading PDF to S3:", uploadErr);
         // Continue execution even if S3 upload fails
+      }
+
+      // Only update and return the link if S3 upload was successful
+      if (s3UploadResult && s3UploadResult.Location) {
+        const pdfLink = s3UploadResult.Location;
+        return pdfBuffer;
+      } else {
+        // If S3 upload failed, we can still provide the local file path or return an error
+        console.log("S3 upload failed, returning local file path or error");
+        throw new Error("Failed to upload PDF to S3");
       }
 
       // Clean up temporary logo file
@@ -816,8 +827,9 @@ const getEmrPdfLinkByemrId = async (req, res) => {
     console.log("PDF size:", pdfBuffer.length, "bytes");
 
     // Upload PDF to S3
+    let s3UploadResult = null;
     try {
-      const s3UploadResult = await uploadToS3({
+      s3UploadResult = await uploadToS3({
         buffer: pdfBuffer,
         originalname: pdfFileName,
         mimetype: "application/pdf",
@@ -828,441 +840,21 @@ const getEmrPdfLinkByemrId = async (req, res) => {
       // Continue execution even if S3 upload fails
     }
 
-    const pdfLink = s3UploadResult.Location;
-    await emrModel.findByIdAndUpdate(emrId, { link: pdfLink });
-
-    // Use res.download instead of res.send
-    return res.send(pdfLink);
-  }
-};
-
-const getEmrPdfByemrId = async (req, res) => {
-  let browser = null;
-  let pdfFilePath = null;
-  let logoTempPath = null;
-
-  try {
-    const { emrId } = req.body;
-    if (!emrId) {
+    // Only update and return the link if S3 upload was successful
+    if (s3UploadResult && s3UploadResult.Location) {
+      const pdfLink = s3UploadResult.Location;
+      await emrModel.findByIdAndUpdate(emrId, { link: pdfLink });
+      return res.send(pdfLink);
+    } else {
+      // If S3 upload failed, we can still provide the local file path or return an error
+      console.log("S3 upload failed, returning local file path or error");
       return Response.error(
         res,
-        404,
+        500,
         AppConstant.FAILED,
-        "emrId is missing!"
+        "Failed to generate PDF link. Please try again."
       );
     }
-
-    const existingEmr = await emrModel.findById(emrId).populate({
-      path: "doctor",
-      select:
-        "firstName lastName education specialization eSign medicalRegistrationNumber degree",
-    });
-
-    if (!existingEmr) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "EMR not found with provided ID!"
-      );
-    }
-
-    // Create a safe copy of the data
-    const safeEmr = existingEmr.toObject ? existingEmr.toObject() : existingEmr;
-
-    console.log("\n=== Creating EMR PDF from Database Data ===");
-    console.log("EMR ID:", emrId);
-    console.log("EMR Data:", JSON.stringify(safeEmr, null, 2));
-    console.log("=========================================\n");
-
-    // Ensure temp directory exists
-    const tempDir = path.resolve(__dirname, "../../../../../public/temp");
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
-    // Copy logo to a location accessible by the browser
-    const logoSourcePath = path.resolve(
-      __dirname,
-      "../../../../../public/logo.png"
-    );
-    logoTempPath = path.join(tempDir, `temp_logo_${Date.now()}.png`);
-    fs.copyFileSync(logoSourcePath, logoTempPath);
-
-    // Generate an absolute file URL for the copied logo
-    const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
-
-    // Launch browser 
-    browser = await launchPuppeteerBrowser();
-    console.log('Browser launched successfully');
-
-    const page = await browser.newPage();
-
-    // Set viewport
-    await page.setViewport({
-      width: 1200,
-      height: 800,
-    });
-    try {
-      const logoPath = path.resolve(
-        __dirname,
-        "../../../../../public/logo1.png"
-      );
-      console.log("Looking for logo at:", logoPath);
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-        console.log("Logo loaded successfully");
-      } else {
-        console.error("Logo file not found at path:", logoPath);
-      }
-    } catch (err) {
-      console.error("Error loading logo:", err);
-    }
-    // Generate HTML content with embedded logo
-    const htmlContent = getEmrHTML(safeEmr, logoBase64);
-
-    // Add embedded Bootstrap CSS
-    const bootstrapCSS = `
-      <style>
-        @page {
-          size: A4;
-          margin: 15mm;
-        }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-          margin: 0;
-          padding: 0;
-          color: #333;
-          line-height: 1.6;
-          font-size: 12px;
-        }
-        .header {
-          background: #ffffff;
-          padding: 1.5rem;
-          color: #333;
-          margin-bottom: 1rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 4px solid #0096F2;
-          page-break-inside: avoid;
-          page-break-after: avoid;
-        }
-        .doctor-info {
-          flex: 1;
-        }
-        .doctor-info h2 {
-          margin: 0;
-          font-weight: 700;
-          font-size: 1.2rem;
-          word-wrap: break-word;
-          color: #333;
-        }
-        .doctor-info p {
-          margin: 0.05rem 0;
-          font-size: 0.8rem;
-          word-wrap: break-word;
-          color: #666;
-        }
-        .logo {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          min-width: 120px;
-          margin-left: 1rem;
-        }
-        .logo img {
-          max-height: 46px;
-          object-fit: contain;
-          background-color: #ffffff;
-          padding: 10px;
-          border-radius: 10px;
-        }
-        .logo-address {
-          font-size: 0.7rem;
-          color: #666;
-          text-align: right;
-          margin-top: 0.5rem;
-          max-width: 200px;
-          word-wrap: break-word;
-        }
-        .title {
-          text-align: center;
-          margin: 1.5rem 0;
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: #0096F2;
-          text-transform: uppercase;
-          page-break-after: avoid;
-          word-wrap: break-word;
-        }
-        .section-title {
-          background-color: #0096F2;
-          color: white;
-          padding: 8px 12px;
-          font-weight: 600;
-          font-size: 0.8rem;
-          margin-bottom: 0;
-          border-radius: 4px 4px 0 0;
-          page-break-after: avoid;
-          word-wrap: break-word;
-        }
-        .section-container {
-          page-break-inside: avoid;
-          margin-bottom: 1.5rem;
-        }
-        .table-container {
-          margin-bottom: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          border-radius: 0 0 4px 4px;
-          page-break-inside: avoid;
-          overflow: hidden;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 0;
-          table-layout: fixed;
-        }
-        th, td {
-          padding: 8px 12px;
-          text-align: left;
-          border-bottom: 1px solid #eee;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          vertical-align: top;
-        }
-        th {
-          background-color: #f8f9fa;
-          color: #333;
-          font-weight: 600;
-          width: 25%;
-        }
-        td {
-          width: 75%;
-          white-space: pre-wrap;
-        }
-        tr:last-child td {
-          border-bottom: none;
-        }
-        .vital-signs-table td:first-child {
-          font-weight: 500;
-          width: 30%;
-        }
-        .diagnosis-table th {
-          text-align: left;
-        }
-        .footer {
-          background: #0096F2;
-          color: white;
-          text-align: center;
-          padding: 0.8rem 0;
-          font-size: 0.9rem;
-          margin-top: 2rem;
-          border-radius: 4px;
-          page-break-inside: avoid;
-          page-break-before: auto;
-          word-wrap: break-word;
-        }
-        .signature-section {
-          margin-top: 2rem;
-          padding: 1rem;
-          text-align: right;
-          page-break-inside: avoid;
-        }
-        .signature-image {
-          max-width: 150px;
-          height: auto;
-        }
-
-        /* Multi-column tables */
-        table.multi-col th {
-          width: auto;
-        }
-        table.multi-col td {
-          width: auto;
-        }
-
-        /* Long text handling */
-        .long-text {
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          max-width: 100%;
-        }
-
-        /* Print-specific styles */
-        @media print {
-          .header, .footer {
-            background-color: #ffffff !important;
-            color: #333 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .section-title {
-            background-color: #0096F2 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          th {
-            background-color: #f8f9fa !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .section-container {
-            break-inside: avoid;
-          }
-          h4 {
-            break-after: avoid;
-          }
-          table {
-            break-inside: avoid;
-          }
-          tr {
-            break-inside: avoid;
-          }
-          td, th {
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-          }
-          .doctor-info h2 {
-            color: #333 !important;
-          }
-          .doctor-info p {
-            color: #666 !important;
-          }
-          .logo-address {
-            color: #666 !important;
-          }
-        }
-      </style>
-    `;
-
-    const enhancedHtml = htmlContent.replace(
-      "</head>",
-      `${bootstrapCSS}</head>`
-    );
-
-    // Allow all requests to proceed, including file access
-    await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      req.continue();
-    });
-
-    // Set content and wait for it to load
-    await page.setContent(enhancedHtml, {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
-
-    // Wait for images to load
-    await page
-      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
-      .catch(() => {
-        console.log("Logo image may not have loaded, continuing anyway");
-      });
-
-    // Debug with screenshot if needed
-    const debugDir = path.resolve(tempDir, "debug");
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
-    }
-
-    const safeId = String(existingEmr._id).replace(/[^a-z0-9]/gi, "");
-    const screenshotPath = path.join(
-      debugDir,
-      `emr_debug_${safeId}_${Date.now()}.png`
-    );
-
-    await page.screenshot({
-      path: screenshotPath,
-      fullPage: true,
-    });
-
-    console.log("Debug screenshot saved to:", screenshotPath);
-    console.log("Generating PDF...");
-
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "15mm",
-        bottom: "20mm",
-        left: "15mm",
-      },
-      displayHeaderFooter: true,
-      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Medical Record</div>`,
-      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
-        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div> 2025 Preva Care</div>
-      </div>`,
-      preferCSSPageSize: true,
-      timeout: 60000,
-    });
-
-    console.log("PDF generated successfully");
-
-    // Close browser before file operations
-    await browser.close();
-    browser = null;
-
-    // Save the file to disk
-    const pdfFileName = `EMR_${safeId}_${Date.now()}.pdf`;
-    pdfFilePath = path.join(tempDir, pdfFileName);
-    fs.writeFileSync(pdfFilePath, pdfBuffer);
-
-    console.log("PDF saved to:", pdfFilePath);
-    console.log("PDF size:", pdfBuffer.length, "bytes");
-
-    // Upload PDF to S3
-    if (!existingEmr.link) {
-      try {
-        const s3UploadResult = await uploadToS3({
-          buffer: pdfBuffer,
-          originalname: pdfFileName,
-          mimetype: "application/pdf",
-        });
-        console.log("PDF uploaded to S3:", s3UploadResult);
-        const pdfLink = s3UploadResult.Location;
-        await emrModel.findByIdAndUpdate(emrId, { link: pdfLink });
-      } catch (uploadErr) {
-        console.error("Error uploading PDF to S3:", uploadErr);
-        // Continue execution even if S3 upload fails
-      }
-    }
-
-    // Use res.download instead of res.send
-    return res.download(pdfFilePath, pdfFileName, (err) => {
-      if (err) {
-        console.error("Download error:", err);
-        // If there's a download error, try to send an error response if headers haven't been sent
-        if (!res.headersSent) {
-          return Response.error(
-            res,
-            500,
-            AppConstant.FAILED,
-            "Error downloading PDF: " + err.message
-          );
-        }
-      }
-
-      // Clean up the files after sending (optional)
-      try {
-        if (fs.existsSync(pdfFilePath)) {
-          fs.unlinkSync(pdfFilePath);
-          console.log("Temporary PDF file deleted");
-        }
-        if (fs.existsSync(logoTempPath)) {
-          fs.unlinkSync(logoTempPath);
-          console.log("Temporary logo file deleted");
-        }
-      } catch (cleanupErr) {
-        console.error("Error cleaning up files:", cleanupErr);
-      }
-    });
   } catch (err) {
     console.error("EMR PDF generation error:", err);
     return Response.error(
