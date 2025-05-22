@@ -10,7 +10,7 @@ const {
   employeeMedicinesValidationSchema,
 } = require("../../validators/patient/employeeMedicines.validation");
 const puppeteer = require("puppeteer");
-const { launchPuppeteerBrowser } = require("../../middlewares/puppeteerConfig");
+const { launchPuppeteerBrowser } = require("../common/corporates/employees/emr/generateEMRPdf.controller");
 
 // 1. Get medicine schedules for Individual User - App API
 exports.getMedicineSchedulesForUser = async (req, res) => {
@@ -286,7 +286,7 @@ exports.createOrUpdateScheduleFromEMR = async (req, res) => {
                   emrId: emrDetails._id,
                   doctor: emrDetails.doctor,
                   organization: {
-                    name: "Hospital",
+                    name: "Hospital", // Default name
                   },
                 },
                 frequency: allergy.allergyFrequency || "As directed",
@@ -1928,7 +1928,7 @@ exports.getMedicinePDFLinkByUserId = async (req, res) => {
       headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Patient Medicine Schedule</div>`,
       footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
         Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div>© 2025 Preva Care</div>
+        <div> 2025 Preva Care</div>
       </div>`,
       preferCSSPageSize: true,
       timeout: 60000,
@@ -2329,7 +2329,7 @@ exports.generateMedicinePDF = async (req, res) => {
       headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Patient Medicine Schedule</div>`,
       footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
         Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div>© 2025 Preva Care</div>
+        <div> 2025 Preva Care</div>
       </div>`,
       preferCSSPageSize: true,
       timeout: 60000,

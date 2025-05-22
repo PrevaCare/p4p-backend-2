@@ -816,9 +816,8 @@ const getEmrPdfLinkByemrId = async (req, res) => {
     console.log("PDF size:", pdfBuffer.length, "bytes");
 
     // Upload PDF to S3
-    let s3UploadResult;
     try {
-      s3UploadResult = await uploadToS3({
+      const s3UploadResult = await uploadToS3({
         buffer: pdfBuffer,
         originalname: pdfFileName,
         mimetype: "application/pdf",
@@ -2646,7 +2645,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
               </tr>
               <tr>
                 <th>Age / Gender</th>
-                <td>${patient.age || ""} ${patient.gender === "M" ? "Male" : patient.gender === "F" ? "Female" : ""
+                <td>${patient.age || ""} ${patient.gender === "M" ? "Male" : "Female"
     }</td>
               </tr>
               <tr>
@@ -2792,9 +2791,10 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
               <tr>
                 <th>Instructions</th>
                 <td>${advice.join("<br>")}</td>
-            </tr>
-          </tbody>
-        </table>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
       </div>
       `
@@ -2839,4 +2839,5 @@ module.exports = {
   getEPrescriptionPdfById,
   getEmrPdfLinkByemrId,
   getEPrescriptionPdfLinkByemrId,
+  launchPuppeteerBrowser
 };
