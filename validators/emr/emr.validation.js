@@ -80,13 +80,15 @@ const surgicalMedicationSchema = Joi.object({
 const bloodTransfusionSchema = Joi.object({
   required: Joi.boolean().default(false),
   units: Joi.number().allow(null),
-  details: Joi.string().allow(null, ""),
+  details: Joi.string().allow(null, "").default(""),
   patientBloodGroup: Joi.string()
-    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known")
-    .allow(null, ""),
+    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known", "")
+    .allow(null, "")
+    .default(""),
   transfusedBloodGroup: Joi.string()
-    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known","")
-    .allow(null, ""),
+    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known", "")
+    .allow(null, "")
+    .default(""),
 });
 
 // Joi schema for surgical history surgeon

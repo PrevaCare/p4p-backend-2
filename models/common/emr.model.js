@@ -71,14 +71,16 @@ const SurgicalHistorySchema = new mongoose.Schema({
   bloodTransfusion: {
     required: { type: Boolean, default: false },
     units: { type: Number },
-    details: { type: String },
+    details: { type: String, default: "" },
     patientBloodGroup: {
       type: String,
-      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known"],
+      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known", ""],
+      default: ""
     },
     transfusedBloodGroup: {
       type: String,
-      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known",""],
+      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known", ""],
+      default: ""
     },
   },
   surgeon: {
