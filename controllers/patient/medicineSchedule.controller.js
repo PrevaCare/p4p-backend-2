@@ -10,6 +10,7 @@ const {
   employeeMedicinesValidationSchema,
 } = require("../../validators/patient/employeeMedicines.validation");
 const puppeteer = require("puppeteer");
+const { launchPuppeteerBrowser } = require("../../middlewares/puppeteerConfig");
 
 // 1. Get medicine schedules for Individual User - App API
 exports.getMedicineSchedulesForUser = async (req, res) => {
@@ -1703,21 +1704,16 @@ exports.getMedicinePDFLinkByUserId = async (req, res) => {
     }
 
     // Launch a headless browser for PDF generation
-    console.log(
-      "Launching browser for medicine PDF generation with custom port 9222 instead of default 8000"
-    );
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--allow-file-access-from-files",
-        "--remote-debugging-port=8000", // Use port 9222 instead of default 8000
-      ],
-    });
+    console.log("Launching browser for medicine PDF generation...");
+    try {
+      browser = await launchPuppeteerBrowser();
+      if (!browser) {
+        throw new Error('Browser launch returned null');
+      }
+    } catch (browserError) {
+      console.error("Error launching browser:", browserError);
+      throw new Error(`Failed to launch browser: ${browserError.message}`);
+    }
 
     // Create a new page
     const page = await browser.newPage();
@@ -2109,21 +2105,16 @@ exports.generateMedicinePDF = async (req, res) => {
     }
 
     // Launch a headless browser for PDF generation
-    console.log(
-      "Launching browser for medicine PDF generation with custom port 9222 instead of default 8000"
-    );
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--allow-file-access-from-files",
-        "--remote-debugging-port=8000", // Use port 9222 instead of default 8000
-      ],
-    });
+    console.log("Launching browser for medicine PDF generation...");
+    try {
+      browser = await launchPuppeteerBrowser();
+      if (!browser) {
+        throw new Error('Browser launch returned null');
+      }
+    } catch (browserError) {
+      console.error("Error launching browser:", browserError);
+      throw new Error(`Failed to launch browser: ${browserError.message}`);
+    }
 
     // Create a new page
     const page = await browser.newPage();
