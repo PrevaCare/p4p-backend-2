@@ -85,7 +85,7 @@ const bloodTransfusionSchema = Joi.object({
     .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known")
     .allow(null, ""),
   transfusedBloodGroup: Joi.string()
-    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known")
+    .valid("A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known","")
     .allow(null, ""),
 });
 
