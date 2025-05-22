@@ -91,6 +91,14 @@ const getAllCorporateEmployees = async (req, res) => {
     );
   }
 };
+
+
+
+
+
+
+
+
 const getAllCorporateEmployeesOfParticularCorporateById = async (req, res) => {
   try {
     const { corporateId } = req.body;

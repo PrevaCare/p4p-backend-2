@@ -1608,6 +1608,19 @@ const getEPrescriptionPdfById = async (req, res) => {
   }
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 const getEPrescriptionPdfLinkByemrId = async (req, res) => {
   const { ePrescriptionId } = req.body;
   const existingEPrescription = await eprescriptionModel.findById(
