@@ -114,56 +114,7 @@ const generateEMRPDF = async (emrPdfData) => {
       "Launching browser for EMR PDF generation"
     );
     try {
-      const options = {
-        headless: "new",
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ||
-          (process.platform === 'win32'
-            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-            : process.platform === 'linux'
-              ? '/usr/bin/chromium-browser'
-              : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins',
-          '--disable-site-isolation-trials'
-        ],
-        timeout: 60000,
-        protocolTimeout: 60000
-      };
-
-      // Check for Chrome executable in different locations
-      const possiblePaths = [
-        process.env.PUPPETEER_EXECUTABLE_PATH, // First check if explicitly set in env
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium',
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable'
-      ];
-
-      let executablePath = null;
-      for (const path of possiblePaths) {
-        if (path && fs.existsSync(path)) {
-          executablePath = path;
-          break;
-        }
-      }
-
-      if (executablePath) {
-        console.log('Using Chrome executable path:', executablePath);
-        options.executablePath = executablePath;
-      } else {
-        console.log('No Chrome executable found in standard locations, using bundled Chromium');
-        // Let Puppeteer use its bundled version
-        delete options.executablePath;
-      }
-
-      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
-      browser = await puppeteer.launch(options);
-
+      browser = await launchPuppeteerBrowser();
       if (!browser) {
         throw new Error('Browser launch returned null');
       }
@@ -424,7 +375,7 @@ const generateEMRPDF = async (emrPdfData) => {
         },
         displayHeaderFooter: true,
         headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Electronic Medical Record</div>',
-        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;"> 2025 Preva Care</div></div>',
         preferCSSPageSize: true,
         timeout: 30000,
       });
@@ -540,28 +491,8 @@ const getEmrPdfLinkByemrId = async (req, res) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser 
-    browser = await puppeteer.launch({
-      headless: "new",
-      executablePath: process.platform === 'win32'
-        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-        : process.platform === 'linux'
-          ? '/usr/bin/chromium-browser'
-          : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      timeout: 60000, // Increase timeout to 60 seconds
-      ignoreDefaultArgs: ['--disable-extensions'],
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--allow-file-access-from-files',
-        '--remote-debugging-port=8000'
-      ],
-      protocolTimeout: 60000 // Add protocol timeout
-    });
+    browser = await launchPuppeteerBrowser();
+    console.log('Browser launched successfully');
 
     const page = await browser.newPage();
 
@@ -864,7 +795,7 @@ const getEmrPdfLinkByemrId = async (req, res) => {
       headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Medical Record</div>`,
       footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
         Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div>© 2025 Preva Care</div>
+        <div> 2025 Preva Care</div>
       </div>`,
       preferCSSPageSize: true,
       timeout: 60000,
@@ -914,7 +845,12 @@ const getEmrPdfByemrId = async (req, res) => {
   try {
     const { emrId } = req.body;
     if (!emrId) {
-      return Response.error(res, 404, AppConstant.FAILED, "emrId is missing!");
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "emrId is missing!"
+      );
     }
 
     const existingEmr = await emrModel.findById(emrId).populate({
@@ -958,31 +894,8 @@ const getEmrPdfByemrId = async (req, res) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser 
-    console.log(
-      "Launching browser for EMR PDF view with custom port 9222 instead of default 8000"
-    );
-    browser = await puppeteer.launch({
-      headless: "new",
-      executablePath: process.platform === 'win32'
-        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-        : process.platform === 'linux'
-          ? '/usr/bin/chromium-browser'
-          : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      timeout: 60000, // Increase timeout to 60 seconds
-      ignoreDefaultArgs: ['--disable-extensions'],
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--allow-file-access-from-files',
-        '--remote-debugging-port=8000'
-      ],
-      protocolTimeout: 60000 // Add protocol timeout
-    });
+    browser = await launchPuppeteerBrowser();
+    console.log('Browser launched successfully');
 
     const page = await browser.newPage();
 
@@ -1285,7 +1198,7 @@ const getEmrPdfByemrId = async (req, res) => {
       headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Medical Record</div>`,
       footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
         Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        <div>© 2025 Preva Care</div>
+        <div> 2025 Preva Care</div>
       </div>`,
       preferCSSPageSize: true,
       timeout: 60000,
@@ -1457,139 +1370,100 @@ const getEPrescriptionPdfById = async (req, res) => {
     console.log(
       "Launching browser for E-Prescription PDF generation"
     );
+    browser = await launchPuppeteerBrowser();
+    console.log('Browser launched successfully');
+
+    const page = await browser.newPage();
+    console.log('New page created');
+
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
+
+    // Set content with proper timeout and wait conditions
     try {
-      const options = {
-        headless: "new",
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ||
-          (process.platform === 'win32'
-            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-            : process.platform === 'linux'
-              ? '/usr/bin/chromium-browser'
-              : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins',
-          '--disable-site-isolation-trials'
-        ],
-        timeout: 60000,
-        protocolTimeout: 60000
-      };
-
-      // Check if we're in a Linux environment (likely production)
-      if (process.platform === 'linux') {
-        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-        console.log('Using executable path:', options.executablePath);
-      }
-
-      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
-      browser = await puppeteer.launch(options);
-
-      if (!browser) {
-        throw new Error('Browser launch returned null');
-      }
-
-      console.log('Browser launched successfully');
-
-      const page = await browser.newPage();
-      console.log('New page created');
-
-      // Set viewport
-      await page.setViewport({
-        width: 1200,
-        height: 800,
-      });
-
-      // Set content with proper timeout and wait conditions
-      await page.setContent(enhancedHtml, {
-        waitUntil: ["networkidle0", "domcontentloaded"],
-        timeout: 30000,
-      });
-      console.log('Page content set successfully');
-
-      // Wait for any dynamic content to settle
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Generate PDF with consistent settings
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "20mm",
-          right: "15mm",
-          bottom: "20mm",
-          left: "15mm",
-        },
-        displayHeaderFooter: true,
-        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Electronic Prescription</div>',
-        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;"> 2025 Preva Care</div></div>',
-        preferCSSPageSize: true,
-        timeout: 30000,
-      });
-      console.log('PDF generated successfully');
-
-      // Close browser before file operations
-      await browser.close();
-      browser = null;
-      console.log('Browser closed successfully');
-
-      // Save the file to disk
-      const pdfFileName = `Prescription_${existingEPrescription._id}_${Date.now()}.pdf`;
-      pdfFilePath = path.join(tempDir, pdfFileName);
-      fs.writeFileSync(pdfFilePath, pdfBuffer);
-
-      let pdfLink;
-      if (!existingEPrescription.link) {
-        try {
-          const s3UploadResult = await uploadToS3({
-            buffer: pdfBuffer,
-            originalname: pdfFileName,
-            mimetype: "application/pdf",
-          });
-          console.log("PDF uploaded to S3:", s3UploadResult);
-          pdfLink = s3UploadResult.Location;
-          await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
-            link: pdfLink,
-          });
-        } catch (uploadErr) {
-          console.error("Error uploading PDF to S3:", uploadErr);
-          // Continue execution even if S3 upload fails
-        }
-      }
-
-      return res.send(pdfLink);
-
-    } catch (err) {
-      console.error('Error in PDF generation:', err);
-      return Response.error(
-        res,
-        500,
-        AppConstant.FAILED,
-        "Failed to generate e-prescription PDF: " + err.message
+      const logoPath = path.resolve(
+        __dirname,
+        "../../../../../public/logo1.png"
       );
-    } finally {
-      if (browser) {
-        try {
-          await browser.close();
-          console.log('Browser closed successfully');
-        } catch (closeErr) {
-          console.error('Error closing browser:', closeErr);
-        }
+      console.log("Looking for logo at:", logoPath);
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+        console.log("Logo loaded successfully");
+      } else {
+        console.error("Logo file not found at path:", logoPath);
       }
-      // Clean up temp files
-      if (logoTempPath && fs.existsSync(logoTempPath)) {
-        try {
-          fs.unlinkSync(logoTempPath);
-        } catch (err) {
-          console.error("Error removing temporary logo:", err);
-        }
+    } catch (err) {
+      console.error("Error loading logo:", err);
+    }
+    await page.setContent(getPrescriptionHTML(existingEPrescription, logoBase64), {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
+
+    // Wait for images to load
+    await page
+      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
+      .catch(() => {
+        console.log("Logo image may not have loaded, continuing anyway");
+      });
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "15mm",
+        bottom: "20mm",
+        left: "15mm",
+      },
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
+      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div> 2025 Preva Care</div>
+      </div>`,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+
+    // Close browser before file operations
+    await browser.close();
+    browser = null;
+
+    // Save the file to disk
+    const pdfFileName = `Prescription_${existingEPrescription._id
+      }_${Date.now()}.pdf`;
+    pdfFilePath = path.join(tempDir, pdfFileName);
+    fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+    let pdfLink;
+    if (!existingEPrescription.link) {
+      try {
+        const s3UploadResult = await uploadToS3({
+          buffer: pdfBuffer,
+          originalname: pdfFileName,
+          mimetype: "application/pdf",
+        });
+        console.log("PDF uploaded to S3:", s3UploadResult);
+        pdfLink = s3UploadResult.Location;
+        await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
+          link: pdfLink,
+        });
+      } catch (uploadErr) {
+        console.error("Error uploading PDF to S3:", uploadErr);
+        // Continue execution even if S3 upload fails
       }
     }
+
+    // Use res.download instead of res.send
+    return res.send(pdfLink);
   } catch (err) {
-    console.error("E-Prescription PDF generation error:", err);
+    console.error("Error launching browser:", err);
     return Response.error(
       res,
       500,
@@ -1597,7 +1471,6 @@ const getEPrescriptionPdfById = async (req, res) => {
       "Failed to generate e-prescription PDF: " + err.message
     );
   } finally {
-    // Ensure browser is closed and temp files are cleaned up
     if (browser) {
       try {
         await browser.close();
@@ -1677,154 +1550,111 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     console.log(
       "Launching browser for EPrescription 1 PDF link with custom port 9222 instead of default 8000"
     );
+    browser = await launchPuppeteerBrowser();
+    console.log('Browser launched successfully');
+
+    const page = await browser.newPage();
+    console.log('New page created');
+
+    // Set viewport
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
     try {
-      const executablePath = process.platform === 'linux'
-        ? '/usr/bin/chromium-browser'
-        : process.platform === 'win32'
-          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-          : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-
-
-      console.log('Using Chrome executable path:', executablePath);
-      try {
-        browser = await puppeteer.launch({
-          headless: "new",
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ||
-            (process.platform === 'win32'
-              ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-              : process.platform === 'linux'
-                ? '/usr/bin/chromium-browser'
-                : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
-          timeout: 90000, // Increase timeout to 90 seconds
-          ignoreDefaultArgs: ['--disable-extensions'],
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-            '--allow-file-access-from-files',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process',
-            '--remote-debugging-port=8000'  // Let Chrome pick an available port
-          ],
-          protocolTimeout: 90000 // Add protocol timeout
-        });
-      } catch (err) {
-        console.error("Error launching browser:", err);
-      }
-
-      if (!browser) {
-        throw new Error('Browser launch returned null');
-      }
-
-      console.log('Browser launched successfully');
-
-      const page = await browser.newPage();
-      if (!page) {
-        throw new Error('Failed to create new page');
-      }
-
-      console.log('New page created successfully');
-
-      // Set viewport
-      await page.setViewport({
-        width: 1200,
-        height: 800,
-      });
-
-      // Set content and wait for it to load
-      try {
-        const logoPath = path.resolve(
-          __dirname,
-          "../../../../../public/logo1.png"
-        );
-        console.log("Looking for logo at:", logoPath);
-        if (fs.existsSync(logoPath)) {
-          const logoBuffer = fs.readFileSync(logoPath);
-          logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-          console.log("Logo loaded successfully");
-        } else {
-          console.error("Logo file not found at path:", logoPath);
-        }
-      } catch (err) {
-        console.error("Error loading logo:", err);
-      }
-      await page.setContent(getPrescriptionHTML(existingEPrescription, logoBase64), {
-        waitUntil: "networkidle0",
-        timeout: 60000,
-      });
-
-      // Wait for images to load
-      await page
-        .waitForSelector(".logo img", { visible: true, timeout: 5000 })
-        .catch(() => {
-          console.log("Logo image may not have loaded, continuing anyway");
-        });
-
-      // Generate PDF
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "20mm",
-          right: "15mm",
-          bottom: "20mm",
-          left: "15mm",
-        },
-        displayHeaderFooter: true,
-        headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
-        footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
-          Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-          <div> 2025 Preva Care</div>
-        </div>`,
-        preferCSSPageSize: true,
-        timeout: 60000,
-      });
-
-      // Close browser before file operations
-      await browser.close();
-      browser = null;
-
-      // Save the file to disk
-      const pdfFileName = `Prescription_${existingEPrescription._id
-        }_${Date.now()}.pdf`;
-      pdfFilePath = path.join(tempDir, pdfFileName);
-      fs.writeFileSync(pdfFilePath, pdfBuffer);
-
-      let pdfLink;
-      if (!existingEPrescription.link) {
-        try {
-          const s3UploadResult = await uploadToS3({
-            buffer: pdfBuffer,
-            originalname: pdfFileName,
-            mimetype: "application/pdf",
-          });
-          console.log("PDF uploaded to S3:", s3UploadResult);
-          pdfLink = s3UploadResult.Location;
-          await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
-            link: pdfLink,
-          });
-        } catch (uploadErr) {
-          console.error("Error uploading PDF to S3:", uploadErr);
-          // Continue execution even if S3 upload fails
-        }
-      }
-
-      // Use res.download instead of res.send
-      return res.send(pdfLink);
-    } catch (err) {
-      console.error("Error launching browser:", err);
-      return Response.error(
-        res,
-        500,
-        AppConstant.FAILED,
-        "Failed to generate e-prescription PDF: " + err.message
+      const logoPath = path.resolve(
+        __dirname,
+        "../../../../../public/logo1.png"
       );
+      console.log("Looking for logo at:", logoPath);
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+        console.log("Logo loaded successfully");
+      } else {
+        console.error("Logo file not found at path:", logoPath);
+      }
+    } catch (err) {
+      console.error("Error loading logo:", err);
     }
+    await page.setContent(getPrescriptionHTML(existingEPrescription, logoBase64), {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    });
+
+    // Wait for images to load
+    await page
+      .waitForSelector(".logo img", { visible: true, timeout: 5000 })
+      .catch(() => {
+        console.log("Logo image may not have loaded, continuing anyway");
+      });
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "15mm",
+        bottom: "20mm",
+        left: "15mm",
+      },
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
+      footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div> 2025 Preva Care</div>
+      </div>`,
+      preferCSSPageSize: true,
+      timeout: 60000,
+    });
+
+    // Close browser before file operations
+    await browser.close();
+    browser = null;
+
+    // Save the file to disk
+    const pdfFileName = `Prescription_${existingEPrescription._id
+      }_${Date.now()}.pdf`;
+    pdfFilePath = path.join(tempDir, pdfFileName);
+    fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+    let pdfLink;
+    if (!existingEPrescription.link) {
+      try {
+        const s3UploadResult = await uploadToS3({
+          buffer: pdfBuffer,
+          originalname: pdfFileName,
+          mimetype: "application/pdf",
+        });
+        console.log("PDF uploaded to S3:", s3UploadResult);
+        pdfLink = s3UploadResult.Location;
+        await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
+          link: pdfLink,
+        });
+      } catch (uploadErr) {
+        console.error("Error uploading PDF to S3:", uploadErr);
+        // Continue execution even if S3 upload fails
+      }
+    }
+
+    // Use res.download instead of res.send
+    return res.send(pdfLink);
   }
+};
+
+// Function to launch browser consistently across all PDF generation functions
+const launchPuppeteerBrowser = async () => {
+  console.log("Launching Puppeteer browser with bundled Chromium...");
+  return puppeteer.launch({
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ]
+  });
 };
 
 function getEmrHTML(emrPdfData, logoBase64) {
@@ -2995,7 +2825,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
     </div>
 
     <div class="footer">
-      <span>© 2025 Preva Care | Electronic Prescription System</span>
+      <span> 2025 Preva Care | Electronic Prescription System</span>
     </div>
   </body>
 </html>
