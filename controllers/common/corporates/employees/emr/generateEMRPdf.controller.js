@@ -2040,7 +2040,7 @@ function getEmrHTML(emrPdfData, logoBase64) {
                   <tr>
                     <td>${ph.sufferingFrom || ""}</td>
                     <td>${ph.drugName?.join(", ") || ""}</td>
-                    <td>${ph.freequency?.join(", ") || ""}</td>
+                    <td>${ph.frequency?.join(", ") || ""}</td>
                     <td>${ph.readings || ""}</td>
                     <td>${ph.pastHistoryNotes || ""}</td>
                   </tr>
