@@ -120,7 +120,7 @@ const generateEMRPDF = async (emrPdfData) => {
           (process.platform === 'win32'
             ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
             : process.platform === 'linux'
-              ? '/usr/bin/google-chrome'
+              ? '/usr/bin/chromium-browser'
               : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
         args: [
           '--no-sandbox',
@@ -545,15 +545,22 @@ const getEmrPdfLinkByemrId = async (req, res) => {
       executablePath: process.platform === 'win32'
         ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
         : process.platform === 'linux'
-          ? '/usr/bin/google-chrome'
+          ? '/usr/bin/chromium-browser'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      timeout: 60000, // Increase timeout to 60 seconds
+      ignoreDefaultArgs: ['--disable-extensions'],
       args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--allow-file-access-from-files",
-        "--remote-debugging-port=8000", // Use port 9222 instead of default 8000
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--allow-file-access-from-files',
+        '--remote-debugging-port=8000'
       ],
+      protocolTimeout: 60000 // Add protocol timeout
     });
 
     const page = await browser.newPage();
@@ -950,7 +957,7 @@ const getEmrPdfByemrId = async (req, res) => {
     // Generate an absolute file URL for the copied logo
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
-    // Launch browser
+    // Launch browser 
     console.log(
       "Launching browser for EMR PDF view with custom port 9222 instead of default 8000"
     );
@@ -959,7 +966,7 @@ const getEmrPdfByemrId = async (req, res) => {
       executablePath: process.platform === 'win32'
         ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
         : process.platform === 'linux'
-          ? '/usr/bin/google-chrome'
+          ? '/usr/bin/chromium-browser'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       timeout: 60000, // Increase timeout to 60 seconds
       ignoreDefaultArgs: ['--disable-extensions'],
@@ -1457,7 +1464,7 @@ const getEPrescriptionPdfById = async (req, res) => {
           (process.platform === 'win32'
             ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
             : process.platform === 'linux'
-              ? '/usr/bin/google-chrome'
+              ? '/usr/bin/chromium-browser'
               : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
         args: [
           '--no-sandbox',
@@ -1474,7 +1481,7 @@ const getEPrescriptionPdfById = async (req, res) => {
 
       // Check if we're in a Linux environment (likely production)
       if (process.platform === 'linux') {
-        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome';
+        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
         console.log('Using executable path:', options.executablePath);
       }
 
@@ -1518,7 +1525,7 @@ const getEPrescriptionPdfById = async (req, res) => {
         },
         displayHeaderFooter: true,
         headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Electronic Prescription</div>',
-        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;"> 2025 Preva Care</div></div>',
         preferCSSPageSize: true,
         timeout: 30000,
       });
@@ -1608,19 +1615,6 @@ const getEPrescriptionPdfById = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 const getEPrescriptionPdfLinkByemrId = async (req, res) => {
   const { ePrescriptionId } = req.body;
   const existingEPrescription = await eprescriptionModel.findById(
@@ -1685,7 +1679,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     );
     try {
       const executablePath = process.platform === 'linux'
-        ? '/usr/bin/google-chrome'
+        ? '/usr/bin/chromium-browser'
         : process.platform === 'win32'
           ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
           : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -1699,7 +1693,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
             (process.platform === 'win32'
               ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
               : process.platform === 'linux'
-                ? '/usr/bin/google-chrome'
+                ? '/usr/bin/chromium-browser'
                 : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
           timeout: 90000, // Increase timeout to 90 seconds
           ignoreDefaultArgs: ['--disable-extensions'],
@@ -1784,7 +1778,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
         headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
         footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
           Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-          <div>© 2025 Preva Care</div>
+          <div> 2025 Preva Care</div>
         </div>`,
         preferCSSPageSize: true,
         timeout: 60000,
@@ -2503,7 +2497,7 @@ function getEmrHTML(emrPdfData, logoBase64) {
     </div>
 
     <div class="footer">
-      <span>© 2025 Preva Care | Electronic Medical Record System</span>
+      <span> 2025 Preva Care | Electronic Medical Record System</span>
     </div>
   </body>
 </html>
