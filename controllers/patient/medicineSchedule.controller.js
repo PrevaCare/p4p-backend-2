@@ -486,7 +486,7 @@ exports.syncScheduleWithEMR = async (req, res) => {
                   emrId: emrDetails._id,
                   doctor: emrDetails.doctor,
                   organization: {
-                    name: "Hospital",
+                    name: "Hospital", // Default name
                   },
                 },
                 frequency: allergy.allergyFrequency || "As directed",
@@ -1708,12 +1708,6 @@ exports.getMedicinePDFLinkByUserId = async (req, res) => {
     );
     browser = await puppeteer.launch({
       headless: "new",
-      executablePath:
-        process.platform === "win32"
-          ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-          : process.platform === "linux"
-            ? "/usr/bin/chromium-browser"
-            : "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -2028,183 +2022,6 @@ exports.getMedicinePDFLinkByUserId = async (req, res) => {
         console.error("Error removing temporary PDF file:", err);
       }
     }
-  }
-};
-
-// HTML template for medicine PDF with tabular format
-const getMedicinePDFTableHTML = (user, medicineSchedule, logoBase64) => {
-  const userName =
-    user.firstName && user.lastName
-      ? `${user.firstName} ${user.lastName}`
-      : user.email || "Patient";
-
-  // Create a table of medicines
-  const medicinesTableHTML = `
-    <table class="medicine-table">
-      <thead>
-        <tr>
-          <th>Medicine</th>
-          <th>Dosage</th>
-          <th>Frequency</th>
-          <th>Timing</th>
-          <th>Period</th>
-          <th>Status</th>
-          <th>Prescribed By</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${medicineSchedule.medicines
-      .map((med) => {
-        // Format timing array to readable string
-        const timingStr =
-          med.timing && med.timing.length > 0
-            ? med.timing.join(", ")
-            : "As directed";
-
-        // Get doctor name if available
-        let doctorName = "N/A";
-        if (med.source && med.source.doctor) {
-          const doctor = med.source.doctor;
-          if (typeof doctor === "object" && doctor.firstName) {
-            doctorName = `Dr. ${doctor.firstName} ${doctor.lastName || ""}`;
-            if (doctor.specialization) {
-              doctorName += ` (${doctor.specialization})`;
-            }
-          }
-        }
-
-        // Format start date
-        const startDate = med.startDate
-          ? new Date(med.startDate).toLocaleDateString()
-          : "N/A";
-
-        // Format end date if available
-        const endDate = med.endDate
-          ? new Date(med.endDate).toLocaleDateString()
-          : "Ongoing";
-
-        // Period string
-        const periodStr = `${startDate} to ${endDate}`;
-
-        return `
-            <tr>
-              <td><strong>${med.drugName}</strong>${med.instructions
-            ? `<br><small><em>${med.instructions}</em></small>`
-            : ""
-          }</td>
-              <td>${med.dosage}</td>
-              <td>${med.frequency}</td>
-              <td>${timingStr}</td>
-              <td>${periodStr}</td>
-              <td><span class="status-pill status-${med.status.toLowerCase()}">${med.status
-          }</span></td>
-              <td>${doctorName}</td>
-            </tr>
-          `;
-      })
-      .join("")}
-      </tbody>
-    </table>
-  `;
-
-  // Create the logo HTML - enlarged logo without "Preva Care" text when logo is present
-  const logoHtml = logoBase64
-    ? `<img src="${logoBase64}" alt="Preva Care Logo" style="max-height:90px;" />`
-    : `<span style="font-size:2.2rem; font-weight:bold; color:#4b90e2;">Preva Care</span>`;
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Medicine Schedule</title>
-    </head>
-    <body>
-      <div class="header">
-        <div class="logo-container">
-          ${logoHtml}
-        </div>
-        <div class="patient-info">
-          <div class="patient-name">${userName}</div>
-          <div class="document-date">Date: ${new Date().toLocaleDateString()}</div>
-        </div>
-      </div>
-      
-      <h1 class="document-title">Medicine Schedule</h1>
-      
-      <div class="schedule-container">
-        <h2 class="schedule-title">${medicineSchedule.title}</h2>
-        
-        
-        ${medicinesTableHTML}
-      </div>
-      
-      <div class="footer">
-        <p>This document is generated for informational purposes only.</p>
-        <p>Please follow your doctor's directions regarding medication usage.</p>
-      </div>
-    </body>
-    </html>
-  `;
-};
-
-// Get medicine PDF by schedule ID
-exports.getMedicinePDFByScheduleId = async (req, res) => {
-  try {
-    const { scheduleId } = req.params;
-
-    if (!scheduleId) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        "Schedule ID is required"
-      );
-    }
-
-    // Find the medicine schedule by ID
-    const medicineSchedule = await MedicineSchedule.findById(scheduleId);
-
-    if (!medicineSchedule) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "Medicine schedule not found"
-      );
-    }
-
-    // Check if the user has permission to access this schedule
-    if (req.user._id.toString() !== medicineSchedule.user.toString()) {
-      return Response.error(
-        res,
-        403,
-        AppConstant.FAILED,
-        "You don't have permission to access this schedule"
-      );
-    }
-
-    // Check if PDF link exists
-    if (!medicineSchedule.pdfLink) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "PDF not found for this schedule. Generate a PDF first."
-      );
-    }
-
-    // Redirect to the PDF link
-    return res.redirect(medicineSchedule.pdfLink);
-  } catch (err) {
-    console.error("Error retrieving medicine PDF:", err);
-    return Response.error(
-      res,
-      500,
-      AppConstant.FAILED,
-      err.message || "Internal server error!"
-    );
   }
 };
 
@@ -2599,4 +2416,181 @@ exports.generateMedicinePDF = async (req, res) => {
       }
     }
   }
+};
+
+// Get medicine PDF by schedule ID
+exports.getMedicinePDFByScheduleId = async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+
+    if (!scheduleId) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Schedule ID is required"
+      );
+    }
+
+    // Find the medicine schedule by ID
+    const medicineSchedule = await MedicineSchedule.findById(scheduleId);
+
+    if (!medicineSchedule) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "Medicine schedule not found"
+      );
+    }
+
+    // Check if the user has permission to access this schedule
+    if (req.user._id.toString() !== medicineSchedule.user.toString()) {
+      return Response.error(
+        res,
+        403,
+        AppConstant.FAILED,
+        "You don't have permission to access this schedule"
+      );
+    }
+
+    // Check if PDF link exists
+    if (!medicineSchedule.pdfLink) {
+      return Response.error(
+        res,
+        404,
+        AppConstant.FAILED,
+        "PDF not found for this schedule. Generate a PDF first."
+      );
+    }
+
+    // Redirect to the PDF link
+    return res.redirect(medicineSchedule.pdfLink);
+  } catch (err) {
+    console.error("Error retrieving medicine PDF:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error!"
+    );
+  }
+};
+
+// HTML template for medicine PDF with tabular format
+const getMedicinePDFTableHTML = (user, medicineSchedule, logoBase64) => {
+  const userName =
+    user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user.email || "Patient";
+
+  // Create a table of medicines
+  const medicinesTableHTML = `
+    <table class="medicine-table">
+      <thead>
+        <tr>
+          <th>Medicine</th>
+          <th>Dosage</th>
+          <th>Frequency</th>
+          <th>Timing</th>
+          <th>Period</th>
+          <th>Status</th>
+          <th>Prescribed By</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${medicineSchedule.medicines
+      .map((med) => {
+        // Format timing array to readable string
+        const timingStr =
+          med.timing && med.timing.length > 0
+            ? med.timing.join(", ")
+            : "As directed";
+
+        // Get doctor name if available
+        let doctorName = "N/A";
+        if (med.source && med.source.doctor) {
+          const doctor = med.source.doctor;
+          if (typeof doctor === "object" && doctor.firstName) {
+            doctorName = `Dr. ${doctor.firstName} ${doctor.lastName || ""}`;
+            if (doctor.specialization) {
+              doctorName += ` (${doctor.specialization})`;
+            }
+          }
+        }
+
+        // Format start date
+        const startDate = med.startDate
+          ? new Date(med.startDate).toLocaleDateString()
+          : "N/A";
+
+        // Format end date if available
+        const endDate = med.endDate
+          ? new Date(med.endDate).toLocaleDateString()
+          : "Ongoing";
+
+        // Period string
+        const periodStr = `${startDate} to ${endDate}`;
+
+        return `
+            <tr>
+              <td><strong>${med.drugName}</strong>${med.instructions
+            ? `<br><small><em>${med.instructions}</em></small>`
+            : ""
+          }</td>
+              <td>${med.dosage}</td>
+              <td>${med.frequency}</td>
+              <td>${timingStr}</td>
+              <td>${periodStr}</td>
+              <td><span class="status-pill status-${med.status.toLowerCase()}">${med.status
+          }</span></td>
+              <td>${doctorName}</td>
+            </tr>
+          `;
+      })
+      .join("")}
+      </tbody>
+    </table>
+  `;
+
+  // Create the logo HTML - enlarged logo without "Preva Care" text when logo is present
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" alt="Preva Care Logo" style="max-height:90px;" />`
+    : `<span style="font-size:2.2rem; font-weight:bold; color:#4b90e2;">Preva Care</span>`;
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Medicine Schedule</title>
+    </head>
+    <body>
+      <div class="header">
+        <div class="logo-container">
+          ${logoHtml}
+        </div>
+        <div class="patient-info">
+          <div class="patient-name">${userName}</div>
+          <div class="document-date">Date: ${new Date().toLocaleDateString()}</div>
+        </div>
+      </div>
+      
+      <h1 class="document-title">Medicine Schedule</h1>
+      
+      <div class="schedule-container">
+        <h2 class="schedule-title">${medicineSchedule.title}</h2>
+        
+        
+        ${medicinesTableHTML}
+      </div>
+      
+      <div class="footer">
+        <p>This document is generated for informational purposes only.</p>
+        <p>Please follow your doctor's directions regarding medication usage.</p>
+      </div>
+    </body>
+    </html>
+  `;
 };
