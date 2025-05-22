@@ -2284,7 +2284,7 @@ function getEmrHTML(emrPdfData, logoBase64) {
                   (med) => `
                       <tr>
                         <td>${med.drugName || ""}</td>
-                        <td>${med.freequency || ""}</td>
+                        <td>${med.frequency || ""}</td>
                         <td>${med.duration || ""} days</td>
                         <td>${med.routeOfAdministration || ""}</td>
                         <td>${med.howToTake || ""}</td>
@@ -2747,7 +2747,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
           (medicine) => `
                 <tr>
                   <td>${medicine.drugName || ""}</td>
-                  <td>${medicine.freequency || ""}</td>
+                  <td>${medicine.frequency || ""}</td>
                   <td>${medicine.duration || ""}</td>
                   <td>${medicine.quantity || ""}</td>
             </tr>
