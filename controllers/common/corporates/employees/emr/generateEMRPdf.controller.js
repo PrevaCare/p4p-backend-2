@@ -29,6 +29,7 @@ const sanitizeHtml = (str) => {
 
 // Create EMR PDF with dummy data
 const createEMRPDF = async (req, res) => {
+  console.log("hekooooo-------------------------")
   let browser = null;
   let pdfFilePath = null;
 
@@ -429,6 +430,11 @@ const generateEMRPDF = async (emrPdfData) => {
       });
       console.log('PDF generated successfully');
 
+      // Create a safe filename using emrPdfData._id or timestamp
+      const safeFilename = emrPdfData._id ? 
+        String(emrPdfData._id).replace(/[^a-z0-9]/gi, '_') : 
+        'unknown';
+        
       // Save file with proper path for debugging
       const fileName = `emr_pdf_${safeFilename}_${Date.now()}.pdf`;
       const filePath = path.join(tempDir, fileName);
