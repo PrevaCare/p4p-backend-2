@@ -78,7 +78,7 @@ const SurgicalHistorySchema = new mongoose.Schema({
     },
     transfusedBloodGroup: {
       type: String,
-      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known"],
+      enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known",""],
     },
   },
   surgeon: {
