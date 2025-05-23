@@ -1490,43 +1490,47 @@ const getEPrescriptionPdfById = async (req, res) => {
 };
 
 const getEPrescriptionPdfLinkByemrId = async (req, res) => {
-  const { emrId } = req.params;
-  let browser = null;
-  let pdfFilePath = null;
-  let logoTempPath = null;
+  const { ePrescriptionId } = req.body;
+  const existingEPrescription = await eprescriptionModel.findById(
+    ePrescriptionId
+  );
+  if (!existingEPrescription) {
+    return Response.error(
+      res,
+      404,
+      AppConstant.FAILED,
+      "E-Prescription not found"
+    );
+  }
+
+  // Fetch the latest medicine schedule for the patient
+  const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
+  const patientId = existingEPrescription.user;
 
   try {
-    const emrDoc = await emrModel.findById(emrId);
-    if (!emrDoc) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "EMR not found"
-      );
+    // Get the latest medicine schedule for this patient
+    const latestMedicineSchedule = await MedicineSchedule.findOne({
+      user: patientId,
+      isActive: true,
+    }).sort({ lastModified: -1 });
+
+    // If found, add to the prescription data
+    if (latestMedicineSchedule) {
+      existingEPrescription.medicineSchedule = latestMedicineSchedule;
+      console.log("Latest medicine schedule fetched successfully for PDF link");
+      console.log("Medicine count:", latestMedicineSchedule.medicines.length);
+    } else {
+      console.log("No active medicine schedule found for patient:", patientId);
     }
+  } catch (err) {
+    console.error("Error fetching medicine schedule for PDF link:", err);
+    // Continue execution even if medicine schedule fetch fails
+  }
 
-    // Extract prescriptions from diagnosis, ensuring frequency is included
-    const prescriptions = [];
-    if (emrDoc.diagnosis && Array.isArray(emrDoc.diagnosis)) {
-      emrDoc.diagnosis.forEach((dx) => {
-        if (dx.prescription && Array.isArray(dx.prescription)) {
-          dx.prescription.forEach((p) => {
-            prescriptions.push({
-              drugName: p.drugName,
-              frequency: p.frequency, // Ensure frequency is included
-              duration: p.duration,
-              quantity: p.quantity,
-              advice: p.advice,
-            });
-          });
-        }
-      });
-    }
-
-    console.log("Extracted prescriptions with frequency:", prescriptions);
-
-    // Ensure temp directory exists
+  const pdfLink = existingEPrescription.link;
+  if (pdfLink) {
+    return res.send(pdfLink);
+  } else {
     const tempDir = path.resolve(__dirname, "../../../../../public/temp");
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
@@ -1545,7 +1549,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
 
     // Launch browser
     console.log(
-      "Launching browser for EPrescription PDF link"
+      "Launching browser for EPrescription 1 PDF link with custom port 9222 instead of default 8000"
     );
     browser = await launchPuppeteerBrowser();
     console.log('Browser launched successfully');
@@ -1574,44 +1578,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     } catch (err) {
       console.error("Error loading logo:", err);
     }
-
-    // Create prescription data with all necessary fields, including frequency
-    const prescriptionData = {
-      patient: {
-        name: emrDoc.basicInfo.name,
-        age: emrDoc.basicInfo.age,
-        gender: emrDoc.basicInfo.gender,
-      },
-      doctor: {
-        name: emrDoc.doctor ? emrDoc.doctor.firstName + " " + emrDoc.doctor.lastName : "",
-        education: emrDoc.doctor ? emrDoc.doctor.degree : "",
-        specialization: emrDoc.doctor ? emrDoc.doctor.specialization : "",
-        registrationNumber: emrDoc.doctor ? emrDoc.doctor.medicalRegistrationNumber : "",
-      },
-      date: new Date(),
-      prescriptionID: emrId,
-      vitals: {
-        BP: emrDoc.generalPhysicalExamination?.BP?.sys && emrDoc.generalPhysicalExamination?.BP?.dia 
-            ? `${emrDoc.generalPhysicalExamination.BP.sys}/${emrDoc.generalPhysicalExamination.BP.dia}` 
-            : "",
-        PR: emrDoc.generalPhysicalExamination?.PR || "",
-        SpO2: emrDoc.generalPhysicalExamination?.SPO2 || "",
-      },
-      dx: emrDoc.diagnosis?.map(d => ({
-        diagnosisName: d.diagnosisName,
-        dateOfDiagnosis: d.dateOfDiagnosis,
-      })) || [],
-      sx: emrDoc.history?.chiefComplaint || "",
-      rx: prescriptions, // Now contains frequency from each prescription
-      labTest: [],
-      advice: [],
-      followUpSchedule: emrDoc.followUpSchedule || "",
-      consultationMode: emrDoc.consultationMode || "",
-    };
-
-    console.log("Prescription data with rx containing frequency:", prescriptionData.rx);
-
-    await page.setContent(getPrescriptionHTML(prescriptionData, logoBase64), {
+    await page.setContent(getPrescriptionHTML(existingEPrescription, logoBase64), {
       waitUntil: "networkidle0",
       timeout: 60000,
     });
@@ -1648,50 +1615,32 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     browser = null;
 
     // Save the file to disk
-    const pdfFileName = `Prescription_${emrId}_${Date.now()}.pdf`;
+    const pdfFileName = `Prescription_${existingEPrescription._id
+      }_${Date.now()}.pdf`;
     pdfFilePath = path.join(tempDir, pdfFileName);
     fs.writeFileSync(pdfFilePath, pdfBuffer);
 
     let pdfLink;
-    try {
-      const s3UploadResult = await uploadToS3({
-        buffer: pdfBuffer,
-        originalname: pdfFileName,
-        mimetype: "application/pdf",
-      });
-      console.log("PDF uploaded to S3:", s3UploadResult);
-      pdfLink = s3UploadResult.Location;
-      await emrModel.findByIdAndUpdate(emrId, { link: pdfLink });
-    } catch (uploadErr) {
-      console.error("Error uploading PDF to S3:", uploadErr);
-      // Continue execution even if S3 upload fails
+    if (!existingEPrescription.link) {
+      try {
+        const s3UploadResult = await uploadToS3({
+          buffer: pdfBuffer,
+          originalname: pdfFileName,
+          mimetype: "application/pdf",
+        });
+        console.log("PDF uploaded to S3:", s3UploadResult);
+        pdfLink = s3UploadResult.Location;
+        await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
+          link: pdfLink,
+        });
+      } catch (uploadErr) {
+        console.error("Error uploading PDF to S3:", uploadErr);
+        // Continue execution even if S3 upload fails
+      }
     }
 
     // Use res.download instead of res.send
     return res.send(pdfLink);
-  } catch (err) {
-    console.error("Error launching browser:", err);
-    return Response.error(
-      res,
-      500,
-      AppConstant.FAILED,
-      "Failed to generate e-prescription PDF: " + err.message
-    );
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (closeErr) {
-        console.error("Error closing browser:", closeErr);
-      }
-    }
-    if (logoTempPath && fs.existsSync(logoTempPath)) {
-      try {
-        fs.unlinkSync(logoTempPath);
-      } catch (err) {
-        console.error("Error removing temporary logo:", err);
-      }
-    }
   }
 };
 
