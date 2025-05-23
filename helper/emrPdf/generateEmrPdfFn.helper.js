@@ -331,7 +331,7 @@ const generatePrescriptionPDFFn = async (prescription, res) => {
         rows: prescription.rx.map((med, index) => [
           (index + 1).toString(),
           med.drugName,
-          `    ${med.freequency}`,
+          `    ${med.frequency || med.freequency}`,
           med.duration,
           med.quantity,
         ]),

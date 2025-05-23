@@ -731,7 +731,7 @@ exports.getMedicineSchedulesFromEMRs = async (req, res) => {
               medicines.push({
                 drugName: med.drugName || "Unnamed medication",
                 dosage: med.quantity || "As prescribed",
-                frequency: med.freequency || "As directed",
+                frequency: med.frequency || med.freequency || "As directed",
                 timing: med.howToTake ? [med.howToTake] : [],
                 instructions: med.advice || "",
                 date: diag.dateOfDiagnosis,
