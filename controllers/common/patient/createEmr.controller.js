@@ -233,6 +233,7 @@ const createEMR = async (req, res) => {
           ? req.body.diagnosis[0].prescription.map((item) => ({
               drugName: item?.drugName || "",
               freequency: item?.freequency || "",
+              frequency: item?.frequency || "",
               duration: item?.duration || "",
               quantity: item?.quantity || "",
             }))
@@ -240,6 +241,7 @@ const createEMR = async (req, res) => {
               {
                 drugName: "",
                 freequency: "",
+                frequency: "",
                 duration: "",
                 quantity: "",
               },
