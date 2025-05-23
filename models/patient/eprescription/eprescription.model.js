@@ -8,7 +8,7 @@ const VitalsSchema = new mongoose.Schema({
 
 const PrescribedMedicationSchema = new mongoose.Schema({
   drugName: String,
-  freequency: String,
+  frequency: String,
   duration: String,
   quantity: String,
 });

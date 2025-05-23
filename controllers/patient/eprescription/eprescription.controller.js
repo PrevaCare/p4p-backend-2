@@ -295,7 +295,7 @@ const generatePrescriptionPDF = async (prescription) => {
     doc.text(`LAB TEST : ${prescription.labTest.join(", ")}`, 70, doc.y + 20);
     if (prescription.consultationMode !== "online")
       doc.text(
-        `VITALS:  BP : ${prescription.vitals.BP} mmHg          PR: ${prescription.vitals.PR} bpm          SpO2: ${prescription.vitals.SpO2} %`,
+        `VITALS:  BP : ${prescription.vitals.BP} mmHg          PR: ${prescription.vitals.PR} bpm          SpO2: ${prescription.vitals.SpO2} %`,
         70,
         doc.y + 20
       );
@@ -315,7 +315,7 @@ const generatePrescriptionPDF = async (prescription) => {
         rows: prescription.rx.map((med, index) => [
           (index + 1).toString(),
           med.drugName,
-          med.frequency,
+          med.frequency || med.freequency,
           med.duration,
           med.quantity,
         ]),
