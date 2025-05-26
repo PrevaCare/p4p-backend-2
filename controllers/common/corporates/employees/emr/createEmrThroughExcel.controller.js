@@ -691,8 +691,6 @@ const createAllEmployeeEmrThroughExcel = async (req, res) => {
 
     const doctorPhoneArr = data.map((item) => item["Doctor Phone"]);
     const employeePhoneArr = data.map((item) => item["Phone Number"]);
-    // console.log(doctorPhoneArr);
-    // console.log(employeePhoneArr);
 
     const doctorPhoneAndIds = await validateDoctorByPhone(
       doctorPhoneArr,

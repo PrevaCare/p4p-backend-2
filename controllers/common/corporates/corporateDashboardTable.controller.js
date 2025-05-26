@@ -14,9 +14,6 @@ const AppConstant = require("../../../utils/AppConstant");
 const corporateDashboardTable = async (req, res) => {
   try {
     const { corporateId, limit = 10 } = req.body;
-    console.log("Corporate ID:", corporateId);
-    console.log("Limit:", limit);
-    console.log("Request Body:", req.body);
 
     // Validate required fields
     if (!corporateId) {
@@ -32,8 +29,6 @@ const corporateDashboardTable = async (req, res) => {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    console.log("Looking for records after date:", oneWeekAgo);
-
     // Debug the database for a specific user
     const debugUserId = "6745972f0ad688f88d0d8704";
 
@@ -41,25 +36,21 @@ const corporateDashboardTable = async (req, res) => {
     const bmiTest = await PatientBmi.find({
       patientId: new mongoose.Types.ObjectId(debugUserId),
     }).sort({ date: -1 });
-    console.log("BMI Test Records found:", bmiTest.length);
-    if (bmiTest.length > 0) {
-      console.log("Sample BMI record:", bmiTest[0]);
-    }
 
     // Get collection names from Mongoose models
-    console.log("Collection names from models:");
-    console.log("PatientBmi collection:", PatientBmi.collection.name);
-    console.log("PatientBp collection:", PatientBp.collection.name);
-    console.log(
-      "PatientWaterIntake collection:",
-      PatientWaterIntake.collection.name
-    );
-    console.log("PatientMood collection:", PatientMood.collection.name);
-    console.log(
-      "PatientBloodGlucose collection:",
-      PatientBloodGlucose.collection.name
-    );
-    console.log("PatientSleep collection:", PatientSleep.collection.name);
+    // console.log("Collection names from models:");
+    // console.log("PatientBmi collection:", PatientBmi.collection.name);
+    // console.log("PatientBp collection:", PatientBp.collection.name);
+    // console.log(
+    //   "PatientWaterIntake collection:",
+    //   PatientWaterIntake.collection.name
+    // );
+    // console.log("PatientMood collection:", PatientMood.collection.name);
+    // console.log(
+    //   "PatientBloodGlucose collection:",
+    //   PatientBloodGlucose.collection.name
+    // );
+    // console.log("PatientSleep collection:", PatientSleep.collection.name);
 
     // Aggregate data
     const employees = await Employee.aggregate([
