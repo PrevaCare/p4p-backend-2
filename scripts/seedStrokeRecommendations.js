@@ -54,9 +54,8 @@ mongoose
       console.log("Cleared existing stroke recommendations");
 
       // Insert new recommendations
-      const result = await StrokeRecommendations.insertMany(
-        recommendationsData
-      );
+      const result =
+        await StrokeRecommendations.insertMany(recommendationsData);
       console.log(
         `Successfully inserted ${result.length} stroke recommendation records`
       );

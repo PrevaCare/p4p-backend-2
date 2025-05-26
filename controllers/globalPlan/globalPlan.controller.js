@@ -330,9 +330,8 @@ const addGlobalPlan = async (req, res) => {
                   );
                 } else {
                   // If featureId exists, check if we need to update type/subType
-                  const existingFeature = await BooleanFeature.findById(
-                    actualFeatureId
-                  );
+                  const existingFeature =
+                    await BooleanFeature.findById(actualFeatureId);
                   if (existingFeature) {
                     if (
                       (featureType !== "Others" &&
@@ -507,9 +506,8 @@ const addGlobalPlan = async (req, res) => {
               );
             } else {
               // If featureId exists, check if we need to update type/subType
-              const existingFeature = await CountFeature.findById(
-                actualFeatureId
-              );
+              const existingFeature =
+                await CountFeature.findById(actualFeatureId);
               if (existingFeature) {
                 if (
                   (featureType !== "Others" &&

@@ -207,13 +207,13 @@ const healthTrackerController = {
               // date: latestBP.date,
             }
           : latestEMR?.generalPhysicalExamination?.BP
-          ? {
-              sys: latestEMR.generalPhysicalExamination.BP.sys,
-              dia: latestEMR.generalPhysicalExamination.BP.dia,
-              unit: "mmHg",
-              // date: latestEMR.createdAt,
-            }
-          : null,
+            ? {
+                sys: latestEMR.generalPhysicalExamination.BP.sys,
+                dia: latestEMR.generalPhysicalExamination.BP.dia,
+                unit: "mmHg",
+                // date: latestEMR.createdAt,
+              }
+            : null,
 
         bmi: latestBMI
           ? {
@@ -223,12 +223,12 @@ const healthTrackerController = {
               // date: latestBMI.date,
             }
           : latestEMR?.generalPhysicalExamination?.BMI
-          ? {
-              value: latestEMR.generalPhysicalExamination.BMI.toFixed(2),
-              unit: "Kg/m2",
-              // date: latestEMR.createdAt,
-            }
-          : null,
+            ? {
+                value: latestEMR.generalPhysicalExamination.BMI.toFixed(2),
+                unit: "Kg/m2",
+                // date: latestEMR.createdAt,
+              }
+            : null,
 
         spo2: latestSPO2
           ? {
@@ -238,12 +238,12 @@ const healthTrackerController = {
               // date: latestSPO2.date,
             }
           : latestEMR?.generalPhysicalExamination?.SPO2
-          ? {
-              value: latestEMR.generalPhysicalExamination.SPO2,
-              unit: "%",
-              // date: latestEMR.createdAt,
-            }
-          : null,
+            ? {
+                value: latestEMR.generalPhysicalExamination.SPO2,
+                unit: "%",
+                // date: latestEMR.createdAt,
+              }
+            : null,
 
         pulseRate: latestPR
           ? {
@@ -253,12 +253,12 @@ const healthTrackerController = {
               // date: latestPR.date,
             }
           : latestEMR?.generalPhysicalExamination?.PR
-          ? {
-              value: latestEMR.generalPhysicalExamination.PR,
-              unit: "bpm",
-              // date: latestEMR.createdAt,
-            }
-          : null,
+            ? {
+                value: latestEMR.generalPhysicalExamination.PR,
+                unit: "bpm",
+                // date: latestEMR.createdAt,
+              }
+            : null,
 
         weight: latestWeight
           ? {
@@ -268,12 +268,12 @@ const healthTrackerController = {
               // date: latestWeight.date,
             }
           : latestEMR?.generalPhysicalExamination?.weight
-          ? {
-              value: latestEMR.generalPhysicalExamination.weight,
-              unit: "Kg",
-              // date: latestEMR.createdAt,
-            }
-          : null,
+            ? {
+                value: latestEMR.generalPhysicalExamination.weight,
+                unit: "Kg",
+                // date: latestEMR.createdAt,
+              }
+            : null,
         sleep: latestSleep
           ? {
               value: latestSleep.sleep,
@@ -282,12 +282,12 @@ const healthTrackerController = {
               // date: latestWeight.date,
             }
           : latestEMR?.history?.sleep
-          ? {
-              value: latestEMR.history.sleep,
-              unit: "hrs",
-              // date: latestEMR.createdAt,
-            }
-          : null,
+            ? {
+                value: latestEMR.history.sleep,
+                unit: "hrs",
+                // date: latestEMR.createdAt,
+              }
+            : null,
 
         height: latestEMR?.generalPhysicalExamination?.height
           ? {

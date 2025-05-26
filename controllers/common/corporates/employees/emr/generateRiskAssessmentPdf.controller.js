@@ -56,31 +56,32 @@ const generateRiskAssessmentPDF = async (req, res) => {
     try {
       const options = {
         headless: "new",
-        executablePath: process.platform === 'win32'
-          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-          : process.platform === 'linux'
-            ? '/usr/bin/google-chrome'
-            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        executablePath:
+          process.platform === "win32"
+            ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            : process.platform === "linux"
+              ? "/usr/bin/google-chrome"
+              : "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins',
-          '--disable-site-isolation-trials'
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-web-security",
+          "--disable-features=IsolateOrigins",
+          "--disable-site-isolation-trials",
         ],
         timeout: 60000,
-        protocolTimeout: 60000
+        protocolTimeout: 60000,
       };
 
       // Check for Chrome executable in different locations
       const possiblePaths = [
         process.env.PUPPETEER_EXECUTABLE_PATH, // First check if explicitly set in env
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium',
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable'
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
       ];
 
       let executablePath = null;
@@ -92,26 +93,31 @@ const generateRiskAssessmentPDF = async (req, res) => {
       }
 
       if (executablePath) {
-        console.log('Using Chrome executable path:', executablePath);
+        console.log("Using Chrome executable path:", executablePath);
         options.executablePath = executablePath;
       } else {
-        console.log('No Chrome executable found in standard locations, using bundled Chromium');
+        console.log(
+          "No Chrome executable found in standard locations, using bundled Chromium"
+        );
         // Let Puppeteer use its bundled version
         delete options.executablePath;
       }
 
-      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
+      console.log(
+        "Launching browser with options:",
+        JSON.stringify(options, null, 2)
+      );
       browser = await puppeteer.launch(options);
 
       if (!browser) {
-        throw new Error('Browser launch returned null');
+        throw new Error("Browser launch returned null");
       }
 
-      console.log('Browser launched successfully');
+      console.log("Browser launched successfully");
 
       // Create a new page
       const page = await browser.newPage();
-      console.log('New page created');
+      console.log("New page created");
 
       // Set viewport
       await page.setViewport({ width: 1200, height: 800 });
@@ -285,10 +291,10 @@ const generateRiskAssessmentPDF = async (req, res) => {
         waitUntil: ["networkidle0", "domcontentloaded"],
         timeout: 30000,
       });
-      console.log('Page content set successfully');
+      console.log("Page content set successfully");
 
       // Wait for any dynamic content to settle
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Generate PDF
       const pdfBuffer = await page.pdf({
@@ -301,12 +307,14 @@ const generateRiskAssessmentPDF = async (req, res) => {
           left: "15mm",
         },
         displayHeaderFooter: true,
-        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Risk Assessment Report</div>',
-        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
+        headerTemplate:
+          '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Risk Assessment Report</div>',
+        footerTemplate:
+          '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;">© 2025 Preva Care</div></div>',
         preferCSSPageSize: true,
         timeout: 30000,
       });
-      console.log('PDF generated successfully');
+      console.log("PDF generated successfully");
 
       const pdfFileName = `RiskAssessment_${employeeId}_${Date.now()}.pdf`;
       pdfFilePath = path.join(tempDir, pdfFileName);
@@ -325,15 +333,15 @@ const generateRiskAssessmentPDF = async (req, res) => {
         return res.download(pdfFilePath, pdfFileName);
       }
     } catch (err) {
-      console.error('Error in PDF generation:', err);
+      console.error("Error in PDF generation:", err);
       throw err;
     } finally {
       if (browser) {
         try {
           await browser.close();
-          console.log('Browser closed successfully');
+          console.log("Browser closed successfully");
         } catch (closeErr) {
-          console.error('Error closing browser:', closeErr);
+          console.error("Error closing browser:", closeErr);
         }
       }
       // Clean up temp files
@@ -414,22 +422,22 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Coronary Heart Disease Risk Assessment</h4>
             ${renderTable(
-    coronaryHeartData,
-    ["Date", "Risk Percentage", "Risk Level"],
-    (assessment) => `
+              coronaryHeartData,
+              ["Date", "Risk Percentage", "Risk Level"],
+              (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.riskPercentage}%</td>
                         <td class="risk-level-cell">
                             <span class="risk-level ${getRiskLevelClass(
-      assessment.riskLevel
-    )}">
+                              assessment.riskLevel
+                            )}">
                                 ${assessment.riskLevel || "Not Available"}
                             </span>
                         </td>
                     </tr>
                 `
-  )}
+            )}
         </div>
     `);
 
@@ -438,22 +446,22 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Diabetic Risk Assessment</h4>
             ${renderTable(
-    diabeticRiskScoreData,
-    ["Date", "Total Score", "Risk Level"],
-    (assessment) => `
+              diabeticRiskScoreData,
+              ["Date", "Total Score", "Risk Level"],
+              (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.totalScore}</td>
                         <td class="risk-level-cell">
                             <span class="risk-level ${getRiskLevelClass(
-      assessment.riskLevel
-    )}">
+                              assessment.riskLevel
+                            )}">
                                 ${assessment.riskLevel || "Not Available"}
                             </span>
                         </td>
                     </tr>
                 `
-  )}
+            )}
         </div>
     `);
 
@@ -462,9 +470,9 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Stroke Risk Assessment</h4>
             ${renderTable(
-    strokeRiskScoreData,
-    ["Date", "Lower Risk Score", "Higher Risk Score", "Description"],
-    (assessment) => `
+              strokeRiskScoreData,
+              ["Date", "Lower Risk Score", "Higher Risk Score", "Description"],
+              (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.lowerRiskScore}</td>
@@ -472,7 +480,7 @@ function getRiskAssessmentHTML(data) {
                         <td>${assessment.desc || "Not Available"}</td>
                     </tr>
                 `
-  )}
+            )}
         </div>
     `);
 
@@ -481,22 +489,22 @@ function getRiskAssessmentHTML(data) {
         <div class="section-container">
             <h4 class="section-title">Liver Risk Assessment</h4>
             ${renderTable(
-    liverRiskScoreData,
-    ["Date", "Risk Score", "Risk Level"],
-    (assessment) => `
+              liverRiskScoreData,
+              ["Date", "Risk Score", "Risk Level"],
+              (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
                         <td>${assessment.riskScore}</td>
                         <td class="risk-level-cell">
                             <span class="risk-level ${getRiskLevelClass(
-      assessment.riskLevel
-    )}">
+                              assessment.riskLevel
+                            )}">
                                 ${assessment.riskLevel || "Not Available"}
                             </span>
                         </td>
                     </tr>
                 `
-  )}
+            )}
         </div>
     `);
 

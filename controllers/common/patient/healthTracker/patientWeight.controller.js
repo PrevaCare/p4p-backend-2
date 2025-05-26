@@ -105,16 +105,18 @@ const getAllPatientWeightsByDateRange = async (req, res) => {
     // Set end date to end of day (23:59:59)
     const endDateTime = dayjs(endDate).endOf("day").toDate();
 
-    const data = await patientWeightModel.find(
-      {
-        patientId,
-        date: {
-          $gte: startDateTime,
-          $lte: endDateTime,
+    const data = await patientWeightModel
+      .find(
+        {
+          patientId,
+          date: {
+            $gte: startDateTime,
+            $lte: endDateTime,
+          },
         },
-      },
-      "patientId weight weightGoal date measurementUnit"
-    ).sort({ date: -1 });
+        "patientId weight weightGoal date measurementUnit"
+      )
+      .sort({ date: -1 });
 
     return Response.success(
       res,

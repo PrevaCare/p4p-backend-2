@@ -343,20 +343,20 @@ const getAllDiabeticRiskCalculatorDateAndRisk = async (req, res) => {
                 standardizedRiskLevel === "High"
                   ? "Follow a strict low-sugar, high-fiber diet."
                   : standardizedRiskLevel === "Moderate"
-                  ? "Limit sugar intake and increase vegetables and whole grains."
-                  : "Maintain a balanced diet with limited refined carbohydrates.",
+                    ? "Limit sugar intake and increase vegetables and whole grains."
+                    : "Maintain a balanced diet with limited refined carbohydrates.",
               medicalRecommendation:
                 standardizedRiskLevel === "High"
                   ? "Consult your doctor regularly for blood sugar monitoring."
                   : standardizedRiskLevel === "Moderate"
-                  ? "Schedule regular blood sugar checks every 6 months."
-                  : "Annual blood sugar screening is recommended.",
+                    ? "Schedule regular blood sugar checks every 6 months."
+                    : "Annual blood sugar screening is recommended.",
               physicalActivityRecommendation:
                 standardizedRiskLevel === "High"
                   ? "Light exercise as approved by your doctor."
                   : standardizedRiskLevel === "Moderate"
-                  ? "Moderate exercise 3-4 times per week."
-                  : "Regular physical activity for 30 minutes daily.",
+                    ? "Moderate exercise 3-4 times per week."
+                    : "Regular physical activity for 30 minutes daily.",
             };
           } else {
             // Convert Mongoose document to plain object

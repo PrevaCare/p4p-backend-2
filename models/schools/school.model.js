@@ -14,49 +14,52 @@ const defaultClasses = [
   { className: "X", sections: ["A", "B", "C", "D"] },
 ];
 
-const SchoolSchema = new mongoose.Schema({
-  schoolName: {
-    type: String,
-    required: true,
-  },
-  logo: { type: String },
-  addresses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Address" }],
-  department: { type: String, required: true },
-  designation: { type: String, required: true },
-  classes: {
-    type: [
+const SchoolSchema = new mongoose.Schema(
+  {
+    schoolName: {
+      type: String,
+      required: true,
+    },
+    logo: { type: String },
+    addresses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Address" }],
+    department: { type: String, required: true },
+    designation: { type: String, required: true },
+    classes: {
+      type: [
+        {
+          className: {
+            type: String,
+            enum: [
+              "I",
+              "II",
+              "III",
+              "IV",
+              "V",
+              "VI",
+              "VII",
+              "VIII",
+              "IX",
+              "X",
+              "XI",
+              "XII",
+            ],
+          },
+          sections: {
+            type: [String],
+            enum: ["A", "B", "C", "D"],
+          },
+        },
+      ],
+      default: defaultClasses,
+    },
+    assignedDoctors: [
       {
-        className: {
-          type: String,
-          enum: [
-            "I",
-            "II",
-            "III",
-            "IV",
-            "V",
-            "VI",
-            "VII",
-            "VIII",
-            "IX",
-            "X",
-            "XI",
-            "XII",
-          ],
-        },
-        sections: {
-          type: [String],
-          enum: ["A", "B", "C", "D"],
-        },
+        type: mongoose.Schema.Types.ObjectId,
       },
     ],
-    default: defaultClasses,
   },
-  assignedDoctors: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-    },
-  ],
-}, { timestamps: true });
+  { timestamps: true }
+);
 
 // Pre-save middleware to set default classes and sections if not provided
 SchoolSchema.pre("save", function (next) {

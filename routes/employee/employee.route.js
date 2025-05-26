@@ -20,7 +20,10 @@ const {
   getAllStrokeRiskCalculatorDateAndLowerHigherVal,
 } = require("../../controllers/patient/riskAssessments/strokeRiskCalculate.controller");
 const { verifyToken } = require("../../middlewares/jwt/permission");
-const { upload, anyFileUpload } = require("../../middlewares/uploads/multerConfig");
+const {
+  upload,
+  anyFileUpload,
+} = require("../../middlewares/uploads/multerConfig");
 const {
   getUserHealthEngagement,
 } = require("../../controllers/employee/employeeHealthEngagement.controller");

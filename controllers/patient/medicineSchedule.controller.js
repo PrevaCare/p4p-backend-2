@@ -10,7 +10,9 @@ const {
   employeeMedicinesValidationSchema,
 } = require("../../validators/patient/employeeMedicines.validation");
 const puppeteer = require("puppeteer");
-const { launchPuppeteerBrowser } = require("../common/corporates/employees/emr/generateEMRPdf.controller");
+const {
+  launchPuppeteerBrowser,
+} = require("../common/corporates/employees/emr/generateEMRPdf.controller");
 
 // 1. Get medicine schedules for Individual User - App API
 exports.getMedicineSchedulesForUser = async (req, res) => {
@@ -583,7 +585,7 @@ exports.syncScheduleWithEMR = async (req, res) => {
             medicineToUpdate.frequency !== newMed.frequency ||
             medicineToUpdate.dosage !== newMed.dosage ||
             JSON.stringify(medicineToUpdate.timing) !==
-            JSON.stringify(newMed.timing) ||
+              JSON.stringify(newMed.timing) ||
             medicineToUpdate.instructions !== newMed.instructions
           ) {
             medicineToUpdate.medicineHistory.push({
@@ -762,7 +764,7 @@ exports.getMedicineSchedulesFromEMRs = async (req, res) => {
       500,
       AppConstant.FAILED,
       error.message ||
-      "Internal server error while fetching EMR medicine schedules"
+        "Internal server error while fetching EMR medicine schedules"
     );
   }
 };
@@ -1607,7 +1609,7 @@ exports.getCorporateEmployeeMedicines = async (req, res) => {
       500,
       AppConstant.FAILED,
       error.message ||
-      "Internal server error while retrieving employee medicines"
+        "Internal server error while retrieving employee medicines"
     );
   }
 };
@@ -1708,7 +1710,7 @@ exports.getMedicinePDFLinkByUserId = async (req, res) => {
     try {
       browser = await launchPuppeteerBrowser();
       if (!browser) {
-        throw new Error('Browser launch returned null');
+        throw new Error("Browser launch returned null");
       }
     } catch (browserError) {
       console.error("Error launching browser:", browserError);
@@ -2109,7 +2111,7 @@ exports.generateMedicinePDF = async (req, res) => {
     try {
       browser = await launchPuppeteerBrowser();
       if (!browser) {
-        throw new Error('Browser launch returned null');
+        throw new Error("Browser launch returned null");
       }
     } catch (browserError) {
       console.error("Error launching browser:", browserError);
@@ -2491,55 +2493,57 @@ const getMedicinePDFTableHTML = (user, medicineSchedule, logoBase64) => {
       </thead>
       <tbody>
         ${medicineSchedule.medicines
-      .map((med) => {
-        // Format timing array to readable string
-        const timingStr =
-          med.timing && med.timing.length > 0
-            ? med.timing.join(", ")
-            : "As directed";
+          .map((med) => {
+            // Format timing array to readable string
+            const timingStr =
+              med.timing && med.timing.length > 0
+                ? med.timing.join(", ")
+                : "As directed";
 
-        // Get doctor name if available
-        let doctorName = "N/A";
-        if (med.source && med.source.doctor) {
-          const doctor = med.source.doctor;
-          if (typeof doctor === "object" && doctor.firstName) {
-            doctorName = `Dr. ${doctor.firstName} ${doctor.lastName || ""}`;
-            if (doctor.specialization) {
-              doctorName += ` (${doctor.specialization})`;
+            // Get doctor name if available
+            let doctorName = "N/A";
+            if (med.source && med.source.doctor) {
+              const doctor = med.source.doctor;
+              if (typeof doctor === "object" && doctor.firstName) {
+                doctorName = `Dr. ${doctor.firstName} ${doctor.lastName || ""}`;
+                if (doctor.specialization) {
+                  doctorName += ` (${doctor.specialization})`;
+                }
+              }
             }
-          }
-        }
 
-        // Format start date
-        const startDate = med.startDate
-          ? new Date(med.startDate).toLocaleDateString()
-          : "N/A";
+            // Format start date
+            const startDate = med.startDate
+              ? new Date(med.startDate).toLocaleDateString()
+              : "N/A";
 
-        // Format end date if available
-        const endDate = med.endDate
-          ? new Date(med.endDate).toLocaleDateString()
-          : "Ongoing";
+            // Format end date if available
+            const endDate = med.endDate
+              ? new Date(med.endDate).toLocaleDateString()
+              : "Ongoing";
 
-        // Period string
-        const periodStr = `${startDate} to ${endDate}`;
+            // Period string
+            const periodStr = `${startDate} to ${endDate}`;
 
-        return `
+            return `
             <tr>
-              <td><strong>${med.drugName}</strong>${med.instructions
-            ? `<br><small><em>${med.instructions}</em></small>`
-            : ""
-          }</td>
+              <td><strong>${med.drugName}</strong>${
+                med.instructions
+                  ? `<br><small><em>${med.instructions}</em></small>`
+                  : ""
+              }</td>
               <td>${med.dosage}</td>
               <td>${med.frequency}</td>
               <td>${timingStr}</td>
               <td>${periodStr}</td>
-              <td><span class="status-pill status-${med.status.toLowerCase()}">${med.status
-          }</span></td>
+              <td><span class="status-pill status-${med.status.toLowerCase()}">${
+                med.status
+              }</span></td>
               <td>${doctorName}</td>
             </tr>
           `;
-      })
-      .join("")}
+          })
+          .join("")}
       </tbody>
     </table>
   `;

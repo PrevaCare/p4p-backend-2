@@ -136,9 +136,8 @@ mongoose
       console.log("Cleared existing diabetic recommendations");
 
       // Insert new recommendations
-      const result = await DiabeticRecommendations.insertMany(
-        recommendationsData
-      );
+      const result =
+        await DiabeticRecommendations.insertMany(recommendationsData);
       console.log(
         `Successfully inserted ${result.length} diabetic recommendation records`
       );

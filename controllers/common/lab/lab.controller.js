@@ -96,8 +96,7 @@ const createLab = async (req, res) => {
             state: normalizedState,
             pincode: cityData.zipCode,
           });
-        }
-        else {
+        } else {
           city = await City.findOne({
             cityName: normalizedCityName,
             state: normalizedState,
@@ -137,8 +136,7 @@ const createLab = async (req, res) => {
               pincode: cityData.zipCode,
               isActive: true,
             });
-          }
-          else {
+          } else {
             city = await City.create({
               cityName: normalizedCityName,
               state: normalizedState,
@@ -148,7 +146,6 @@ const createLab = async (req, res) => {
             });
           }
           console.log("city created", city);
-
         }
 
         // Add to available cities

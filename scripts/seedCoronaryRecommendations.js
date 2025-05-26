@@ -390,9 +390,8 @@ mongoose
       console.log("Cleared existing recommendations");
 
       // Insert new recommendations
-      const result = await CoronaryRecommendations.insertMany(
-        recommendationsData
-      );
+      const result =
+        await CoronaryRecommendations.insertMany(recommendationsData);
       console.log(
         `Successfully inserted ${result.length} recommendation records`
       );

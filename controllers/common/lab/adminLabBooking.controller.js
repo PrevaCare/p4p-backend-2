@@ -9,7 +9,11 @@ const {
   labBookingStatusUpdateSchema,
 } = require("../../../validators/lab/labBooking.validator");
 const { razorpayInstance } = require("../../../config/razorpay.config");
-const { sendLabTestScheduleMsg, sentLabReportReadyMsg, sendCustomLabReportMsg } = require("../../../helper/otp/sentOtp.helper");
+const {
+  sendLabTestScheduleMsg,
+  sentLabReportReadyMsg,
+  sendCustomLabReportMsg,
+} = require("../../../helper/otp/sentOtp.helper");
 
 /**
  * Get all lab test/package bookings for admin
@@ -30,7 +34,7 @@ const getAllLabBookings = async (req, res) => {
 
     // Replace '+' with spaces, remove trailing ' z'
     if (rawDate != null) {
-      const cleanedDateStr = rawDate.replace(/\+/g, ' ').replace(' z', '');
+      const cleanedDateStr = rawDate.replace(/\+/g, " ").replace(" z", "");
 
       // Parse the string into a Date object
       parsedDate = new Date(cleanedDateStr);
@@ -67,8 +71,6 @@ const getAllLabBookings = async (req, res) => {
 
       query.scheduledDate = { $gte: start, $lt: end };
     }
-
-
 
     // Sort options
     const sortOptions = {};
@@ -258,7 +260,10 @@ const updateLabBookingStatus = async (req, res) => {
     } = value;
 
     // Find the booking
-    const booking = await LabBooking.findById(bookingId).populate("bookedFor", "phone firstName lastName");
+    const booking = await LabBooking.findById(bookingId).populate(
+      "bookedFor",
+      "phone firstName lastName"
+    );
     if (!booking) {
       return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
     }
@@ -322,7 +327,6 @@ const updateLabBookingStatus = async (req, res) => {
       await sentLabReportReadyMsg(booking.bookedFor.phone);
     }
 
-
     return Response.success(res, booking, 200, "Booking updated successfully");
   } catch (error) {
     console.error("Error updating booking status:", error);
@@ -384,8 +388,9 @@ const generatePaymentLink = async (req, res) => {
 
     // Format the customer name properly
     const customerName =
-      `${booking.bookedby.firstName || ""} ${booking.bookedby.lastName || ""
-        }`.trim() || "Customer";
+      `${booking.bookedby.firstName || ""} ${
+        booking.bookedby.lastName || ""
+      }`.trim() || "Customer";
 
     // Generate a payment link using Razorpay - following their exact API format
     const paymentLinkData = {
@@ -410,17 +415,17 @@ const generatePaymentLink = async (req, res) => {
         service_name: serviceName,
         booking_type: booking.bookingType,
       },
-      callback_url: `${process.env.FRONTEND_URL || "https://preva.care"
-        }/payment/callback?bookingId=${bookingId}`,
+      callback_url: `${
+        process.env.FRONTEND_URL || "https://preva.care"
+      }/payment/callback?bookingId=${bookingId}`,
       callback_method: "get",
       reference_id: reference_id,
     };
 
     try {
       // Create payment link using Razorpay API
-      const paymentLink = await razorpayInstance.paymentLink.create(
-        paymentLinkData
-      );
+      const paymentLink =
+        await razorpayInstance.paymentLink.create(paymentLinkData);
 
       // Update booking with payment link details
       booking.paymentLink = paymentLink.short_url;
@@ -455,9 +460,10 @@ const generatePaymentLink = async (req, res) => {
         res,
         500,
         AppConstant.FAILED,
-        `Error from payment gateway: ${razorpayError.error?.description ||
-        razorpayError.message ||
-        "Unknown payment gateway error"
+        `Error from payment gateway: ${
+          razorpayError.error?.description ||
+          razorpayError.message ||
+          "Unknown payment gateway error"
         }`
       );
     }
@@ -583,15 +589,17 @@ const uploadLabReport = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
     }
 
-    // Update report file 
+    // Update report file
     const files = req.files.reportFile;
-    const reportFiles = await Promise.all(files.map(async (file) => {
-      const uploadResult = await uploadToS3(file);
-      return {
-        fileName: file.originalname,
-        url: uploadResult.Location,
-      };
-    }));
+    const reportFiles = await Promise.all(
+      files.map(async (file) => {
+        const uploadResult = await uploadToS3(file);
+        return {
+          fileName: file.originalname,
+          url: uploadResult.Location,
+        };
+      })
+    );
     console.log(reportFiles);
     const bookerFor = booking.bookedFor;
 

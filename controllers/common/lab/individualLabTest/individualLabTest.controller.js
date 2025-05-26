@@ -16,15 +16,8 @@ const {
  */
 const createIndividualLabTest = async (req, res) => {
   try {
-    const {
-      lab,
-      category,
-      testName,
-      testCode,
-      desc,
-      gender,
-      ageGroup,
-    } = req.body;
+    const { lab, category, testName, testCode, desc, gender, ageGroup } =
+      req.body;
 
     const sampleRequired = JSON.parse(req.body.sampleRequired);
     const preparationRequired = JSON.parse(req.body.preparationRequired);
@@ -177,7 +170,10 @@ const createIndividualLabTest = async (req, res) => {
             continue;
           }
 
-          if (!cityData.discountPercentage && cityData.discountPercentage !== 0) {
+          if (
+            !cityData.discountPercentage &&
+            cityData.discountPercentage !== 0
+          ) {
             errors.push(
               `City-specific discount percentage is required for ${cityDocument.cityName}`
             );
@@ -194,10 +190,16 @@ const createIndividualLabTest = async (req, res) => {
             isActive: cityData.isActive !== false,
             billingRate: parseFloat(cityData.billingRate || 0),
             partnerRate: parseFloat(cityData.partnerRate || 0),
-            prevaCarePriceForCorporate: parseFloat(cityData.prevaCarePriceForCorporate || 0),
-            prevaCarePriceForIndividual: parseFloat(cityData.prevaCarePriceForIndividual || 0),
+            prevaCarePriceForCorporate: parseFloat(
+              cityData.prevaCarePriceForCorporate || 0
+            ),
+            prevaCarePriceForIndividual: parseFloat(
+              cityData.prevaCarePriceForIndividual || 0
+            ),
             discountPercentage: parseFloat(cityData.discountPercentage || 0),
-            homeCollectionCharge: parseFloat(cityData.homeCollectionCharge || 0),
+            homeCollectionCharge: parseFloat(
+              cityData.homeCollectionCharge || 0
+            ),
             homeCollectionAvailable:
               cityData.homeCollectionAvailable !== undefined
                 ? Boolean(cityData.homeCollectionAvailable)

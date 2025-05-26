@@ -83,11 +83,18 @@ const sendMessage = async (mobile, templateId) => {
   }
 };
 
-const sendBookingMsgToDoctor = async (mobile, doctorName, patientname, appointmentDate, startTime) => {
+const sendBookingMsgToDoctor = async (
+  mobile,
+  doctorName,
+  patientname,
+  appointmentDate,
+  startTime
+) => {
   const authKey = process.env.MSG91_AUTH_KEY;
   const senderId = process.env.MSG91_SENDER_ID;
   const route = process.env.MSG91_ROUTE;
-  const templateId = process.env.MSG91_APPOINTMENT_BOOKED_TEMPLATE_ID_FOR_DOCTOR;
+  const templateId =
+    process.env.MSG91_APPOINTMENT_BOOKED_TEMPLATE_ID_FOR_DOCTOR;
 
   const url = `https://control.msg91.com/api/v5/flow/`;
 
@@ -127,12 +134,18 @@ const sendBookingMsgToDoctor = async (mobile, doctorName, patientname, appointme
   }
 };
 
-
-const sendBookingMsgToPatient = async (mobile, patientname, doctorName, appointmentDate, startTime) => {
+const sendBookingMsgToPatient = async (
+  mobile,
+  patientname,
+  doctorName,
+  appointmentDate,
+  startTime
+) => {
   const authKey = process.env.MSG91_AUTH_KEY;
   const senderId = process.env.MSG91_SENDER_ID;
   const route = process.env.MSG91_ROUTE;
-  const templateId = process.env.MSG91_APPOINTMENT_BOOKED_TEMPLATE_ID_FOR_PATIENT;
+  const templateId =
+    process.env.MSG91_APPOINTMENT_BOOKED_TEMPLATE_ID_FOR_PATIENT;
 
   const url = `https://control.msg91.com/api/v5/flow/`;
 
@@ -290,7 +303,6 @@ const sentLabReportReadyMsg = async (mobile) => {
   } catch (error) {
     return new Error(error);
   }
-
 };
 
 const sendCustomLabReportMsg = async (mobile, reportFiles) => {
@@ -299,7 +311,9 @@ const sendCustomLabReportMsg = async (mobile, reportFiles) => {
   const senderId = process.env.MSG91_SENDER_ID;
 
   // Join all links into one string
-  const report_links = reportFiles.map(file => `${file.fileName}: ${file.url}`).join('\n');
+  const report_links = reportFiles
+    .map((file) => `${file.fileName}: ${file.url}`)
+    .join("\n");
 
   const response = await axios.post(
     "https://control.msg91.com/api/v5/flow/",
@@ -324,6 +338,13 @@ const sendCustomLabReportMsg = async (mobile, reportFiles) => {
   console.log("SMS Sent:", response.data);
 };
 
-
-
-module.exports = { sendOtp, sendMessage, sendBookingMsgToPatient, sendBookingMsgToDoctor, sendEMRCreationMsg, sendLabTestScheduleMsg, sentLabReportReadyMsg, sendCustomLabReportMsg };
+module.exports = {
+  sendOtp,
+  sendMessage,
+  sendBookingMsgToPatient,
+  sendBookingMsgToDoctor,
+  sendEMRCreationMsg,
+  sendLabTestScheduleMsg,
+  sentLabReportReadyMsg,
+  sendCustomLabReportMsg,
+};
