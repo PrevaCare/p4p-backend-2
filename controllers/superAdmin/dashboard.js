@@ -168,16 +168,14 @@ const getRecentAddedUsers = async (req, res) => {
       };
     });
 
-    res
-      .status(200)
-      .json({
-        users: formattedUsers,
-        corporate: formattedCorporate,
-        schools: formattedSchool,
-        institutes: formattedInstitute,
-        labs: formattedLab,
-        globalPackages: formattedGlobalPackages,
-      });
+    res.status(200).json({
+      users: formattedUsers,
+      corporate: formattedCorporate,
+      schools: formattedSchool,
+      institutes: formattedInstitute,
+      labs: formattedLab,
+      globalPackages: formattedGlobalPackages,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
