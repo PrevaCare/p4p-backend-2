@@ -34,6 +34,11 @@ const GeneralPhysicalExaminationSchema = new mongoose.Schema({
   lymphadenopathy: { type: String },
   edema: { type: String },
   JVP: { type: String },
+  doctorNotes: { type: String },
+  showInEPrescription: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 // Schema for Systemic Examination
@@ -213,6 +218,10 @@ const FamilyHistorySchema = new mongoose.Schema({
 const HistorySchema = new mongoose.Schema({
   chiefComplaint: { type: String },
   historyOfPresentingIllness: { type: String },
+  complaints: {
+    type: Array,
+    default: [],
+  },
   pastHistory: [
     {
       sufferingFrom: { type: String },
