@@ -192,13 +192,53 @@ const getInitialEmrFormData = async (req, res) => {
           doctorNotes: 1,
           consultationMode: 1,
           doctor: 1,
-          bloodGroup: 1,
+          bloodGroup: {
+            $ifNull: ['$basicInfo.bloodGroup', 'not known']
+          },
           advice: 1,
           referrals: 1,
           followUpSchedule: 1,
         },
       },
     ]);
+
+        // Retrive past EMR history excluding the latest one
+        const pastEmrHistory = await EMR.aggregate([
+          // First get the latest EMR
+          {
+            $match: { user: userObjectId },
+          },
+          {
+            $sort: { createdAt: -1 },
+          },
+          { $skip: 1 },
+          {
+            $limit: 2,
+          },
+          {
+            $project: {
+              _id: 0,
+              history: 1,
+              createdAt: 1,
+            }
+          },
+        ]);
+
+        const pastComplaints = pastEmrHistory.flatMap(emr => {
+          if (emr.complaints && emr.complaints.length > 0) {
+            return emr.complaints.map(complaint => ({
+              chiefComplaint: complaint.chiefComplaint || "",
+              historyOfPresentingIllness: complaint.historyOfPresentingIllness || "",
+              date: emr.createdAt,
+            }));
+          } else {
+            return [{
+              chiefComplaint: emr?.history?.chiefComplaint || "",
+              historyOfPresentingIllness: emr?.history?.historyOfPresentingIllness || "",
+              date: emr?.createdAt,
+            }];
+          }
+        }) || [];
 
     // Get all current conditions
     const currentConditions = await currentConditionModel.find(
@@ -248,6 +288,7 @@ const getInitialEmrFormData = async (req, res) => {
     const formData = {
       user: userId,
       role,
+      pastComplaints,
       basicInfo: {
         name: `${userData.firstName} ${userData.lastName}`,
         age: userData.age || "",
