@@ -8,7 +8,7 @@ const VitalsSchema = new mongoose.Schema({
 
 const PrescribedMedicationSchema = new mongoose.Schema({
   drugName: String,
-  frequency: String,
+  freequency: String,
   duration: String,
   quantity: String,
 });
@@ -46,6 +46,10 @@ const ePrescriptionSchema = new mongoose.Schema(
     labTest: [String],
     rx: [PrescribedMedicationSchema],
     advice: [String],
+    originatedFromEmr: {
+      type: Boolean,
+      default: true,
+    },
 
     followUpSchedule: { type: String },
     consultationMode: {
@@ -62,34 +66,3 @@ const ePrescriptionSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("Eprescription", ePrescriptionSchema);
-
-// // const mongoose = require("mongoose");
-
-// // const ePrescriptionSchema = new mongoose.Schema(
-// //   {
-// //     user: {
-// //       type: mongoose.Schema.Types.ObjectId,
-// //       ref: "User",
-// //       required: true,
-// //     },
-// //     documentName: {
-// //       type: String,
-// //       required: true,
-// //     },
-// //     selectedDate: {
-// //       type: Date,
-// //       required: true,
-// //     },
-// //     doctorName: {
-// //       type: String,
-// //       required: true,
-// //     },
-// //     speciality: {
-// //       type: String,
-// //       required: true,
-// //     },
-// //   },
-// //   { timestamps: true }
-// // );
-
-// // module.exports = mongoose.model("Eprescription", ePrescriptionSchema);
