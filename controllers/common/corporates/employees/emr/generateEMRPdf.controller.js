@@ -8,6 +8,7 @@ const AppConstant = require("../../../../../utils/AppConstant");
 const emrModel = require("../../../../../models/common/emr.model.js");
 const {
   uploadToS3,
+  deleteS3Object
 } = require("../../../../../middlewares/uploads/awsConfig.js");
 const puppeteer = require("puppeteer");
 const {
@@ -1306,7 +1307,6 @@ const getEPrescriptionPdfById = async (req, res) => {
 
     const existingEPrescription =
       await eprescriptionModel.findById(ePrescriptionId);
-    console.log("existingEPrescription", existingEPrescription);
 
     if (!existingEPrescription) {
       return Response.error(
@@ -1326,7 +1326,7 @@ const getEPrescriptionPdfById = async (req, res) => {
       const latestMedicineSchedule = await MedicineSchedule.findOne({
         user: patientId,
         isActive: true,
-      }).sort({ lastModified: -1 });
+      }).sort({ lastModified: -1 }).lean();
 
       // If found, add to the prescription data
       if (latestMedicineSchedule) {
@@ -1501,13 +1501,22 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
   // Fetch the latest medicine schedule for the patient
   const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
   const patientId = existingEPrescription.user;
+  let emrInfo = {};
 
   try {
     // Get the latest medicine schedule for this patient
-    const latestMedicineSchedule = await MedicineSchedule.findOne({
-      user: patientId,
-      isActive: true,
-    }).sort({ lastModified: -1 });
+    const [latestMedicineSchedule, latestEmrInfo] = await Promise.all([
+      MedicineSchedule.findOne({
+        user: patientId,
+        isActive: true,
+      }).sort({ lastModified: -1 }),
+      emrModel
+        .findOne({ user: patientId })
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    emrInfo = latestEmrInfo || {};
 
     // If found, add to the prescription data
     if (latestMedicineSchedule) {
@@ -1519,7 +1528,6 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     }
   } catch (err) {
     console.error("Error fetching medicine schedule for PDF link:", err);
-    // Continue execution even if medicine schedule fetch fails
   }
 
   const pdfLink = existingEPrescription.link;
@@ -1574,7 +1582,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
       console.error("Error loading logo:", err);
     }
     await page.setContent(
-      getPrescriptionHTML(existingEPrescription, logoBase64),
+      getPrescriptionHTML(existingEPrescription, logoBase64, emrInfo),
       {
         waitUntil: "networkidle0",
         timeout: 60000,
@@ -1641,6 +1649,152 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     // Use res.download instead of res.send
     return res.send(pdfLink);
   }
+};
+
+const regenerateEPrescriptionPdfLink = async (req, res) => {
+  const { ePrescriptionId } = req.body;
+  const existingEPrescription =
+    await eprescriptionModel.findById(ePrescriptionId);
+  if (!existingEPrescription) {
+    return Response.error(
+      res,
+      404,
+      AppConstant.FAILED,
+      "E-Prescription not found"
+    );
+  }
+
+  // Fetch the latest medicine schedule for the patient
+  const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
+  const patientId = existingEPrescription.user;
+  let emrInfo = {};
+
+  try {
+    // Get the latest medicine schedule for this patient
+    const [latestMedicineSchedule, latestEmrInfo] = await Promise.all([
+      MedicineSchedule.findOne({
+        user: patientId,
+        isActive: true,
+      }).sort({ lastModified: -1 }),
+      emrModel
+        .findOne({ user: patientId })
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
+
+    emrInfo = latestEmrInfo || {};
+
+    // If found, add to the prescription data
+    if (latestMedicineSchedule) {
+      existingEPrescription.medicineSchedule = latestMedicineSchedule;
+    } else {
+      console.log("No active medicine schedule found for patient:", patientId);
+    }
+  } catch (err) {
+    console.error("Error fetching medicine schedule for PDF link:", err);
+  }
+
+  //  PDF LINK GENERATION
+  const tempDir = path.resolve(__dirname, "../../../../../public/temp");
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  // Copy logo to a location accessible by the browser
+  const logoSourcePath = path.resolve(
+    __dirname,
+    "../../../../../public/logo.png"
+  );
+  logoTempPath = path.join(tempDir, `temp_logo_${Date.now()}.png`);
+  fs.copyFileSync(logoSourcePath, logoTempPath);
+
+  browser = await launchPuppeteerBrowser();
+  const page = await browser.newPage();
+
+  // Set viewport
+  await page.setViewport({
+    width: 1200,
+    height: 800,
+  });
+  try {
+    const logoPath = path.resolve(__dirname, "../../../../../public/logo1.png");
+    if (fs.existsSync(logoPath)) {
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    } else {
+      console.error("Logo file not found at path:", logoPath);
+    }
+  } catch (err) {
+    console.error("Error loading logo:", err);
+  }
+
+  await page.setContent(
+    getPrescriptionHTML(existingEPrescription, logoBase64, emrInfo),
+    {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    }
+  );
+
+  // Wait for images to load
+  await page
+    .waitForSelector(".logo img", { visible: true, timeout: 5000 })
+    .catch(() => {
+      console.log("Logo image may not have loaded, continuing anyway");
+    });
+
+  // Generate PDF
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    margin: {
+      top: "20mm",
+      right: "15mm",
+      bottom: "20mm",
+      left: "15mm",
+    },
+    displayHeaderFooter: true,
+    headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
+    footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div> 2025 Preva Care</div>
+      </div>`,
+    preferCSSPageSize: true,
+    timeout: 60000,
+  });
+
+  // Close browser before file operations
+  await browser.close();
+  browser = null;
+
+  // Save the file to disk
+  const pdfFileName = `Prescription_${
+    existingEPrescription._id
+  }_${Date.now()}.pdf`;
+  pdfFilePath = path.join(tempDir, pdfFileName);
+  fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+  // Delete old PDF from S3 if exists
+  if (existingEPrescription.link) {
+    await deleteS3Object(existingEPrescription.link);
+  }
+
+  try {
+    const s3UploadResult = await uploadToS3({
+      buffer: pdfBuffer,
+      originalname: pdfFileName,
+      mimetype: "application/pdf",
+    });
+    console.log("PDF uploaded to S3:", s3UploadResult);
+    pdfLink = s3UploadResult.Location;
+    await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
+      link: pdfLink,
+    });
+  } catch (uploadErr) {
+    console.error("Error uploading PDF to S3:", uploadErr);
+  }
+
+  return res.send(pdfLink);
 };
 
 // Function to launch browser consistently across all PDF generation functions
@@ -2386,7 +2540,7 @@ function getEmrHTML(emrPdfData, logoBase64) {
 `;
 }
 
-function getPrescriptionHTML(prescriptionData, logoBase64) {
+function getPrescriptionHTML(prescriptionData, logoBase64, emrInfo = {}) {
   const {
     patient = {},
     doctor = {},
@@ -2402,6 +2556,10 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
     consultationMode = "",
     medicineSchedule = null, // Add the medicine schedule parameter
   } = prescriptionData || {};
+
+  console.log("Generating prescription HTML with data:", prescriptionData, rx, {
+    emrInfo,
+  });
 
   const formatDate = (date) => {
     return date ? dayjs(date).format("DD/MM/YYYY") : "";
@@ -2440,7 +2598,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
                   (med) => `
                 <tr>
                   <td>${sanitizeHtml(med.drugName || "")}</td>
-                  <td>${sanitizeHtml(med.frequency || "")}</td>
+                  <td>${sanitizeHtml(med.frequency || med.freequency || "")}</td>
                   <td>${sanitizeHtml(med.dosage || "")}</td>
                   <td>${sanitizeHtml(med.instructions || "")}</td>
                   <td>${med.status || "Active"}</td>
@@ -2671,10 +2829,10 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
   <body>
     <div class="header">
       <div class="doctor-info">
-        <h2>${doctor.name || "Doctor"}</h2>
-        <p>${doctor.education || ""}</p>
+        <h2>${doctor.firstName || "Doctor"} ${doctor.lastName}</h2>
         <p>${doctor.specialization || ""}</p>
-        <p>${doctor.registrationNumber || ""}</p>
+        <p>${doctor.degree || ""}</p>
+        <p>Reg. No: ${doctor.medicalRegistrationNumber || ""}</p>
       </div>
       <div class="logo">
         ${logoHtml}
@@ -2698,9 +2856,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
               </tr>
               <tr>
                 <th>Age / Gender</th>
-                <td>${patient.age || ""} ${
-                  patient.gender === "M" ? "Male" : "Female"
-                }</td>
+                <td>${patient.age || ""} ${patient.gender}</td>
               </tr>
               <tr>
                 <th>Date</th>
@@ -2709,6 +2865,10 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
               <tr>
                 <th>Prescription ID</th>
                 <td>${prescriptionID || ""}</td>
+              </tr>
+              <tr>
+                <th>Blood Group</th>
+                <td>${emrInfo?.basicInfo?.bloodGroup || "NA"}</td>
               </tr>
             </tbody>
           </table>
@@ -2723,7 +2883,8 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
             <tbody>
               <tr><th>Blood Pressure</th><td>${vitals.BP || ""} mmHg</td></tr>
               <tr><th>Pulse Rate</th><td>${vitals.PR || ""} bpm</td></tr>
-              <tr><th>SpO2</th><td>${vitals.SpO2 || ""}%</td></tr>
+              <tr><th>SpO2</th><td>${vitals.SpO2 || ""} %</td></tr>
+              <tr><th>BMI</th><td>${emrInfo?.generalPhysicalExamination?.BMI || ""} kg / m<sup>2</sup></td></tr>
             </tbody>
           </table>
         </div>
@@ -2802,7 +2963,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
                   (medicine) => `
                 <tr>
                   <td>${medicine.drugName || ""}</td>
-                  <td>${medicine.frequency || ""}</td>
+                  <td>${medicine.freequency || ""}</td>
                   <td>${medicine.duration || ""}</td>
                   <td>${medicine.quantity || ""}</td>
             </tr>
@@ -2900,4 +3061,5 @@ module.exports = {
   getEmrPdfLinkByemrId,
   getEPrescriptionPdfLinkByemrId,
   launchPuppeteerBrowser,
+  regenerateEPrescriptionPdfLink
 };
