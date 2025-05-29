@@ -62,6 +62,7 @@ const getAllEPrescriptionListPaginatedByUserId = async (req, res) => {
           specialization: "$doctor.specialization",
           documentName: { $literal: "E- prescription" },
           pdfUrl: "$link",
+          originatedFromEmr: 1,
         },
       },
     ];

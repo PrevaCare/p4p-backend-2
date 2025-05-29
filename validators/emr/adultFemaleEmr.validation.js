@@ -54,6 +54,12 @@ const treatmentSchema = Joi.object({
 const historySchema = Joi.object({
   chiefComplaint: Joi.string(),
   historyOfPresentingIllness: Joi.string(),
+  complaints: Joi.array().items(
+    Joi.object({
+      chiefComplaint: Joi.string(),
+      historyOfPresentingIllness: Joi.string(),
+    })
+  ),
   pastHistory: Joi.string(),
   previousSurgeries: Joi.string(),
   habits: Joi.object({

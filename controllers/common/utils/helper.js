@@ -8,21 +8,13 @@ const getFormattedBasicInfo = (userData, latestEmr) => ({
     phoneNumber: userData.phone || "",
     maritalStatus: userData.isMarried || false,
     bloodGroup: (latestEmr && latestEmr.bloodGroup) || "not known",
-    address: userData.address
-      ? {
-          name: userData.address.name || "",
-          street: userData.address.street || "",
-          city: userData.address.city || "",
-          state: userData.address.state || "",
-          zipCode: userData.address.zipCode || "",
-        }
-      : {
-          name: "",
-          street: "",
-          city: "",
-          state: "",
-          zipCode: "",
-        },
+    address: {
+      name: userData?.address?.name || "",
+      street: userData?.address?.street || "",
+      city: userData?.address?.city || "",
+      state: userData?.address?.state || "",
+      zipCode: userData?.address?.zipCode || "",
+    },
   });
   
   const defaultHistory = (allergies) => ({
@@ -171,7 +163,7 @@ const getFormattedBasicInfo = (userData, latestEmr) => ({
   };
 
  const getFormattedDiagnosisData = (currentConditions = null) => {
-  currentConditions.length
+  return currentConditions.length
     ? currentConditions.map((condition) => ({
         dateOfDiagnosis: condition.dateOfDiagnosis
           ? dayjs(condition.dateOfDiagnosis).format("YYYY-MM-DD")

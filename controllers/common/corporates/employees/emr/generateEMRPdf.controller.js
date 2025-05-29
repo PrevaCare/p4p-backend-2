@@ -2870,6 +2870,18 @@ function getPrescriptionHTML(prescriptionData, logoBase64, emrInfo = {}) {
                 <th>Blood Group</th>
                 <td>${emrInfo?.basicInfo?.bloodGroup || "NA"}</td>
               </tr>
+              <tr>
+                <th>Height</th>
+                <td>${emrInfo?.generalPhysicalExamination?.height || ""} m</td>
+              </tr>
+              <tr>
+                <th>Weight</th>
+                <td>${emrInfo?.generalPhysicalExamination?.weight || ""} kg</td>
+              </tr>
+              <tr>
+                <th>BMI</th>
+                <td>${emrInfo?.generalPhysicalExamination?.BMI || ""} kg / m<sup>2</sup></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -2884,7 +2896,6 @@ function getPrescriptionHTML(prescriptionData, logoBase64, emrInfo = {}) {
               <tr><th>Blood Pressure</th><td>${vitals.BP || ""} mmHg</td></tr>
               <tr><th>Pulse Rate</th><td>${vitals.PR || ""} bpm</td></tr>
               <tr><th>SpO2</th><td>${vitals.SpO2 || ""} %</td></tr>
-              <tr><th>BMI</th><td>${emrInfo?.generalPhysicalExamination?.BMI || ""} kg / m<sup>2</sup></td></tr>
             </tbody>
           </table>
         </div>

@@ -49,9 +49,15 @@ const TreatmentSchema = Joi.object({
 
 // Joi schema for History
 const HistorySchema = Joi.object({
-  chiefComplaint: Joi.string().required(),
+  chiefComplaint: Joi.string(),
   historyOfPresentingIllness: Joi.string(),
   pastHistory: Joi.string(),
+  complaints: Joi.array().items(
+    Joi.object({
+      chiefComplaint: Joi.string(),
+      historyOfPresentingIllness: Joi.string(),
+    })
+  ),
   previousSurgeries: Joi.string(),
   habits: Joi.object({
     smoking: Joi.boolean().default(false),

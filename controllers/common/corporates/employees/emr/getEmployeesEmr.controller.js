@@ -222,14 +222,7 @@ const getInitialEmrFormData = async (req, res) => {
       { $skip: 1 },
       {
         $limit: 2,
-      },
-      {
-        $project: {
-          _id: 0,
-          history: 1,
-          createdAt: 1,
-        }
-      },
+      }
     ]);
 
     // Get all current conditions
@@ -303,27 +296,30 @@ const getInitialEmrFormData = async (req, res) => {
       }
     }) || [];
 
-    // Initialize empty surgicalHistory array
-    const surgicalHistory = [];
-    const defaultHistoryData = defaultHistory(allergies)
+   const formattedBasicInfo = getFormattedBasicInfo(userData, latestEmr);
+   const defaultHistoryData = defaultHistory(allergies);
+   const formattedGeneralPhysicalExamination = getFormattedGeneralPhysicalExamination(latestEmr);
+   const formattedSystemicExamination = getFormattedSystemicExamination(latestEmr)
+   const formattedDiagnosisData = getFormattedDiagnosisData(currentConditions);
+
     // Construct form data object
     const formData = {
       user: userId,
       role,
       pastComplaints,
-      basicInfo: getFormattedBasicInfo(userData, latestEmr),
+      basicInfo: formattedBasicInfo,
       history: latestEmr
         ? {
             ...latestEmr.history,
-            allergies: defaultHistoryData.allergies,
+            allergies: defaultHistoryData.allergies
           }
         : defaultHistoryData,
       immunization: immunizations.length
         ? immunizations
         : defaultImmunization,
-      generalPhysicalExamination: getFormattedGeneralPhysicalExamination(latestEmr),
-      systemicExamination: getFormattedSystemicExamination(latestEmr),
-      diagnosis: getFormattedDiagnosisData(currentConditions),
+      generalPhysicalExamination: formattedGeneralPhysicalExamination,
+      systemicExamination: formattedSystemicExamination,
+      diagnosis: formattedDiagnosisData,
       advice: (latestEmr && latestEmr.advice) || "",
       referrals: (latestEmr && latestEmr.referrals) || "",
       followUpSchedule: (latestEmr && latestEmr.followUpSchedule) || "",
@@ -334,7 +330,7 @@ const getInitialEmrFormData = async (req, res) => {
 
     // Only include gynaecologicalHistory if user is female
     if (userData.gender === "F") {
-      formData.gynaecologicalHistory = latestEmr?.gynaecologicalHistory || defaultGynaecologicalHistory
+      formData.gynaecologicalHistory = latestEmr?.gynaecologicalHistory || defaultGynaecologicalHistory;
     }
     // Explicitly remove gynaecologicalHistory if user is not female
     else if (formData.gynaecologicalHistory) {
