@@ -8,7 +8,7 @@ const AppConstant = require("../../../../../utils/AppConstant");
 const emrModel = require("../../../../../models/common/emr.model.js");
 const {
   uploadToS3,
-  deleteS3Object
+  deleteS3Object,
 } = require("../../../../../middlewares/uploads/awsConfig.js");
 const puppeteer = require("puppeteer");
 const {
@@ -1326,7 +1326,9 @@ const getEPrescriptionPdfById = async (req, res) => {
       const latestMedicineSchedule = await MedicineSchedule.findOne({
         user: patientId,
         isActive: true,
-      }).sort({ lastModified: -1 }).lean();
+      })
+        .sort({ lastModified: -1 })
+        .lean();
 
       // If found, add to the prescription data
       if (latestMedicineSchedule) {
@@ -1510,10 +1512,7 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
         user: patientId,
         isActive: true,
       }).sort({ lastModified: -1 }),
-      emrModel
-        .findOne({ user: patientId })
-        .sort({ createdAt: -1 })
-        .lean(),
+      emrModel.findOne({ user: patientId }).sort({ createdAt: -1 }).lean(),
     ]);
 
     emrInfo = latestEmrInfo || {};
@@ -1676,10 +1675,7 @@ const regenerateEPrescriptionPdfLink = async (req, res) => {
         user: patientId,
         isActive: true,
       }).sort({ lastModified: -1 }),
-      emrModel
-        .findOne({ user: patientId })
-        .sort({ createdAt: -1 })
-        .lean(),
+      emrModel.findOne({ user: patientId }).sort({ createdAt: -1 }).lean(),
     ]);
 
     emrInfo = latestEmrInfo || {};
@@ -3072,5 +3068,5 @@ module.exports = {
   getEmrPdfLinkByemrId,
   getEPrescriptionPdfLinkByemrId,
   launchPuppeteerBrowser,
-  regenerateEPrescriptionPdfLink
+  regenerateEPrescriptionPdfLink,
 };

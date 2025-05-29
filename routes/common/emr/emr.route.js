@@ -7,7 +7,7 @@ const {
   getEPrescriptionPdfById,
   getEmrPdfLinkByemrId,
   getEPrescriptionPdfLinkByemrId,
-  regenerateEPrescriptionPdfLink
+  regenerateEPrescriptionPdfLink,
 } = require("../../../controllers/common/corporates/employees/emr/generateEMRPdf.controller");
 const {
   getSingleEmployeeAllEmrForCard,

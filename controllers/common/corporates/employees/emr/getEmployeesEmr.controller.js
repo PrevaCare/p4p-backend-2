@@ -18,8 +18,8 @@ const {
   getFormattedSystemicExamination,
   defaultGynaecologicalHistory,
   getFormattedDiagnosisData,
-  defaultImmunization
-} = require('../../../utils/helper.js');
+  defaultImmunization,
+} = require("../../../utils/helper.js");
 
 const getSingleEmployeeAllEmrForCard = async (req, res) => {
   try {
@@ -201,7 +201,7 @@ const getInitialEmrFormData = async (req, res) => {
           consultationMode: 1,
           doctor: 1,
           bloodGroup: {
-            $ifNull: ['$basicInfo.bloodGroup', 'not known']
+            $ifNull: ["$basicInfo.bloodGroup", "not known"],
           },
           advice: 1,
           referrals: 1,
@@ -222,7 +222,7 @@ const getInitialEmrFormData = async (req, res) => {
       { $skip: 1 },
       {
         $limit: 2,
-      }
+      },
     ]);
 
     // Get all current conditions
@@ -280,27 +280,34 @@ const getInitialEmrFormData = async (req, res) => {
       immunizationsPromise,
     ]);
 
-    const pastComplaints = pastEmrHistory.flatMap(emr => {
-      if (emr.complaints && emr.complaints.length > 0) {
-        return emr.complaints.map(complaint => ({
-          chiefComplaint: complaint.chiefComplaint || "",
-          historyOfPresentingIllness: complaint.historyOfPresentingIllness || "",
-          date: emr.createdAt,
-        }));
-      } else {
-        return [{
-          chiefComplaint: emr?.history?.chiefComplaint || "",
-          historyOfPresentingIllness: emr?.history?.historyOfPresentingIllness || "",
-          date: emr?.createdAt,
-        }];
-      }
-    }) || [];
+    const pastComplaints =
+      pastEmrHistory.flatMap((emr) => {
+        if (emr.complaints && emr.complaints.length > 0) {
+          return emr.complaints.map((complaint) => ({
+            chiefComplaint: complaint.chiefComplaint || "",
+            historyOfPresentingIllness:
+              complaint.historyOfPresentingIllness || "",
+            date: emr.createdAt,
+          }));
+        } else {
+          return [
+            {
+              chiefComplaint: emr?.history?.chiefComplaint || "",
+              historyOfPresentingIllness:
+                emr?.history?.historyOfPresentingIllness || "",
+              date: emr?.createdAt,
+            },
+          ];
+        }
+      }) || [];
 
-   const formattedBasicInfo = getFormattedBasicInfo(userData, latestEmr);
-   const defaultHistoryData = defaultHistory(allergies);
-   const formattedGeneralPhysicalExamination = getFormattedGeneralPhysicalExamination(latestEmr);
-   const formattedSystemicExamination = getFormattedSystemicExamination(latestEmr)
-   const formattedDiagnosisData = getFormattedDiagnosisData(currentConditions);
+    const formattedBasicInfo = getFormattedBasicInfo(userData, latestEmr);
+    const defaultHistoryData = defaultHistory(allergies);
+    const formattedGeneralPhysicalExamination =
+      getFormattedGeneralPhysicalExamination(latestEmr);
+    const formattedSystemicExamination =
+      getFormattedSystemicExamination(latestEmr);
+    const formattedDiagnosisData = getFormattedDiagnosisData(currentConditions);
 
     // Construct form data object
     const formData = {
@@ -311,12 +318,10 @@ const getInitialEmrFormData = async (req, res) => {
       history: latestEmr
         ? {
             ...latestEmr.history,
-            allergies: defaultHistoryData.allergies
+            allergies: defaultHistoryData.allergies,
           }
         : defaultHistoryData,
-      immunization: immunizations.length
-        ? immunizations
-        : defaultImmunization,
+      immunization: immunizations.length ? immunizations : defaultImmunization,
       generalPhysicalExamination: formattedGeneralPhysicalExamination,
       systemicExamination: formattedSystemicExamination,
       diagnosis: formattedDiagnosisData,
@@ -330,7 +335,8 @@ const getInitialEmrFormData = async (req, res) => {
 
     // Only include gynaecologicalHistory if user is female
     if (userData.gender === "F") {
-      formData.gynaecologicalHistory = latestEmr?.gynaecologicalHistory || defaultGynaecologicalHistory;
+      formData.gynaecologicalHistory =
+        latestEmr?.gynaecologicalHistory || defaultGynaecologicalHistory;
     }
     // Explicitly remove gynaecologicalHistory if user is not female
     else if (formData.gynaecologicalHistory) {
