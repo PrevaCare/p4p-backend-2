@@ -100,8 +100,9 @@ const getSingleDoctorDetail = async (req, res) => {
 
 const getCategoryOfDoctor = async (req, res) => {
   try {
-
-    const categories = await User.distinct('specialization', { role: 'Doctor' });
+    const categories = await User.distinct("specialization", {
+      role: "Doctor",
+    });
     if (!categories) {
       return Response.error(
         res,
@@ -131,7 +132,10 @@ const getCategoryOfDoctor = async (req, res) => {
 const getDoctorByCategory = async (req, res) => {
   try {
     const { category } = req.body;
-    const doctors = await User.find({ specialization: category, role: 'Doctor' }).select('firstName lastName _id');
+    const doctors = await User.find({
+      specialization: category,
+      role: "Doctor",
+    }).select("firstName lastName _id");
 
     if (!doctors) {
       return Response.error(

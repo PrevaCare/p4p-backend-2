@@ -8,6 +8,7 @@ const AppConstant = require("../../../../../utils/AppConstant");
 const emrModel = require("../../../../../models/common/emr.model.js");
 const {
   uploadToS3,
+  deleteS3Object,
 } = require("../../../../../middlewares/uploads/awsConfig.js");
 const puppeteer = require("puppeteer");
 const {
@@ -29,7 +30,7 @@ const sanitizeHtml = (str) => {
 
 // Create EMR PDF with dummy data
 const createEMRPDF = async (req, res) => {
-  console.log("hekooooo-------------------------")
+  console.log("hekooooo-------------------------");
   let browser = null;
   let pdfFilePath = null;
 
@@ -110,19 +111,17 @@ const generateEMRPDF = async (emrPdfData) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser with proper error handling
-    console.log(
-      "Launching browser for EMR PDF generation"
-    );
+    console.log("Launching browser for EMR PDF generation");
     try {
       browser = await launchPuppeteerBrowser();
       if (!browser) {
-        throw new Error('Browser launch returned null');
+        throw new Error("Browser launch returned null");
       }
 
-      console.log('Browser launched successfully');
+      console.log("Browser launched successfully");
 
       const page = await browser.newPage();
-      console.log('New page created');
+      console.log("New page created");
 
       // Set viewport
       await page.setViewport({
@@ -358,10 +357,10 @@ const generateEMRPDF = async (emrPdfData) => {
         waitUntil: ["networkidle0", "domcontentloaded"],
         timeout: 30000,
       });
-      console.log('Page content set successfully');
+      console.log("Page content set successfully");
 
       // Wait for any dynamic content to settle
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Generate PDF with consistent settings
       const pdfBuffer = await page.pdf({
@@ -374,18 +373,20 @@ const generateEMRPDF = async (emrPdfData) => {
           left: "15mm",
         },
         displayHeaderFooter: true,
-        headerTemplate: '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Electronic Medical Record</div>',
-        footerTemplate: '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;"> 2025 Preva Care</div></div>',
+        headerTemplate:
+          '<div style="font-size:10px; text-align:center; width:100%; margin: 20px;">Electronic Medical Record</div>',
+        footerTemplate:
+          '<div style="font-size:8px; text-align:center; width:100%; margin: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span><div style="margin-top:5px;"> 2025 Preva Care</div></div>',
         preferCSSPageSize: true,
         timeout: 30000,
       });
-      console.log('PDF generated successfully');
+      console.log("PDF generated successfully");
 
       // Create a safe filename using emrPdfData._id or timestamp
-      const safeFilename = emrPdfData._id ? 
-        String(emrPdfData._id).replace(/[^a-z0-9]/gi, '_') : 
-        'unknown';
-        
+      const safeFilename = emrPdfData._id
+        ? String(emrPdfData._id).replace(/[^a-z0-9]/gi, "_")
+        : "unknown";
+
       // Save file with proper path for debugging
       const fileName = `emr_pdf_${safeFilename}_${Date.now()}.pdf`;
       const filePath = path.join(tempDir, fileName);
@@ -427,7 +428,7 @@ const generateEMRPDF = async (emrPdfData) => {
       if (browser) {
         try {
           await browser.close();
-          console.log('Browser closed successfully');
+          console.log("Browser closed successfully");
         } catch (closeErr) {
           console.error("Error closing browser:", closeErr);
         }
@@ -490,9 +491,9 @@ const getEmrPdfLinkByemrId = async (req, res) => {
     // Generate an absolute file URL for the copied logo
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
-    // Launch browser 
+    // Launch browser
     browser = await launchPuppeteerBrowser();
-    console.log('Browser launched successfully');
+    console.log("Browser launched successfully");
 
     const page = await browser.newPage();
 
@@ -846,12 +847,7 @@ const getEmrPdfByemrId = async (req, res) => {
   try {
     const { emrId } = req.body;
     if (!emrId) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "emrId is missing!"
-      );
+      return Response.error(res, 404, AppConstant.FAILED, "emrId is missing!");
     }
 
     const existingEmr = await emrModel.findById(emrId).populate({
@@ -894,9 +890,9 @@ const getEmrPdfByemrId = async (req, res) => {
     // Generate an absolute file URL for the copied logo
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
-    // Launch browser 
+    // Launch browser
     browser = await launchPuppeteerBrowser();
-    console.log('Browser launched successfully');
+    console.log("Browser launched successfully");
 
     const page = await browser.newPage();
 
@@ -1309,10 +1305,8 @@ const getEPrescriptionPdfById = async (req, res) => {
       );
     }
 
-    const existingEPrescription = await eprescriptionModel.findById(
-      ePrescriptionId
-    );
-    console.log("existingEPrescription", existingEPrescription);
+    const existingEPrescription =
+      await eprescriptionModel.findById(ePrescriptionId);
 
     if (!existingEPrescription) {
       return Response.error(
@@ -1332,7 +1326,9 @@ const getEPrescriptionPdfById = async (req, res) => {
       const latestMedicineSchedule = await MedicineSchedule.findOne({
         user: patientId,
         isActive: true,
-      }).sort({ lastModified: -1 });
+      })
+        .sort({ lastModified: -1 })
+        .lean();
 
       // If found, add to the prescription data
       if (latestMedicineSchedule) {
@@ -1368,14 +1364,12 @@ const getEPrescriptionPdfById = async (req, res) => {
     const logoUrl = `file://${logoTempPath.replace(/\\/g, "/")}`;
 
     // Launch browser
-    console.log(
-      "Launching browser for E-Prescription PDF generation"
-    );
+    console.log("Launching browser for E-Prescription PDF generation");
     browser = await launchPuppeteerBrowser();
-    console.log('Browser launched successfully');
+    console.log("Browser launched successfully");
 
     const page = await browser.newPage();
-    console.log('New page created');
+    console.log("New page created");
 
     // Set viewport
     await page.setViewport({
@@ -1400,10 +1394,13 @@ const getEPrescriptionPdfById = async (req, res) => {
     } catch (err) {
       console.error("Error loading logo:", err);
     }
-    await page.setContent(getPrescriptionHTML(existingEPrescription, logoBase64), {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
+    await page.setContent(
+      getPrescriptionHTML(existingEPrescription, logoBase64),
+      {
+        waitUntil: "networkidle0",
+        timeout: 60000,
+      }
+    );
 
     // Wait for images to load
     await page
@@ -1437,8 +1434,9 @@ const getEPrescriptionPdfById = async (req, res) => {
     browser = null;
 
     // Save the file to disk
-    const pdfFileName = `Prescription_${existingEPrescription._id
-      }_${Date.now()}.pdf`;
+    const pdfFileName = `Prescription_${
+      existingEPrescription._id
+    }_${Date.now()}.pdf`;
     pdfFilePath = path.join(tempDir, pdfFileName);
     fs.writeFileSync(pdfFilePath, pdfBuffer);
 
@@ -1491,9 +1489,8 @@ const getEPrescriptionPdfById = async (req, res) => {
 
 const getEPrescriptionPdfLinkByemrId = async (req, res) => {
   const { ePrescriptionId } = req.body;
-  const existingEPrescription = await eprescriptionModel.findById(
-    ePrescriptionId
-  );
+  const existingEPrescription =
+    await eprescriptionModel.findById(ePrescriptionId);
   if (!existingEPrescription) {
     return Response.error(
       res,
@@ -1506,13 +1503,19 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
   // Fetch the latest medicine schedule for the patient
   const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
   const patientId = existingEPrescription.user;
+  let emrInfo = {};
 
   try {
     // Get the latest medicine schedule for this patient
-    const latestMedicineSchedule = await MedicineSchedule.findOne({
-      user: patientId,
-      isActive: true,
-    }).sort({ lastModified: -1 });
+    const [latestMedicineSchedule, latestEmrInfo] = await Promise.all([
+      MedicineSchedule.findOne({
+        user: patientId,
+        isActive: true,
+      }).sort({ lastModified: -1 }),
+      emrModel.findOne({ user: patientId }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    emrInfo = latestEmrInfo || {};
 
     // If found, add to the prescription data
     if (latestMedicineSchedule) {
@@ -1524,7 +1527,6 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     }
   } catch (err) {
     console.error("Error fetching medicine schedule for PDF link:", err);
-    // Continue execution even if medicine schedule fetch fails
   }
 
   const pdfLink = existingEPrescription.link;
@@ -1552,10 +1554,10 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
       "Launching browser for EPrescription 1 PDF link with custom port 9222 instead of default 8000"
     );
     browser = await launchPuppeteerBrowser();
-    console.log('Browser launched successfully');
+    console.log("Browser launched successfully");
 
     const page = await browser.newPage();
-    console.log('New page created');
+    console.log("New page created");
 
     // Set viewport
     await page.setViewport({
@@ -1578,10 +1580,13 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     } catch (err) {
       console.error("Error loading logo:", err);
     }
-    await page.setContent(getPrescriptionHTML(existingEPrescription, logoBase64), {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
+    await page.setContent(
+      getPrescriptionHTML(existingEPrescription, logoBase64, emrInfo),
+      {
+        waitUntil: "networkidle0",
+        timeout: 60000,
+      }
+    );
 
     // Wait for images to load
     await page
@@ -1615,8 +1620,9 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
     browser = null;
 
     // Save the file to disk
-    const pdfFileName = `Prescription_${existingEPrescription._id
-      }_${Date.now()}.pdf`;
+    const pdfFileName = `Prescription_${
+      existingEPrescription._id
+    }_${Date.now()}.pdf`;
     pdfFilePath = path.join(tempDir, pdfFileName);
     fs.writeFileSync(pdfFilePath, pdfBuffer);
 
@@ -1644,17 +1650,160 @@ const getEPrescriptionPdfLinkByemrId = async (req, res) => {
   }
 };
 
+const regenerateEPrescriptionPdfLink = async (req, res) => {
+  const { ePrescriptionId } = req.body;
+  const existingEPrescription =
+    await eprescriptionModel.findById(ePrescriptionId);
+  if (!existingEPrescription) {
+    return Response.error(
+      res,
+      404,
+      AppConstant.FAILED,
+      "E-Prescription not found"
+    );
+  }
+
+  // Fetch the latest medicine schedule for the patient
+  const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
+  const patientId = existingEPrescription.user;
+  let emrInfo = {};
+
+  try {
+    // Get the latest medicine schedule for this patient
+    const [latestMedicineSchedule, latestEmrInfo] = await Promise.all([
+      MedicineSchedule.findOne({
+        user: patientId,
+        isActive: true,
+      }).sort({ lastModified: -1 }),
+      emrModel.findOne({ user: patientId }).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    emrInfo = latestEmrInfo || {};
+
+    // If found, add to the prescription data
+    if (latestMedicineSchedule) {
+      existingEPrescription.medicineSchedule = latestMedicineSchedule;
+    } else {
+      console.log("No active medicine schedule found for patient:", patientId);
+    }
+  } catch (err) {
+    console.error("Error fetching medicine schedule for PDF link:", err);
+  }
+
+  //  PDF LINK GENERATION
+  const tempDir = path.resolve(__dirname, "../../../../../public/temp");
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  // Copy logo to a location accessible by the browser
+  const logoSourcePath = path.resolve(
+    __dirname,
+    "../../../../../public/logo.png"
+  );
+  logoTempPath = path.join(tempDir, `temp_logo_${Date.now()}.png`);
+  fs.copyFileSync(logoSourcePath, logoTempPath);
+
+  browser = await launchPuppeteerBrowser();
+  const page = await browser.newPage();
+
+  // Set viewport
+  await page.setViewport({
+    width: 1200,
+    height: 800,
+  });
+  try {
+    const logoPath = path.resolve(__dirname, "../../../../../public/logo1.png");
+    if (fs.existsSync(logoPath)) {
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    } else {
+      console.error("Logo file not found at path:", logoPath);
+    }
+  } catch (err) {
+    console.error("Error loading logo:", err);
+  }
+
+  await page.setContent(
+    getPrescriptionHTML(existingEPrescription, logoBase64, emrInfo),
+    {
+      waitUntil: "networkidle0",
+      timeout: 60000,
+    }
+  );
+
+  // Wait for images to load
+  await page
+    .waitForSelector(".logo img", { visible: true, timeout: 5000 })
+    .catch(() => {
+      console.log("Logo image may not have loaded, continuing anyway");
+    });
+
+  // Generate PDF
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    margin: {
+      top: "20mm",
+      right: "15mm",
+      bottom: "20mm",
+      left: "15mm",
+    },
+    displayHeaderFooter: true,
+    headerTemplate: `<div style="font-size:10px; text-align:center; width:100%; padding-top:5mm;">Electronic Prescription</div>`,
+    footerTemplate: `<div style="font-size:8px; text-align:center; width:100%; padding-bottom:10mm;">
+        Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        <div> 2025 Preva Care</div>
+      </div>`,
+    preferCSSPageSize: true,
+    timeout: 60000,
+  });
+
+  // Close browser before file operations
+  await browser.close();
+  browser = null;
+
+  // Save the file to disk
+  const pdfFileName = `Prescription_${
+    existingEPrescription._id
+  }_${Date.now()}.pdf`;
+  pdfFilePath = path.join(tempDir, pdfFileName);
+  fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+  // Delete old PDF from S3 if exists
+  if (existingEPrescription.link) {
+    await deleteS3Object(existingEPrescription.link);
+  }
+
+  try {
+    const s3UploadResult = await uploadToS3({
+      buffer: pdfBuffer,
+      originalname: pdfFileName,
+      mimetype: "application/pdf",
+    });
+    console.log("PDF uploaded to S3:", s3UploadResult);
+    pdfLink = s3UploadResult.Location;
+    await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
+      link: pdfLink,
+    });
+  } catch (uploadErr) {
+    console.error("Error uploading PDF to S3:", uploadErr);
+  }
+
+  return res.send(pdfLink);
+};
+
 // Function to launch browser consistently across all PDF generation functions
 const launchPuppeteerBrowser = async () => {
   console.log("Launching Puppeteer browser with bundled Chromium...");
   return puppeteer.launch({
-    headless: 'new',
+    headless: "new",
     args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu'
-    ]
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
   });
 };
 
@@ -1922,18 +2071,24 @@ function getEmrHTML(emrPdfData, logoBase64) {
             <tbody>
               <tr><th>Patient Name</th><td>${basicInfo.name || ""}</td></tr>
               <tr><th>Age</th><td>${basicInfo.age || ""} years</td></tr>
-              <tr><th>Gender</th><td>${basicInfo.gender === "F" ? "Female" : "Male"
-    }</td></tr>
-              <tr><th>Phone Number</th><td>${basicInfo.phoneNumber || ""
-    }</td></tr>
-              <tr><th>Blood Group</th><td>${basicInfo.bloodGroup || ""
-    }</td></tr>
-              <tr><th>Marital Status</th><td>${basicInfo.maritalStatus ? "Married" : "Single"
-    }</td></tr>
+              <tr><th>Gender</th><td>${
+                basicInfo.gender === "F" ? "Female" : "Male"
+              }</td></tr>
+              <tr><th>Phone Number</th><td>${
+                basicInfo.phoneNumber || ""
+              }</td></tr>
+              <tr><th>Blood Group</th><td>${
+                basicInfo.bloodGroup || ""
+              }</td></tr>
+              <tr><th>Marital Status</th><td>${
+                basicInfo.maritalStatus ? "Married" : "Single"
+              }</td></tr>
               <tr><th>Children</th><td>${basicInfo.children || "0"}</td></tr>
-              <tr><th>Address</th><td>${basicInfo.address?.name || ""}, ${basicInfo.address?.street || ""
-    }, ${basicInfo.address?.city || ""}, ${basicInfo.address?.state || ""} - ${basicInfo.address?.zipCode || ""
-    }</td></tr>
+              <tr><th>Address</th><td>${basicInfo.address?.name || ""}, ${
+                basicInfo.address?.street || ""
+              }, ${basicInfo.address?.city || ""}, ${basicInfo.address?.state || ""} - ${
+                basicInfo.address?.zipCode || ""
+              }</td></tr>
             </tbody>
           </table>
         </div>
@@ -1945,18 +2100,23 @@ function getEmrHTML(emrPdfData, logoBase64) {
         <div class="table-container">
           <table>
             <tbody>
-              <tr><th>Chief Complaint</th><td>${history.chiefComplaint || ""
-    }</td></tr>
-              <tr><th>History of Present Illness</th><td>${history.historyOfPresentingIllness || ""
-    }</td></tr>
-              <tr><th>Previous Surgeries</th><td>${history.previousSurgeries || ""
-    }</td></tr>
-              <tr><th>Bowel and Bladder</th><td>${history.bowelAndBladder || ""
-    }</td></tr>
+              <tr><th>Chief Complaint</th><td>${
+                history.chiefComplaint || ""
+              }</td></tr>
+              <tr><th>History of Present Illness</th><td>${
+                history.historyOfPresentingIllness || ""
+              }</td></tr>
+              <tr><th>Previous Surgeries</th><td>${
+                history.previousSurgeries || ""
+              }</td></tr>
+              <tr><th>Bowel and Bladder</th><td>${
+                history.bowelAndBladder || ""
+              }</td></tr>
               <tr><th>Appetite</th><td>${history.appetite || ""}</td></tr>
               <tr><th>Sleep</th><td>${history.sleep || ""} hours</td></tr>
-              <tr><th>Mental Health Assessment</th><td>${history.mentalHealthAssessment || ""
-    }</td></tr>
+              <tr><th>Mental Health Assessment</th><td>${
+                history.mentalHealthAssessment || ""
+              }</td></tr>
             </tbody>
           </table>
         </div>
@@ -1968,21 +2128,27 @@ function getEmrHTML(emrPdfData, logoBase64) {
         <div class="table-container">
           <table>
             <tbody>
-              <tr><th>Smoking</th><td>${history.habits?.smoking ? "Yes" : "No"
-    }</td></tr>
-              <tr><th>Alcohol</th><td>${history.habits?.alcohol ? "Yes" : "No"
-    }</td></tr>
-              ${history.habits?.alcohol
-      ? `
-              <tr><th>Alcohol Details</th><td>${history.habits?.alcoholDetails || ""
-      }</td></tr>
-              <tr><th>Quantity per Week</th><td>${history.habits?.qntPerWeek || ""
-      } ml</td></tr>
+              <tr><th>Smoking</th><td>${
+                history.habits?.smoking ? "Yes" : "No"
+              }</td></tr>
+              <tr><th>Alcohol</th><td>${
+                history.habits?.alcohol ? "Yes" : "No"
+              }</td></tr>
+              ${
+                history.habits?.alcohol
+                  ? `
+              <tr><th>Alcohol Details</th><td>${
+                history.habits?.alcoholDetails || ""
+              }</td></tr>
+              <tr><th>Quantity per Week</th><td>${
+                history.habits?.qntPerWeek || ""
+              } ml</td></tr>
               `
-      : ""
-    }
-              <tr><th>Substance Abuse</th><td>${history.habits?.substanceAbuse || "None"
-    }</td></tr>
+                  : ""
+              }
+              <tr><th>Substance Abuse</th><td>${
+                history.habits?.substanceAbuse || "None"
+              }</td></tr>
             </tbody>
           </table>
         </div>
@@ -1999,8 +2165,9 @@ function getEmrHTML(emrPdfData, logoBase64) {
                 <td>
                   Description: ${history.stressScreening?.desc || ""}<br>
                   Score: ${history.stressScreening?.score || ""}<br>
-                  Recommendation: ${history.stressScreening?.recomendation || ""
-    }
+                  Recommendation: ${
+                    history.stressScreening?.recomendation || ""
+                  }
                 </td>
               </tr>
               <tr>
@@ -2008,8 +2175,9 @@ function getEmrHTML(emrPdfData, logoBase64) {
                 <td>
                   Description: ${history.depressionScreening?.desc || ""}<br>
                   Score: ${history.depressionScreening?.score || ""}<br>
-                  Recommendation: ${history.depressionScreening?.recomendation || ""
-    }
+                  Recommendation: ${
+                    history.depressionScreening?.recomendation || ""
+                  }
                 </td>
               </tr>
             </tbody>
@@ -2018,8 +2186,9 @@ function getEmrHTML(emrPdfData, logoBase64) {
       </div>
 
       <!-- Past History -->
-      ${history.pastHistory && history.pastHistory.length > 0
-      ? `
+      ${
+        history.pastHistory && history.pastHistory.length > 0
+          ? `
         <div class="section-container">
           <h4 class="section-title">Past Medical History</h4>
           <div class="table-container">
@@ -2035,8 +2204,8 @@ function getEmrHTML(emrPdfData, logoBase64) {
               </thead>
               <tbody>
                 ${history.pastHistory
-        .map(
-          (ph) => `
+                  .map(
+                    (ph) => `
                   <tr>
                     <td>${ph.sufferingFrom || ""}</td>
                     <td>${ph.drugName?.join(", ") || ""}</td>
@@ -2045,19 +2214,20 @@ function getEmrHTML(emrPdfData, logoBase64) {
                     <td>${ph.pastHistoryNotes || ""}</td>
                   </tr>
                 `
-        )
-        .join("")}
+                  )
+                  .join("")}
               </tbody>
             </table>
           </div>
         </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Surgical History -->
-      ${history.surgicalHistory && history.surgicalHistory.length > 0
-      ? `
+      ${
+        history.surgicalHistory && history.surgicalHistory.length > 0
+          ? `
         <div class="section-container">
           <h4 class="section-title">Surgical History</h4>
           <div class="table-container">
@@ -2074,31 +2244,33 @@ function getEmrHTML(emrPdfData, logoBase64) {
               </thead>
               <tbody>
                 ${history.surgicalHistory
-        .map(
-          (sh) => `
+                  .map(
+                    (sh) => `
                   <tr>
                     <td>${sh.surgeryName || ""}</td>
                     <td>${sh.indication || ""}</td>
                     <td>${sh.year || ""}</td>
                     <td>${sh.procedureType || ""}</td>
                     <td>${sh.complications || ""}</td>
-                    <td>${sh.hospital?.name || ""}, ${sh.hospital?.location || ""
-            }</td>
+                    <td>${sh.hospital?.name || ""}, ${
+                      sh.hospital?.location || ""
+                    }</td>
                   </tr>
                 `
-        )
-        .join("")}
+                  )
+                  .join("")}
               </tbody>
             </table>
           </div>
         </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Allergies -->
-      ${history.allergies && history.allergies.length > 0
-      ? `
+      ${
+        history.allergies && history.allergies.length > 0
+          ? `
         <div class="section-container">
           <h4 class="section-title">Allergies</h4>
           <div class="table-container">
@@ -2114,8 +2286,8 @@ function getEmrHTML(emrPdfData, logoBase64) {
               </thead>
               <tbody>
                 ${history.allergies
-        .map(
-          (allergy) => `
+                  .map(
+                    (allergy) => `
                   <tr>
                     <td>${allergy.allergyName || ""}</td>
                     <td>${allergy.pastAllergyDrugName?.join(", ") || ""}</td>
@@ -2124,19 +2296,20 @@ function getEmrHTML(emrPdfData, logoBase64) {
                     <td>${allergy.advise || ""}</td>
                   </tr>
                 `
-        )
-        .join("")}
+                  )
+                  .join("")}
               </tbody>
             </table>
           </div>
         </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Immunization -->
-      ${immunization && immunization.length > 0
-      ? `
+      ${
+        immunization && immunization.length > 0
+          ? `
         <div class="section-container">
           <h4 class="section-title">Immunization History</h4>
           <div class="table-container">
@@ -2153,8 +2326,8 @@ function getEmrHTML(emrPdfData, logoBase64) {
               </thead>
               <tbody>
                 ${immunization
-        .map(
-          (imm) => `
+                  .map(
+                    (imm) => `
                   <tr>
                     <td>${imm.immunizationType || ""}</td>
                     <td>${imm.vaccinationName || ""}</td>
@@ -2164,15 +2337,15 @@ function getEmrHTML(emrPdfData, logoBase64) {
                     <td>${imm.immunizationNotes || ""}</td>
                   </tr>
                 `
-        )
-        .join("")}
+                  )
+                  .join("")}
               </tbody>
             </table>
           </div>
         </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- General Physical Examination -->
       <div class="section-container">
@@ -2180,44 +2353,63 @@ function getEmrHTML(emrPdfData, logoBase64) {
         <div class="table-container">
           <table>
             <tbody>
-              <tr><th>Blood Pressure</th><td>${generalPhysicalExamination.BP?.sys || ""
-    }/${generalPhysicalExamination.BP?.dia || ""} mmHg</td></tr>
-              <tr><th>Pulse Rate</th><td>${generalPhysicalExamination.PR || ""
-    } bpm</td></tr>
-              <tr><th>Volume</th><td>${generalPhysicalExamination.volume || ""
-    }</td></tr>
-              <tr><th>Regularity</th><td>${generalPhysicalExamination.regularity || ""
-    }</td></tr>
-              <tr><th>Character</th><td>${generalPhysicalExamination.character || ""
-    }</td></tr>
-              <tr><th>Temperature</th><td>${generalPhysicalExamination.temperature || ""
-    }</td></tr>
-              <tr><th>Respiratory Rate</th><td>${generalPhysicalExamination.RR || ""
-    }</td></tr>
-              <tr><th>SpO2</th><td>${generalPhysicalExamination.SPO2 || ""
-    }%</td></tr>
-              <tr><th>Height</th><td>${generalPhysicalExamination.height || ""
-    } m</td></tr>
-              <tr><th>Weight</th><td>${generalPhysicalExamination.weight || ""
-    } kg</td></tr>
-              <tr><th>BMI</th><td>${generalPhysicalExamination.BMI || ""
-    }</td></tr>
-              <tr><th>Radio Femoral Delay</th><td>${generalPhysicalExamination.radioFemoralDelay || ""
-    }</td></tr>
-              <tr><th>Pallor</th><td>${generalPhysicalExamination.pallor || ""
-    }</td></tr>
-              <tr><th>Icterus</th><td>${generalPhysicalExamination.icterus || ""
-    }</td></tr>
-              <tr><th>Cyanosis</th><td>${generalPhysicalExamination.cyanosis || ""
-    }</td></tr>
-              <tr><th>Clubbing</th><td>${generalPhysicalExamination.clubbing || ""
-    }</td></tr>
-              <tr><th>Lymphadenopathy</th><td>${generalPhysicalExamination.lymphadenopathy || ""
-    }</td></tr>
-              <tr><th>Edema</th><td>${generalPhysicalExamination.edema || ""
-    }</td></tr>
-              <tr><th>JVP</th><td>${generalPhysicalExamination.JVP || ""
-    }</td></tr>
+              <tr><th>Blood Pressure</th><td>${
+                generalPhysicalExamination.BP?.sys || ""
+              }/${generalPhysicalExamination.BP?.dia || ""} mmHg</td></tr>
+              <tr><th>Pulse Rate</th><td>${
+                generalPhysicalExamination.PR || ""
+              } bpm</td></tr>
+              <tr><th>Volume</th><td>${
+                generalPhysicalExamination.volume || ""
+              }</td></tr>
+              <tr><th>Regularity</th><td>${
+                generalPhysicalExamination.regularity || ""
+              }</td></tr>
+              <tr><th>Character</th><td>${
+                generalPhysicalExamination.character || ""
+              }</td></tr>
+              <tr><th>Temperature</th><td>${
+                generalPhysicalExamination.temperature || ""
+              }</td></tr>
+              <tr><th>Respiratory Rate</th><td>${
+                generalPhysicalExamination.RR || ""
+              }</td></tr>
+              <tr><th>SpO2</th><td>${
+                generalPhysicalExamination.SPO2 || ""
+              }%</td></tr>
+              <tr><th>Height</th><td>${
+                generalPhysicalExamination.height || ""
+              } m</td></tr>
+              <tr><th>Weight</th><td>${
+                generalPhysicalExamination.weight || ""
+              } kg</td></tr>
+              <tr><th>BMI</th><td>${
+                generalPhysicalExamination.BMI || ""
+              }</td></tr>
+              <tr><th>Radio Femoral Delay</th><td>${
+                generalPhysicalExamination.radioFemoralDelay || ""
+              }</td></tr>
+              <tr><th>Pallor</th><td>${
+                generalPhysicalExamination.pallor || ""
+              }</td></tr>
+              <tr><th>Icterus</th><td>${
+                generalPhysicalExamination.icterus || ""
+              }</td></tr>
+              <tr><th>Cyanosis</th><td>${
+                generalPhysicalExamination.cyanosis || ""
+              }</td></tr>
+              <tr><th>Clubbing</th><td>${
+                generalPhysicalExamination.clubbing || ""
+              }</td></tr>
+              <tr><th>Lymphadenopathy</th><td>${
+                generalPhysicalExamination.lymphadenopathy || ""
+              }</td></tr>
+              <tr><th>Edema</th><td>${
+                generalPhysicalExamination.edema || ""
+              }</td></tr>
+              <tr><th>JVP</th><td>${
+                generalPhysicalExamination.JVP || ""
+              }</td></tr>
             </tbody>
           </table>
         </div>
@@ -2229,29 +2421,35 @@ function getEmrHTML(emrPdfData, logoBase64) {
         <div class="table-container">
           <table>
             <tbody>
-              <tr><th>Respiratory System</th><td>${systemicExamination.respiratorySystem || ""
-    }</td></tr>
-              <tr><th>Cardiovascular System</th><td>${systemicExamination.CVS || ""
-    }</td></tr>
-              <tr><th>Central Nervous System</th><td>${systemicExamination.CNS || ""
-    }</td></tr>
-              <tr><th>Per Abdomen</th><td>${systemicExamination.PA || ""
-    }</td></tr>
-              <tr><th>Other Findings</th><td>${systemicExamination.otherSystemicFindings || ""
-    }</td></tr>
+              <tr><th>Respiratory System</th><td>${
+                systemicExamination.respiratorySystem || ""
+              }</td></tr>
+              <tr><th>Cardiovascular System</th><td>${
+                systemicExamination.CVS || ""
+              }</td></tr>
+              <tr><th>Central Nervous System</th><td>${
+                systemicExamination.CNS || ""
+              }</td></tr>
+              <tr><th>Per Abdomen</th><td>${
+                systemicExamination.PA || ""
+              }</td></tr>
+              <tr><th>Other Findings</th><td>${
+                systemicExamination.otherSystemicFindings || ""
+              }</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Diagnosis and Prescription -->
-      ${diagnosis && diagnosis.length > 0
-      ? `
+      ${
+        diagnosis && diagnosis.length > 0
+          ? `
         <div class="section-container">
           <h4 class="section-title">Diagnosis & Prescription</h4>
           ${diagnosis
-        .map(
-          (diag) => `
+            .map(
+              (diag) => `
             <div class="table-container">
               <table>
                 <tbody>
@@ -2265,8 +2463,9 @@ function getEmrHTML(emrPdfData, logoBase64) {
                   </tr>
                 </tbody>
               </table>
-              ${diag.prescription && diag.prescription.length > 0
-              ? `
+              ${
+                diag.prescription && diag.prescription.length > 0
+                  ? `
                 <table style="margin-top: 10px;">
                   <thead>
                     <tr>
@@ -2280,8 +2479,8 @@ function getEmrHTML(emrPdfData, logoBase64) {
                   </thead>
                   <tbody>
                     ${diag.prescription
-                .map(
-                  (med) => `
+                      .map(
+                        (med) => `
                       <tr>
                         <td>${med.drugName || ""}</td>
                         <td>${med.frequency || ""}</td>
@@ -2291,21 +2490,21 @@ function getEmrHTML(emrPdfData, logoBase64) {
                         <td>${med.investigations || ""}</td>
                       </tr>
                     `
-                )
-                .join("")}
+                      )
+                      .join("")}
                   </tbody>
                 </table>
               `
-              : ""
-            }
+                  : ""
+              }
             </div>
           `
-        )
-        .join("")}
+            )
+            .join("")}
         </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Advice and Follow-up -->
       <div class="section-container">
@@ -2315,12 +2514,14 @@ function getEmrHTML(emrPdfData, logoBase64) {
             <tbody>
               <tr><th>Advice</th><td>${advice || ""}</td></tr>
               <tr><th>Referrals</th><td>${referrals || ""}</td></tr>
-              <tr><th>Follow-up Schedule</th><td>${followUpSchedule || ""
-    }</td></tr>
-              ${doctorNotes
-      ? `<tr><th>Doctor Notes</th><td>${doctorNotes}</td></tr>`
-      : ""
-    }
+              <tr><th>Follow-up Schedule</th><td>${
+                followUpSchedule || ""
+              }</td></tr>
+              ${
+                doctorNotes
+                  ? `<tr><th>Doctor Notes</th><td>${doctorNotes}</td></tr>`
+                  : ""
+              }
             </tbody>
           </table>
         </div>
@@ -2335,7 +2536,7 @@ function getEmrHTML(emrPdfData, logoBase64) {
 `;
 }
 
-function getPrescriptionHTML(prescriptionData, logoBase64) {
+function getPrescriptionHTML(prescriptionData, logoBase64, emrInfo = {}) {
   const {
     patient = {},
     doctor = {},
@@ -2351,6 +2552,10 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
     consultationMode = "",
     medicineSchedule = null, // Add the medicine schedule parameter
   } = prescriptionData || {};
+
+  console.log("Generating prescription HTML with data:", prescriptionData, rx, {
+    emrInfo,
+  });
 
   const formatDate = (date) => {
     return date ? dayjs(date).format("DD/MM/YYYY") : "";
@@ -2385,18 +2590,18 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
             </thead>
             <tbody>
               ${medicineSchedule.medicines
-        .map(
-          (med) => `
+                .map(
+                  (med) => `
                 <tr>
                   <td>${sanitizeHtml(med.drugName || "")}</td>
-                  <td>${sanitizeHtml(med.frequency || "")}</td>
+                  <td>${sanitizeHtml(med.frequency || med.freequency || "")}</td>
                   <td>${sanitizeHtml(med.dosage || "")}</td>
                   <td>${sanitizeHtml(med.instructions || "")}</td>
                   <td>${med.status || "Active"}</td>
                 </tr>
               `
-        )
-        .join("")}
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
@@ -2620,10 +2825,10 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
   <body>
     <div class="header">
       <div class="doctor-info">
-        <h2>${doctor.name || "Doctor"}</h2>
-        <p>${doctor.education || ""}</p>
+        <h2>${doctor.firstName || "Doctor"} ${doctor.lastName}</h2>
         <p>${doctor.specialization || ""}</p>
-        <p>${doctor.registrationNumber || ""}</p>
+        <p>${doctor.degree || ""}</p>
+        <p>Reg. No: ${doctor.medicalRegistrationNumber || ""}</p>
       </div>
       <div class="logo">
         ${logoHtml}
@@ -2647,8 +2852,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
               </tr>
               <tr>
                 <th>Age / Gender</th>
-                <td>${patient.age || ""} ${patient.gender === "M" ? "Male" : "Female"
-    }</td>
+                <td>${patient.age || ""} ${patient.gender}</td>
               </tr>
               <tr>
                 <th>Date</th>
@@ -2657,6 +2861,22 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
               <tr>
                 <th>Prescription ID</th>
                 <td>${prescriptionID || ""}</td>
+              </tr>
+              <tr>
+                <th>Blood Group</th>
+                <td>${emrInfo?.basicInfo?.bloodGroup || "NA"}</td>
+              </tr>
+              <tr>
+                <th>Height</th>
+                <td>${emrInfo?.generalPhysicalExamination?.height || ""} m</td>
+              </tr>
+              <tr>
+                <th>Weight</th>
+                <td>${emrInfo?.generalPhysicalExamination?.weight || ""} kg</td>
+              </tr>
+              <tr>
+                <th>BMI</th>
+                <td>${emrInfo?.generalPhysicalExamination?.BMI || ""} kg / m<sup>2</sup></td>
               </tr>
             </tbody>
           </table>
@@ -2671,15 +2891,16 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
             <tbody>
               <tr><th>Blood Pressure</th><td>${vitals.BP || ""} mmHg</td></tr>
               <tr><th>Pulse Rate</th><td>${vitals.PR || ""} bpm</td></tr>
-              <tr><th>SpO2</th><td>${vitals.SpO2 || ""}%</td></tr>
+              <tr><th>SpO2</th><td>${vitals.SpO2 || ""} %</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <!-- Symptoms -->
-      ${sx
-      ? `
+      ${
+        sx
+          ? `
       <div class="section-container">
         <h4 class="section-title">Symptoms</h4>
         <div class="table-container">
@@ -2691,12 +2912,13 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
         </div>
       </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Diagnosis -->
-      ${dx && dx.length > 0
-      ? `
+      ${
+        dx && dx.length > 0
+          ? `
       <div class="section-container">
         <h4 class="section-title">Diagnosis</h4>
         <div class="table-container">
@@ -2709,26 +2931,27 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
             </thead>
             <tbody>
               ${dx
-        .map(
-          (diagnosis) => `
+                .map(
+                  (diagnosis) => `
             <tr>
                   <td>${diagnosis.diagnosisName || ""}</td>
                   <td>${formatDate(diagnosis.dateOfDiagnosis)}</td>
             </tr>
               `
-        )
-        .join("")}
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
       </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Medications -->
-      ${rx && rx.length > 0
-      ? `
+      ${
+        rx && rx.length > 0
+          ? `
       <div class="section-container">
         <h4 class="section-title">Medications</h4>
         <div class="table-container">
@@ -2743,28 +2966,29 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
             </thead>
             <tbody>
               ${rx
-        .map(
-          (medicine) => `
+                .map(
+                  (medicine) => `
                 <tr>
                   <td>${medicine.drugName || ""}</td>
-                  <td>${medicine.frequency || ""}</td>
+                  <td>${medicine.freequency || ""}</td>
                   <td>${medicine.duration || ""}</td>
                   <td>${medicine.quantity || ""}</td>
             </tr>
               `
-        )
-        .join("")}
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
       </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Lab Tests -->
-      ${labTest && labTest.length > 0
-      ? `
+      ${
+        labTest && labTest.length > 0
+          ? `
       <div class="section-container">
         <h4 class="section-title">Laboratory Tests</h4>
         <div class="table-container">
@@ -2779,12 +3003,13 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
         </div>
       </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Advice -->
-      ${advice && advice.length > 0
-      ? `
+      ${
+        advice && advice.length > 0
+          ? `
       <div class="section-container">
         <h4 class="section-title">Medical Advice</h4>
         <div class="table-container">
@@ -2800,12 +3025,13 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
       </div>
       </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       <!-- Follow-up -->
-      ${followUpSchedule
-      ? `
+      ${
+        followUpSchedule
+          ? `
       <div class="section-container">
         <h4 class="section-title">Follow-up</h4>
         <div class="table-container">
@@ -2820,8 +3046,8 @@ function getPrescriptionHTML(prescriptionData, logoBase64) {
         </div>
       </div>
       `
-      : ""
-    }
+          : ""
+      }
 
       ${medicineScheduleHtml}
     </div>
@@ -2841,5 +3067,6 @@ module.exports = {
   getEPrescriptionPdfById,
   getEmrPdfLinkByemrId,
   getEPrescriptionPdfLinkByemrId,
-  launchPuppeteerBrowser
+  launchPuppeteerBrowser,
+  regenerateEPrescriptionPdfLink,
 };

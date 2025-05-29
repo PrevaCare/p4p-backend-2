@@ -133,9 +133,8 @@ const changeUserType = async (req, res) => {
       }
 
       // Validate corporate exists
-      const corporateExists = await Corporate.findById(corporate).session(
-        session
-      );
+      const corporateExists =
+        await Corporate.findById(corporate).session(session);
       if (!corporateExists) {
         await session.abortTransaction();
         return Response.error(

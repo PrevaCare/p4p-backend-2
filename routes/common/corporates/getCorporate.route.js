@@ -45,14 +45,26 @@ const {
   healthTrackerController,
 } = require("../../../controllers/common/patient/latestHealthData/getLatestHealthData.controller");
 
-const { generateRiskAssessmentPDF } = require("../../../controllers/common/corporates/employees/emr/generateRiskAssessmentPdf.controller.js");
-const { generateHealthAssessmentPDF } = require("../../../controllers/common/corporates/employees/emr/generateHealthAssessmentPdf.controller.js");
+const {
+  generateRiskAssessmentPDF,
+} = require("../../../controllers/common/corporates/employees/emr/generateRiskAssessmentPdf.controller.js");
+const {
+  generateHealthAssessmentPDF,
+} = require("../../../controllers/common/corporates/employees/emr/generateHealthAssessmentPdf.controller.js");
 
 // Risk Assessment PDF Route
-router.post("/common/generate-risk-assessment-pdf", verifyToken, generateRiskAssessmentPDF);
+router.post(
+  "/common/generate-risk-assessment-pdf",
+  verifyToken,
+  generateRiskAssessmentPDF
+);
 
 // Health Assessment PDF Route
-router.post("/common/generate-health-assessment-pdf", verifyToken, generateHealthAssessmentPDF);
+router.post(
+  "/common/generate-health-assessment-pdf",
+  verifyToken,
+  generateHealthAssessmentPDF
+);
 
 router.get(
   "/common/corporates",
@@ -190,7 +202,7 @@ router.get(
   "/common/corporate/employees/health-score/:userId",
   verifyToken,
   checkPermissions("READ", "Corporate"), // login user should have permission related to
-  getLatestHealthScore,
+  getLatestHealthScore
 );
 
 // generate bullk excel for corporate employee.

@@ -11,7 +11,15 @@ const {
 const immunizationModel = require("../../../../../models/patient/healthSummary/immunization.model.js");
 const currentConditionModel = require("../../../../../models/patient/healthSummary/currentCondition.model.js");
 const allergyModel = require("../../../../../models/patient/healthSummary/allergy.model.js");
-const dayjs = require("dayjs");
+const {
+  getFormattedBasicInfo,
+  defaultHistory,
+  getFormattedGeneralPhysicalExamination,
+  getFormattedSystemicExamination,
+  defaultGynaecologicalHistory,
+  getFormattedDiagnosisData,
+  defaultImmunization,
+} = require("../../../utils/helper.js");
 
 const getSingleEmployeeAllEmrForCard = async (req, res) => {
   try {
@@ -170,7 +178,7 @@ const getInitialEmrFormData = async (req, res) => {
     }
 
     // Main aggregation pipeline to get EMR and related data
-    const [latestEmr] = await EMR.aggregate([
+    const latestEmrPromise = EMR.aggregate([
       // First get the latest EMR
       {
         $match: { user: userObjectId },
@@ -192,7 +200,9 @@ const getInitialEmrFormData = async (req, res) => {
           doctorNotes: 1,
           consultationMode: 1,
           doctor: 1,
-          bloodGroup: 1,
+          bloodGroup: {
+            $ifNull: ["$basicInfo.bloodGroup", "not known"],
+          },
           advice: 1,
           referrals: 1,
           followUpSchedule: 1,
@@ -200,8 +210,23 @@ const getInitialEmrFormData = async (req, res) => {
       },
     ]);
 
+    // Retrive past EMR history excluding the latest one
+    const pastEmrHistoryPromise = EMR.aggregate([
+      // First get the latest EMR
+      {
+        $match: { user: userObjectId },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      { $skip: 1 },
+      {
+        $limit: 2,
+      },
+    ]);
+
     // Get all current conditions
-    const currentConditions = await currentConditionModel.find(
+    const currentConditionsPromise = currentConditionModel.find(
       { userId: userObjectId },
       {
         dateOfDiagnosis: 1,
@@ -213,7 +238,7 @@ const getInitialEmrFormData = async (req, res) => {
     );
 
     // Get all allergies
-    const allergies = await allergyModel.find(
+    const allergiesPromise = allergyModel.find(
       { userId: userObjectId },
       {
         allergyName: 1,
@@ -227,7 +252,7 @@ const getInitialEmrFormData = async (req, res) => {
     );
 
     // Get all immunizations
-    const immunizations = await immunizationModel.find(
+    const immunizationsPromise = immunizationModel.find(
       { userId: userObjectId },
       {
         _id: 0,
@@ -241,247 +266,65 @@ const getInitialEmrFormData = async (req, res) => {
       }
     );
 
-    // Initialize empty surgicalHistory array
-    const surgicalHistory = [];
+    const [
+      [latestEmr],
+      pastEmrHistory,
+      currentConditions,
+      allergies,
+      immunizations,
+    ] = await Promise.all([
+      latestEmrPromise,
+      pastEmrHistoryPromise,
+      currentConditionsPromise,
+      allergiesPromise,
+      immunizationsPromise,
+    ]);
+
+    const pastComplaints =
+      pastEmrHistory.flatMap((emr) => {
+        if (emr.complaints && emr.complaints.length > 0) {
+          return emr.complaints.map((complaint) => ({
+            chiefComplaint: complaint.chiefComplaint || "",
+            historyOfPresentingIllness:
+              complaint.historyOfPresentingIllness || "",
+            date: emr.createdAt,
+          }));
+        } else {
+          return [
+            {
+              chiefComplaint: emr?.history?.chiefComplaint || "",
+              historyOfPresentingIllness:
+                emr?.history?.historyOfPresentingIllness || "",
+              date: emr?.createdAt,
+            },
+          ];
+        }
+      }) || [];
+
+    const formattedBasicInfo = getFormattedBasicInfo(userData, latestEmr);
+    const defaultHistoryData = defaultHistory(allergies);
+    const formattedGeneralPhysicalExamination =
+      getFormattedGeneralPhysicalExamination(latestEmr);
+    const formattedSystemicExamination =
+      getFormattedSystemicExamination(latestEmr);
+    const formattedDiagnosisData = getFormattedDiagnosisData(currentConditions);
 
     // Construct form data object
     const formData = {
       user: userId,
       role,
-      basicInfo: {
-        name: `${userData.firstName} ${userData.lastName}`,
-        age: userData.age || "",
-        children: userData.children || 0,
-        gender: userData.gender || "",
-        phoneNumber: userData.phone || "",
-        maritalStatus: userData.isMarried || false,
-        bloodGroup: (latestEmr && latestEmr.bloodGroup) || "not known",
-        address: userData.address
-          ? {
-              name: userData.address.name || "",
-              street: userData.address.street || "",
-              city: userData.address.city || "",
-              state: userData.address.state || "",
-              zipCode: userData.address.zipCode || "",
-            }
-          : {
-              name: "",
-              street: "",
-              city: "",
-              state: "",
-              zipCode: "",
-            },
-      },
+      pastComplaints,
+      basicInfo: formattedBasicInfo,
       history: latestEmr
         ? {
             ...latestEmr.history,
-            allergies:
-              allergies && allergies.length > 0
-                ? {
-                    pastAllergyPrescription: allergies.map((item) => ({
-                      allergyName: item.allergyName || "",
-                      symptoms: [],
-                      diagnosedBy: item.advisedBy || "",
-                      triggers: [],
-                      pastAllergyNotes: item.advise || "",
-                      pastAllergyPrescriptionBy: "Doctor",
-                      drugs:
-                        item.pastAllergyDrugName && item.pastAllergyFreequency
-                          ? item.pastAllergyDrugName.map((drug, index) => ({
-                              drugName: drug,
-                              isContinued: true,
-                              frequency:
-                                item.pastAllergyFreequency[index] || "",
-                              duration: "",
-                              fetchedFromEMR: true,
-                            }))
-                          : [],
-                    })),
-                    newAllergyPrescription: [],
-                  }
-                : {
-                    pastAllergyPrescription: [],
-                    newAllergyPrescription: [],
-                  },
+            allergies: defaultHistoryData.allergies,
           }
-        : {
-            chiefComplaint: "",
-            historyOfPresentingIllness: "",
-            pastHistory: [
-              {
-                sufferingFrom: "",
-                drugName: [],
-                freequency: [],
-                readings: "",
-                pastHistoryNotes: "",
-              },
-            ],
-            surgicalHistory: [],
-            allergies:
-              allergies && allergies.length > 0
-                ? {
-                    pastAllergyPrescription: allergies.map((item) => ({
-                      allergyName: item.allergyName || "",
-                      symptoms: [],
-                      diagnosedBy: item.advisedBy || "",
-                      triggers: [],
-                      pastAllergyNotes: item.advise || "",
-                      pastAllergyPrescriptionBy: "Doctor",
-                      drugs:
-                        item.pastAllergyDrugName && item.pastAllergyFreequency
-                          ? item.pastAllergyDrugName.map((drug, index) => ({
-                              drugName: drug,
-                              isContinued: true,
-                              frequency:
-                                item.pastAllergyFreequency[index] || "",
-                              duration: "",
-                              fetchedFromEMR: true,
-                            }))
-                          : [],
-                    })),
-                    newAllergyPrescription: [],
-                  }
-                : {
-                    pastAllergyPrescription: [],
-                    newAllergyPrescription: [],
-                  },
-            previousSurgeries: "",
-            habits: {
-              smoking: false,
-              packYears: "",
-              alcohol: false,
-              alcoholDetails: "",
-              qntPerWeek: "",
-              substanceAbuse: "NONE",
-            },
-            bowelAndBladder: "NORMAL AND REGULAR",
-            appetite: "ADEQUATE",
-            sleep: "",
-            depressionScreening: {
-              desc: "",
-              recomendation: "",
-              score: "",
-            },
-            stressScreening: {
-              desc: "",
-              recomendation: "",
-              score: "",
-            },
-            mentalHealthAssessment: "",
-          },
-      immunization: immunizations.length
-        ? immunizations
-        : [
-            {
-              immunizationType: "up to date",
-              vaccinationName: "",
-              totalDose: 1,
-              doseDates: [
-                {
-                  date: new Date(),
-                  status: "due",
-                },
-              ],
-              doctorName: "",
-              sideEffects: "",
-              immunizationNotes: "",
-            },
-          ],
-      generalPhysicalExamination: latestEmr
-        ? {
-            PR: latestEmr?.generalPhysicalExamination?.PR,
-            BP: {
-              sys: latestEmr?.generalPhysicalExamination?.BP?.sys,
-              dia: latestEmr?.generalPhysicalExamination?.BP?.dia,
-            },
-            volume: latestEmr?.generalPhysicalExamination?.volume,
-            regularity:
-              latestEmr?.generalPhysicalExamination?.regularity || "regular",
-            character:
-              latestEmr?.generalPhysicalExamination?.character || "normal",
-            temperature:
-              latestEmr?.generalPhysicalExamination?.temperature || "afebrile",
-            RR: latestEmr?.generalPhysicalExamination?.RR || "",
-            SPO2: latestEmr?.generalPhysicalExamination?.SPO2 || "",
-            radioFemoralDelay:
-              latestEmr?.generalPhysicalExamination?.radioFemoralDelay ||
-              "NONE",
-            height: latestEmr?.generalPhysicalExamination?.height || "",
-            weight: latestEmr?.generalPhysicalExamination?.weight || "",
-            pallor: latestEmr?.generalPhysicalExamination?.pallor || "absent",
-            icterus: latestEmr?.generalPhysicalExamination?.icterus || "absent",
-            cyanosis:
-              latestEmr?.generalPhysicalExamination?.cyanosis || "absent",
-            clubbing:
-              latestEmr?.generalPhysicalExamination?.clubbing || "absent",
-            lymphadenopathy:
-              latestEmr?.generalPhysicalExamination?.edema || "absent",
-            edema:
-              latestEmr?.generalPhysicalExamination?.lymphadenopathy ||
-              "absent",
-            JVP: latestEmr?.generalPhysicalExamination?.JVP || "not raised",
-          }
-        : {
-            PR: "",
-            BP: { sys: "", dia: "" },
-            volume: "full",
-            regularity: "regular",
-            character: "normal",
-            temperature: "afebrile",
-            RR: "",
-            SPO2: "",
-            radioFemoralDelay: "NONE",
-            height: "",
-            weight: "",
-            pallor: "absent",
-            icterus: "absent",
-            cyanosis: "absent",
-            clubbing: "absent",
-            lymphadenopathy: "absent",
-            edema: "absent",
-            JVP: "not raised",
-          },
-      systemicExamination:
-        latestEmr && latestEmr.systemicExamination
-          ? {
-              respiratorySystem:
-                latestEmr.systemicExamination?.respiratorySystem ||
-                "normal vesicular breath sounds",
-              CVS:
-                latestEmr.systemicExamination?.CVS ||
-                "S1 S2 PRESENT, NO ADDED SOUNDS",
-              CNS:
-                latestEmr.systemicExamination?.CNS ||
-                "NO FOCAL NEUROLOGICAL DEFICIT",
-              PA:
-                latestEmr.systemicExamination?.PA ||
-                "SOFT, NORMAL BOWEL SOUNDS PRESENT",
-              otherSystemicFindings:
-                latestEmr.systemicExamination?.otherSystemicFindings ||
-                "NOTHING SIGNIFICANT",
-            }
-          : {
-              respiratorySystem: "normal vesicular breath sounds",
-              CVS: "S1 S2 PRESENT, NO ADDED SOUNDS",
-              CNS: "NO FOCAL NEUROLOGICAL DEFICIT",
-              PA: "SOFT, NORMAL BOWEL SOUNDS PRESENT",
-              otherSystemicFindings: "NOTHING SIGNIFICANT",
-            },
-      diagnosis: currentConditions.length
-        ? currentConditions.map((condition) => ({
-            dateOfDiagnosis: condition.dateOfDiagnosis
-              ? dayjs(condition.dateOfDiagnosis).format("YYYY-MM-DD")
-              : "",
-            diagnosisName: condition.diagnosisName || "",
-            prescription: condition.prescription || [],
-          }))
-        : [
-            {
-              dateOfDiagnosis: "",
-              diagnosisName: "",
-              prescription: [],
-            },
-          ],
+        : defaultHistoryData,
+      immunization: immunizations.length ? immunizations : defaultImmunization,
+      generalPhysicalExamination: formattedGeneralPhysicalExamination,
+      systemicExamination: formattedSystemicExamination,
+      diagnosis: formattedDiagnosisData,
       advice: (latestEmr && latestEmr.advice) || "",
       referrals: (latestEmr && latestEmr.referrals) || "",
       followUpSchedule: (latestEmr && latestEmr.followUpSchedule) || "",
@@ -492,45 +335,8 @@ const getInitialEmrFormData = async (req, res) => {
 
     // Only include gynaecologicalHistory if user is female
     if (userData.gender === "F") {
-      formData.gynaecologicalHistory = (latestEmr &&
-        latestEmr.gynaecologicalHistory) || {
-        ageOfMenarche: "",
-        cycleDuration: "",
-        cycleRegularity: "regular",
-        daysOfBleeding: "",
-        padsUsedPerDay: "",
-        passageOfClots: "",
-        complaints: "",
-        previousHistory: "",
-        obstetricHistory: {
-          gScore: 0,
-          pScore: 0,
-          lScore: 0,
-          aScore: "",
-          partnerBloodGroup: "",
-          conceptions: [
-            {
-              ageAtConception: "",
-              modeOfConception: "",
-              modeOfDelivery: "",
-              complications: "",
-            },
-          ],
-          primigravidaWeeks: "",
-          isPregnant: false,
-          EDD: "",
-          symptoms: "",
-          examination: "",
-          USGScans: "due",
-          TDDoseTaken: "",
-          prenatalScreeningReports: "",
-          prenatalVitamins: false,
-          freshComplaint: "",
-          nutritionalHistory: "",
-          treatingGynaecologistName: "",
-          gynaecologistAddress: "",
-        },
-      };
+      formData.gynaecologicalHistory =
+        latestEmr?.gynaecologicalHistory || defaultGynaecologicalHistory;
     }
     // Explicitly remove gynaecologicalHistory if user is not female
     else if (formData.gynaecologicalHistory) {

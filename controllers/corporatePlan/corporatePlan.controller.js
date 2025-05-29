@@ -504,9 +504,8 @@ const getSingleCorporatePlanByCorporatePlanIdAllFields = async (req, res) => {
       );
     }
 
-    const existingCorporatePlan = await corporatePlanModel.findById(
-      corporatePlanId
-    );
+    const existingCorporatePlan =
+      await corporatePlanModel.findById(corporatePlanId);
 
     if (!existingCorporatePlan) {
       return Response.error(
@@ -551,9 +550,8 @@ const deleteCorporatePlanById = async (req, res) => {
       );
     }
 
-    const deletedCorporatePlan = await corporatePlanModel.findByIdAndDelete(
-      corporatePlanId
-    );
+    const deletedCorporatePlan =
+      await corporatePlanModel.findByIdAndDelete(corporatePlanId);
 
     if (!deletedCorporatePlan) {
       return Response.error(

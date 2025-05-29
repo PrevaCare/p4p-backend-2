@@ -21,8 +21,6 @@ const createPermissionsAndRoles = async (req, res) => {
     201,
     "User registered successfully !"
   );
-
-  //   console.log("Roles and permissions created:", adminRole);
 };
 
 module.exports = { createPermissionsAndRoles };

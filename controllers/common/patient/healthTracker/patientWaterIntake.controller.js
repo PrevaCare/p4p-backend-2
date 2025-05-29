@@ -104,16 +104,18 @@ const getAllWaterIntakeByDateRange = async (req, res) => {
     // Set end date to end of day (23:59:59)
     const endDateTime = dayjs(endDate).endOf("day").toDate();
 
-    const data = await waterIntakeModel.find(
-      {
-        patientId,
-        date: {
-          $gte: startDateTime,
-          $lte: endDateTime,
+    const data = await waterIntakeModel
+      .find(
+        {
+          patientId,
+          date: {
+            $gte: startDateTime,
+            $lte: endDateTime,
+          },
         },
-      },
-      "patientId waterIntake waterIntakeGoal measurementUnit date"
-    ).sort({ date: -1 });
+        "patientId waterIntake waterIntakeGoal measurementUnit date"
+      )
+      .sort({ date: -1 });
 
     return Response.success(
       res,

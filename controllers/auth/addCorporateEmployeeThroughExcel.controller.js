@@ -130,7 +130,6 @@ const downloadSampleExcelFileToAddCorporateEmployee = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
-    // console.log(err);
     return Response.error(
       res,
       500,
@@ -172,9 +171,6 @@ const addCorporateEmployeesThroughExcel = async (req, res) => {
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(worksheet);
-
-    // console.log(data);
-    // return;
 
     // Map the data from Excel to the employee schema
     const employeesData = data.map((item) => ({
@@ -220,8 +216,6 @@ const addCorporateEmployeesThroughExcel = async (req, res) => {
       })
     );
 
-    // console.log(validatedData);
-    // return;
     // Insert all the employees in bulk
     const insertedEmployees = await Employee.insertMany(validatedData);
 

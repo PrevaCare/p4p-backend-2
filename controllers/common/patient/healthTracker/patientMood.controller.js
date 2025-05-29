@@ -102,13 +102,15 @@ const getAllMoodByDateRange = async (req, res) => {
   try {
     const { patientId, startDate, endDate } = req.body;
 
-    const data = await patientMoodModel.find({
-      patientId,
-      createdAt: {
-        $gte: dayjs(new Date(startDate)).startOf("day").toDate(),
-        $lte: dayjs(new Date(endDate)).endOf("day").toDate(),
-      },
-    }).sort({ date: -1 });
+    const data = await patientMoodModel
+      .find({
+        patientId,
+        createdAt: {
+          $gte: dayjs(new Date(startDate)).startOf("day").toDate(),
+          $lte: dayjs(new Date(endDate)).endOf("day").toDate(),
+        },
+      })
+      .sort({ date: -1 });
 
     return Response.success(
       res,

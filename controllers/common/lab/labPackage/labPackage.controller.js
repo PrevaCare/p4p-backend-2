@@ -29,11 +29,10 @@ const createLabPackage = async (req, res) => {
     const body = req.body;
     const file = req.files.logo[0]; // This is your logo file
     // Convert stringified fields back to JSON
-    const testIncluded = JSON.parse(body.testIncluded || '[]');
-    const sampleRequired = JSON.parse(body.sampleRequired || '[]');
-    const preparationRequired = JSON.parse(body.preparationRequired || '[]');
-    const cityAvailability = JSON.parse(body.cityAvailability || '[]');
-
+    const testIncluded = JSON.parse(body.testIncluded || "[]");
+    const sampleRequired = JSON.parse(body.sampleRequired || "[]");
+    const preparationRequired = JSON.parse(body.preparationRequired || "[]");
+    const cityAvailability = JSON.parse(body.cityAvailability || "[]");
 
     // Validation checks for required fields
     if (!labId || !packageName || !packageCode || !category) {
@@ -377,8 +376,6 @@ const createLabPackage = async (req, res) => {
       ageGroup: ageGroup || "all age group",
       cityAvailability: processedCityAvailability,
     });
-
-
 
     const savedLabPackage = await newLabPackage.save();
     console.log("savedLabPackage", savedLabPackage);

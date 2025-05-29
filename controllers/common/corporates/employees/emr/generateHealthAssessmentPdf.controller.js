@@ -44,48 +44,51 @@ const generateHealthAssessmentPDF = async (req, res) => {
       console.error("Error loading logo:", err);
     }
 
-    console.log(
-      "Launching browser for Health Assessment PDF generation"
-    );
+    console.log("Launching browser for Health Assessment PDF generation");
     try {
       const options = {
         headless: "new",
-        executablePath: process.platform === 'win32'
-          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-          : process.platform === 'linux'
-            ? '/usr/bin/google-chrome'
-            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        executablePath:
+          process.platform === "win32"
+            ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+            : process.platform === "linux"
+              ? "/usr/bin/google-chrome"
+              : "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins',
-          '--disable-site-isolation-trials'
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-web-security",
+          "--disable-features=IsolateOrigins",
+          "--disable-site-isolation-trials",
         ],
         timeout: 60000,
-        protocolTimeout: 60000
+        protocolTimeout: 60000,
       };
 
       // Check if we're in a Linux environment (likely production)
-      if (process.platform === 'linux') {
-        options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome';
-        console.log('Using executable path:', options.executablePath);
+      if (process.platform === "linux") {
+        options.executablePath =
+          process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/google-chrome";
+        console.log("Using executable path:", options.executablePath);
       }
 
-      console.log('Launching browser with options:', JSON.stringify(options, null, 2));
+      console.log(
+        "Launching browser with options:",
+        JSON.stringify(options, null, 2)
+      );
       browser = await puppeteer.launch(options);
 
       if (!browser) {
-        throw new Error('Browser launch returned null');
+        throw new Error("Browser launch returned null");
       }
 
-      console.log('Browser launched successfully');
+      console.log("Browser launched successfully");
 
       // Create a new page
       const page = await browser.newPage();
-      console.log('New page created');
+      console.log("New page created");
 
       // Set viewport
       await page.setViewport({ width: 1200, height: 800 });
@@ -296,10 +299,10 @@ const generateHealthAssessmentPDF = async (req, res) => {
         waitUntil: ["networkidle0", "domcontentloaded"],
         timeout: 30000,
       });
-      console.log('Page content set successfully');
+      console.log("Page content set successfully");
 
       // Wait for any dynamic content to settle
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Generate PDF with adjusted settings
       const pdfBuffer = await page.pdf({
@@ -309,13 +312,13 @@ const generateHealthAssessmentPDF = async (req, res) => {
           top: "10mm",
           right: "10mm",
           bottom: "10mm",
-          left: "10mm"
+          left: "10mm",
         },
         displayHeaderFooter: false,
         preferCSSPageSize: true,
-        timeout: 30000
+        timeout: 30000,
       });
-      console.log('PDF generated successfully');
+      console.log("PDF generated successfully");
 
       const pdfFileName = `HealthAssessment_${employeeId}_${Date.now()}.pdf`;
       pdfFilePath = path.join(tempDir, pdfFileName);
@@ -329,19 +332,19 @@ const generateHealthAssessmentPDF = async (req, res) => {
         });
         return res.send(s3UploadResult.Location);
       } catch (uploadErr) {
-        console.error('Error uploading to S3:', uploadErr);
+        console.error("Error uploading to S3:", uploadErr);
         return res.download(pdfFilePath, pdfFileName);
       }
     } catch (err) {
-      console.error('Error in PDF generation:', err);
+      console.error("Error in PDF generation:", err);
       throw err;
     } finally {
       if (browser) {
         try {
           await browser.close();
-          console.log('Browser closed successfully');
+          console.log("Browser closed successfully");
         } catch (closeErr) {
-          console.error('Error closing browser:', closeErr);
+          console.error("Error closing browser:", closeErr);
         }
       }
     }
@@ -414,88 +417,91 @@ function getHealthAssessmentHTML(data) {
       <div class="section-container">
         <h4 class="section-title">Current Conditions</h4>
         ${renderTable(
-    currentConditionData,
-    [
-      "Diagnosis",
-      "Date of Diagnosis",
-      "Treatment Advised",
-      "Referral Needed",
-      "Notes",
-    ],
-    (item) => `
+          currentConditionData,
+          [
+            "Diagnosis",
+            "Date of Diagnosis",
+            "Treatment Advised",
+            "Referral Needed",
+            "Notes",
+          ],
+          (item) => `
             <tr>
               <td>${item.diagnosisName || "-"}</td>
               <td>${formatDate(item.dateOfDiagnosis)}</td>
-              <td>${item.prescription && item.prescription.length > 0
-        ? item.prescription
-          .map((p) => `${p.drugName} (${p.freequency})`)
-          .join(", ")
-        : "NONE"
-      }</td>
+              <td>${
+                item.prescription && item.prescription.length > 0
+                  ? item.prescription
+                      .map((p) => `${p.drugName} (${p.freequency})`)
+                      .join(", ")
+                  : "NONE"
+              }</td>
               <td>${item.referralNeeded || "-"}</td>
               <td>${item.advice || "-"}</td>
             </tr>
           `
-  )}
+        )}
       </div>
       <div class="section-container">
         <h4 class="section-title">Allergies</h4>
         ${renderTable(
-    allergiesData,
-    ["Allergy", "Past Drugs", "Advised By", "Advice"],
-    (item) => `
+          allergiesData,
+          ["Allergy", "Past Drugs", "Advised By", "Advice"],
+          (item) => `
             <tr>
               <td>${item.allergyName || "-"}</td>
-              <td>${item.pastAllergyDrugName && item.pastAllergyDrugName.length > 0
-        ? item.pastAllergyDrugName
-          .map(
-            (drug, idx) =>
-              `${drug} (${item.pastAllergyFreequency[idx] || "-"})`
-          )
-          .join(", ")
-        : "None"
-      }</td>
+              <td>${
+                item.pastAllergyDrugName && item.pastAllergyDrugName.length > 0
+                  ? item.pastAllergyDrugName
+                      .map(
+                        (drug, idx) =>
+                          `${drug} (${item.pastAllergyFreequency[idx] || "-"})`
+                      )
+                      .join(", ")
+                  : "None"
+              }</td>
               <td>${item.advisedBy || "-"}</td>
               <td>${item.advise || "-"}</td>
             </tr>
           `
-  )}
+        )}
       </div>
       <div class="section-container">
         <h4 class="section-title">Immunization</h4>
         ${renderTable(
-    immunizationData,
-    [
-      "Vaccination Name",
-      "Type",
-      "No Of Doses",
-      "Next Dose Date",
-      "Doctor Name",
-      "Side Effects",
-      "Notes",
-    ],
-    (item) => `
+          immunizationData,
+          [
+            "Vaccination Name",
+            "Type",
+            "No Of Doses",
+            "Next Dose Date",
+            "Doctor Name",
+            "Side Effects",
+            "Notes",
+          ],
+          (item) => `
             <tr>
               <td>${item.vaccinationName || "-"}</td>
               <td>${item.immunizationType || "-"}</td>
               <td>${item.totalDose || "-"}</td>
-              <td>${item.doseDates && item.doseDates.length > 0
-        ? item.doseDates
-          .map((d) =>
-            d.date
-              ? dayjs(d.date).format("DD-MM-YYYY") +
-              ` [${d.status}]`
-              : "N/A"
-          )
-          .join(", ")
-        : "NA"
-      }</td>
+              <td>${
+                item.doseDates && item.doseDates.length > 0
+                  ? item.doseDates
+                      .map((d) =>
+                        d.date
+                          ? dayjs(d.date).format("DD-MM-YYYY") +
+                            ` [${d.status}]`
+                          : "N/A"
+                      )
+                      .join(", ")
+                  : "NA"
+              }</td>
               <td>${item.doctorName || "-"}</td>
               <td>${item.sideEffects || "N/A"}</td>
               <td>${item.immunizationNotes || "N/A"}</td>
             </tr>
           `
-  )}
+        )}
       </div>
     </div>
     <div class="footer">

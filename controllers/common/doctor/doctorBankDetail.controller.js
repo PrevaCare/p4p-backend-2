@@ -102,9 +102,8 @@ const doctorBankDetailController = {
     const { doctorBankDetailId } = req.params;
 
     try {
-      const deletedBankDetail = await DoctorBankDetail.findByIdAndDelete(
-        doctorBankDetailId
-      );
+      const deletedBankDetail =
+        await DoctorBankDetail.findByIdAndDelete(doctorBankDetailId);
 
       if (!deletedBankDetail) {
         return Response.error(

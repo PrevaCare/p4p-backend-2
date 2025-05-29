@@ -249,6 +249,7 @@ const createEMR = async (req, res) => {
       advice: req.body.advice ? req.body.advice.split(",") : [],
       followUpSchedule: req.body.followUpSchedule || "",
       consultationMode: req.body.consultationMode,
+      originatedFromEmr: req.body.originatedFromEmr ?? true,
     };
 
     // console.log("ePrescriptionDataFormatted");
@@ -508,8 +509,6 @@ const createEMR = async (req, res) => {
     );
   } catch (err) {
     await session.abortTransaction();
-
-    // console.log(err);
 
     return Response.error(
       res,

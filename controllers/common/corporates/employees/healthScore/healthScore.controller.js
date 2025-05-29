@@ -70,9 +70,10 @@ const createOrUpdateAndScore = async (req, res) => {
 const getLatestHealthScore = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log(userId)
-    const latestScore = await HealthScore.findOne({ user: userId })
-      .sort({ createdAt: -1 }); // Sort by newest first
+    console.log(userId);
+    const latestScore = await HealthScore.findOne({ user: userId }).sort({
+      createdAt: -1,
+    }); // Sort by newest first
 
     if (!latestScore) {
       return Response.error(
@@ -99,7 +100,6 @@ const getLatestHealthScore = async (req, res) => {
     );
   }
 };
-
 
 // get corporateScore
 

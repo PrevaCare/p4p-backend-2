@@ -139,7 +139,9 @@ const updateTestAvailabilityInCity = async (req, res) => {
         billingRate: parseFloat(labSellingPrice || 0),
         partnerRate: parseFloat(offeredPriceToPrevaCare || 0),
         prevaCarePriceForCorporate: parseFloat(prevaCarePriceForCorporate || 0),
-        prevaCarePriceForIndividual: parseFloat(prevaCarePriceForIndividual || 0),
+        prevaCarePriceForIndividual: parseFloat(
+          prevaCarePriceForIndividual || 0
+        ),
         discountPercentage: parseFloat(discountPercentage || 0),
         homeCollectionCharge: parseFloat(homeCollectionCharge || 0),
         homeCollectionAvailable:

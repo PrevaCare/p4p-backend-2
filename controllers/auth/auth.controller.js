@@ -44,7 +44,6 @@ const register = async (req, res) => {
   try {
     const { phone, email, password, role, addresses, ...otherFields } =
       req.body;
-    console.log("register: " + role);
 
     const existingSuperAdmin = await User.findOne({
       $or: [{ email: email }, { phone: phone }],
@@ -109,8 +108,6 @@ const register = async (req, res) => {
 
       case "Corporate":
         logo = req.files.logo[0];
-        // console.log(logo);
-        // return;
         if (!logo) {
           return Response.error(
             res,
@@ -249,7 +246,6 @@ const register = async (req, res) => {
         break;
 
       case "Doctor":
-        // console.log("doctor");
         let medicalRegistrationProof = null;
         let medicalDegreeProof = null;
         let eSign = null;
@@ -331,15 +327,12 @@ const register = async (req, res) => {
           previousWorkExperience: parsedPreviousWorkExperience,
           education: parsedEducation,
         });
-        // console.log(role);
         break;
 
       // patient - corporate
       case "Employee":
         profileImg =
           req.files && req.files.profileImg && req.files.profileImg[0];
-        // console.log(profileImg);
-        // return;
 
         // if login user is corporate then take corporate id from req.user
         let corporate = null;
@@ -395,7 +388,6 @@ const register = async (req, res) => {
         break;
 
       case "IndividualUser":
-        console.log("individual user hitted");
         // verify the request source mobile or web
         const clientType = req.headers["x-client-type"];
         if (!clientType || !["web", "mobile"].includes(clientType)) {
@@ -487,8 +479,6 @@ const register = async (req, res) => {
       "User registered successfully !"
     );
   } catch (err) {
-    // console.log(err);
-
     return Response.error(
       res,
       500,
@@ -499,10 +489,8 @@ const register = async (req, res) => {
 };
 
 const registerIndividualUser = async (req, res) => {
-  console.log(" register individual user hit");
-  console.log(req.body);
   const { phone, email, password, role, key, ...otherFields } = req.body;
-  console.log(phone, email, password, role, key, otherFields);
+
   if (!phone || !email || !role || !key) {
     return Response.error(
       res,
@@ -524,7 +512,7 @@ const registerIndividualUser = async (req, res) => {
     process.env.AES_SEC
   ).toString();
   let uploadedLogo, user, logo, profileImg, uploadedProfileImg;
-  const addressIds = [];
+  // const addressIds = [];
 
   try {
     const clientType = req.headers["x-client-type"];
@@ -600,7 +588,6 @@ const login = async (req, res) => {
       );
     }
     const { login } = req.body;
-    console.log("Request Body: ", req.body);
     let existingUser;
     if (login.includes("@")) {
       existingUser = await User.findOne({ email: login });
@@ -617,9 +604,6 @@ const login = async (req, res) => {
       encryptedPassword,
       process.env.AES_SEC
     ).toString(CryptoJS.enc.Utf8);
-    console.log("decrypted password: ", decryptPassword);
-    console.log(" user role: ", existingUser.role);
-    console.log(process.env.AES_SEC);
 
     if (decryptPassword !== req.body.password) {
       return Response.error(

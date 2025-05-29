@@ -34,6 +34,11 @@ const GeneralPhysicalExaminationSchema = new mongoose.Schema({
   lymphadenopathy: { type: String },
   edema: { type: String },
   JVP: { type: String },
+  doctorNotes: { type: String },
+  showInEPrescription: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 // Schema for Systemic Examination
@@ -75,12 +80,12 @@ const SurgicalHistorySchema = new mongoose.Schema({
     patientBloodGroup: {
       type: String,
       enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known", ""],
-      default: ""
+      default: "",
     },
     transfusedBloodGroup: {
       type: String,
       enum: ["A+", "B+", "AB+", "O+", "A-", "B-", "AB-", "O-", "not known", ""],
-      default: ""
+      default: "",
     },
   },
   surgeon: {
@@ -213,6 +218,10 @@ const FamilyHistorySchema = new mongoose.Schema({
 const HistorySchema = new mongoose.Schema({
   chiefComplaint: { type: String },
   historyOfPresentingIllness: { type: String },
+  complaints: {
+    type: Array,
+    default: [],
+  },
   pastHistory: [
     {
       sufferingFrom: { type: String },

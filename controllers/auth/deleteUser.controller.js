@@ -108,7 +108,6 @@ const deleteDoctorById = async (req, res) => {
       _id: doctorId,
       role: "Doctor",
     });
-    // console.log(existingUser);
 
     if (!existingUser) {
       return Response.error(res, 404, AppConstant.FAILED, "Doctor not found!");
@@ -129,7 +128,6 @@ const deleteDoctorById = async (req, res) => {
 
 // corporate delete
 const deleteCorporateUser = async (req, res) => {
-  console.log("corporate delete called !!!");
   try {
     const { corporateId } = req.params;
 

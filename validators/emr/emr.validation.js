@@ -253,6 +253,12 @@ const allergiesSchema = Joi.object({
 const historySchema = Joi.object({
   chiefComplaint: Joi.string().allow(null, ""),
   historyOfPresentingIllness: Joi.string().allow(null, ""),
+  complaints: Joi.array().items(
+    Joi.object({
+      chiefComplaint: Joi.string().allow(null, ""),
+      historyOfPresentingIllness: Joi.string().allow(null, ""),
+    })
+  ),
   pastHistory: Joi.array().items(pastHistoryItemSchema).optional(),
   surgicalHistory: Joi.array().items(surgicalHistorySchema).optional(),
   familyHistory: familyHistorySchema.allow(null),

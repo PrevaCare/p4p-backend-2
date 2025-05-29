@@ -637,8 +637,8 @@ const downloadSampleExcelFileToCreateEMR = async (req, res) => {
         gender === "C"
           ? "common_emr_template"
           : gender === "F"
-          ? "female_emr_template"
-          : "male_emr_template"
+            ? "female_emr_template"
+            : "male_emr_template"
       }.xlsx`
     );
 
@@ -691,8 +691,6 @@ const createAllEmployeeEmrThroughExcel = async (req, res) => {
 
     const doctorPhoneArr = data.map((item) => item["Doctor Phone"]);
     const employeePhoneArr = data.map((item) => item["Phone Number"]);
-    // console.log(doctorPhoneArr);
-    // console.log(employeePhoneArr);
 
     const doctorPhoneAndIds = await validateDoctorByPhone(
       doctorPhoneArr,

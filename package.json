@@ -1,11 +1,13 @@
 {
-  "name": "api",
+  "name": "Preva Care Backend",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "start": "nodemon index.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",
@@ -36,5 +38,8 @@
     "puppeteer": "^24.4.0",
     "razorpay": "^2.9.6",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
   }
 }

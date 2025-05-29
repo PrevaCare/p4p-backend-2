@@ -97,16 +97,18 @@ const getAllPatientBloodGlucoseByDateRange = async (req, res) => {
     // Set end date to end of day (23:59:59)
     const endDateTime = dayjs(endDate).endOf("day").toDate();
 
-    const data = await bloodGlucoseModel.find(
-      {
-        patientId: patientId,
-        date: {
-          $gte: startDateTime,
-          $lte: endDateTime,
+    const data = await bloodGlucoseModel
+      .find(
+        {
+          patientId: patientId,
+          date: {
+            $gte: startDateTime,
+            $lte: endDateTime,
+          },
         },
-      },
-      "bloodGlucose bloodGlucoseGoal readingType date"
-    ).sort({ date: -1 });
+        "bloodGlucose bloodGlucoseGoal readingType date"
+      )
+      .sort({ date: -1 });
     return Response.success(
       res,
       data,

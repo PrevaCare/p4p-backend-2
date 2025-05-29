@@ -104,16 +104,18 @@ const getAllPatientSpo2ByDateRange = async (req, res) => {
     // Set end date to end of day (23:59:59)
     const endDateTime = dayjs(endDate).endOf("day").toDate();
 
-    const data = await patientSpo2Model.find(
-      {
-        patientId,
-        date: {
-          $gte: startDateTime,
-          $lte: endDateTime,
+    const data = await patientSpo2Model
+      .find(
+        {
+          patientId,
+          date: {
+            $gte: startDateTime,
+            $lte: endDateTime,
+          },
         },
-      },
-      "patientId spo2 spo2Goal date measurementUnit measurementType"
-    ).sort({ date: -1 });
+        "patientId spo2 spo2Goal date measurementUnit measurementType"
+      )
+      .sort({ date: -1 });
 
     return Response.success(
       res,

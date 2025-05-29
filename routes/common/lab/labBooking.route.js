@@ -2,7 +2,9 @@ const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-const { anyFileUpload } = require("../../../middlewares/uploads/multerConfig.js");
+const {
+  anyFileUpload,
+} = require("../../../middlewares/uploads/multerConfig.js");
 const {
   createLabBooking,
   getUserLabBookings,
@@ -28,7 +30,6 @@ const {
 } = require("../../../middlewares/jwt/permission");
 
 // Configure multer for report file uploads
-
 
 // User-facing routes
 /**

@@ -101,16 +101,18 @@ const getAllPatientBpByDateRange = async (req, res) => {
     // Set end date to end of day (23:59:59)
     const endDateTime = dayjs(endDate).endOf("day").toDate();
 
-    const data = await patientBpModel.find(
-      {
-        patientId: patientId,
-        date: {
-          $gte: startDateTime,
-          $lte: endDateTime,
+    const data = await patientBpModel
+      .find(
+        {
+          patientId: patientId,
+          date: {
+            $gte: startDateTime,
+            $lte: endDateTime,
+          },
         },
-      },
-      "patient sys dia sysGoal diaGoal date"
-    ).sort({ date: -1 });
+        "patient sys dia sysGoal diaGoal date"
+      )
+      .sort({ date: -1 });
     return Response.success(res, data, 200, "BP records fetched successfully!");
   } catch (err) {
     return Response.error(

@@ -47,12 +47,14 @@ const patientSpo2ValidationSchema = Joi.object({
     "number.min": "oxygen flow rate must be at least 2!",
     "number.max": "oxygen flow rate cannot exceed 12!",
   }),
-  measurementType: Joi.string().valid("Room Air", "On Oxygen").required().messages({
-    "any.only": "measurementType must be either 'Room Air' or 'On Oxygen'!",
-    "string.base": "measurementType must be a string!",
-    "any.required": "measurementType is required!",
-  }),
-
+  measurementType: Joi.string()
+    .valid("Room Air", "On Oxygen")
+    .required()
+    .messages({
+      "any.only": "measurementType must be either 'Room Air' or 'On Oxygen'!",
+      "string.base": "measurementType must be a string!",
+      "any.required": "measurementType is required!",
+    }),
 });
 
 module.exports = {

@@ -34,11 +34,13 @@ const cityAvailabilitySchema = Joi.object({
     "any.required": "City-specific offered price to PrevaCare is required.",
   }),
   prevaCarePriceForCorporate: Joi.number().required().messages({
-    "number.base": "City-specific PrevaCare price for Corporate must be a number.",
+    "number.base":
+      "City-specific PrevaCare price for Corporate must be a number.",
     "any.required": "City-specific PrevaCare price for Corporate is required.",
   }),
   prevaCarePriceForIndividual: Joi.number().required().messages({
-    "number.base": "City-specific PrevaCare price for Individual must be a number.",
+    "number.base":
+      "City-specific PrevaCare price for Individual must be a number.",
     "any.required": "City-specific PrevaCare price for Individual is required.",
   }),
   discountPercentage: Joi.number().required().messages({
@@ -46,7 +48,7 @@ const cityAvailabilitySchema = Joi.object({
     "any.required": "City-specific discount percentage is required.",
   }),
   homeCollectionCharge: Joi.number().default(0),
-  homeCollectionAvailable: Joi.boolean().default(false)
+  homeCollectionAvailable: Joi.boolean().default(false),
 });
 
 const individualLabTestValidationSchema = Joi.object({
@@ -74,7 +76,7 @@ const individualLabTestValidationSchema = Joi.object({
   ageGroup: Joi.string().default("all age group"),
   homeCollectionChargeIncluded: Joi.boolean().default(false),
   cityAvailability: Joi.array().items(cityAvailabilitySchema),
-  isActive: Joi.boolean().default(true)
+  isActive: Joi.boolean().default(true),
 });
 
 module.exports = { individualLabTestValidationSchema };

@@ -34,17 +34,9 @@ router.get(
   getDoctorNameAndIds
 );
 
-router.get(
-  "/admin/doctor-categories",
-  verifyToken,
-  getCategoryOfDoctor
-);
+router.get("/admin/doctor-categories", verifyToken, getCategoryOfDoctor);
 
-router.get(
-  "/admin/doctor-by-category",
-  verifyToken,
-  getDoctorByCategory
-);
+router.get("/admin/doctor-by-category", verifyToken, getDoctorByCategory);
 
 // get single doctor detail
 router.post(

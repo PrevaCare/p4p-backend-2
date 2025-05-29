@@ -25,29 +25,29 @@ const getAllCorporateEmployees = async (req, res) => {
             "profileImg firstName lastName department address jobProfile gender phone"
           ).populate({ path: "corporate", select: "companyName" })
         : role === "Corporate"
-        ? await Employee.find(
-            { corporate: _id },
-            "profileImg firstName lastName department address jobProfile gender phone"
-          ).populate({ path: "corporate", select: "companyName" })
-        : role === "Superadmin" && corporateid
-        ? await Employee.find(
-            { corporate: corporateid },
-            "profileImg firstName lastName department address jobProfile assignedDoctors phone"
-          )
-            .populate({ path: "corporate", select: "companyName" })
-            .populate({
-              path: "assignedDoctors",
-              select: "firstName lastName",
-            })
-        : await Employee.find(
-            {},
-            "profileImg firstName lastName department address jobProfile assignedDoctors phone"
-          )
-            .populate({ path: "corporate", select: "companyName" })
-            .populate({
-              path: "assignedDoctors",
-              select: "firstName lastName",
-            });
+          ? await Employee.find(
+              { corporate: _id },
+              "profileImg firstName lastName department address jobProfile gender phone"
+            ).populate({ path: "corporate", select: "companyName" })
+          : role === "Superadmin" && corporateid
+            ? await Employee.find(
+                { corporate: corporateid },
+                "profileImg firstName lastName department address jobProfile assignedDoctors phone"
+              )
+                .populate({ path: "corporate", select: "companyName" })
+                .populate({
+                  path: "assignedDoctors",
+                  select: "firstName lastName",
+                })
+            : await Employee.find(
+                {},
+                "profileImg firstName lastName department address jobProfile assignedDoctors phone"
+              )
+                .populate({ path: "corporate", select: "companyName" })
+                .populate({
+                  path: "assignedDoctors",
+                  select: "firstName lastName",
+                });
     // console.log(corporateEmployees);
 
     if (!corporateEmployees) {
@@ -91,13 +91,6 @@ const getAllCorporateEmployees = async (req, res) => {
     );
   }
 };
-
-
-
-
-
-
-
 
 const getAllCorporateEmployeesOfParticularCorporateById = async (req, res) => {
   try {
