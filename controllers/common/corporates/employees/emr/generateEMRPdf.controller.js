@@ -2880,7 +2880,7 @@ function getPrescriptionHTML(prescriptionData, logoBase64, emrInfo = {}) {
               <tr><th>Blood Pressure</th><td>${vitals.BP ? `${vitals.BP} mmHg` : "NA"}</td></tr>
               <tr><th>Pulse Rate</th><td>${vitals.PR ? `${vitals.PR} bpm` : "NA"}</td></tr>
               <tr><th>SpO2</th><td>${vitals.SpO2 ? `${vitals.SpO2} %` : "NA"}</td></tr>
-              <tr><th>Temperature</th><td>${emrInfo?.generalPhysicalExamination?.temperature || ""} ${emrInfo?.generalPhysicalExamination?.temperatureVal ? `(${emrInfo?.generalPhysicalExamination?.temperatureVal} °F)` : "NA"}</td></tr>
+              <tr><th>Temperature</th><td>${emrInfo?.generalPhysicalExamination?.temperature || ""} ${emrInfo?.generalPhysicalExamination?.temperatureVal ? `(${emrInfo?.generalPhysicalExamination?.temperatureVal} °F)` : ""}</td></tr>
               <tr>
                 <th>Height</th>
                 <td>${emrInfo?.generalPhysicalExamination?.height ? `${emrInfo?.generalPhysicalExamination?.height} m` : "NA"}</td>
