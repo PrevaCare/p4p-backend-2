@@ -1,6 +1,8 @@
 const router = require("express").Router();
 const {
   createlabReport,
+  getLabPartners,
+  getLabPartnerPackages
 } = require("../../../../controllers/common/lab/labReport/labReport.controller.js");
 const {
   createReport,
@@ -39,6 +41,16 @@ router.post(
   checkPermissions("CREATE", "Employee"),
   uploadRateLimit,
   createExistingPatientLabReport
+);
+
+router.get(
+  "/app/lab-partners",
+  verifyToken,
+  getLabPartners,
+)
+router.get("/app/lab-partner-packages/:labId",
+  verifyToken,
+  getLabPartnerPackages
 );
 router.post(
   "/admin/lab-report",
