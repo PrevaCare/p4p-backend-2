@@ -20,6 +20,7 @@ const generalPhysicalExaminationSchema = Joi.object({
   regularity: Joi.string().optional().allow(null, ""),
   character: Joi.string().optional().allow(null, ""),
   temperature: Joi.string().optional().allow(null, ""),
+  temperatureVal: Joi.number().optional().allow(null, ""),
   RR: Joi.number().optional().allow(null, ""),
   SPO2: Joi.number().optional().allow(null, ""),
   radioFemoralDelay: Joi.string().optional().allow(null, ""),

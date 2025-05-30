@@ -2349,7 +2349,7 @@ function getEmrHTML(emrPdfData, logoBase64) {
 
       <!-- General Physical Examination -->
       <div class="section-container">
-        <h4 class="section-title">General Physical Examination</h4>
+        <h4 class="section-title">General Physical Examination${consultationMode === "online" ? "<i>as per patient</i>" : ""}</h4>
         <div class="table-container">
           <table>
             <tbody>
@@ -2873,24 +2873,25 @@ function getPrescriptionHTML(prescriptionData, logoBase64, emrInfo = {}) {
 
       <!-- Vitals -->
       <div class="section-container">
-        <h4 class="section-title">Vital Signs</h4>
+        <h4 class="section-title">Vital Signs${consultationMode === "online" ? "<i>(as per patient)</i>" : ""}</h4>
         <div class="table-container">
           <table>
             <tbody>
-              <tr><th>Blood Pressure</th><td>${vitals.BP || ""} mmHg</td></tr>
-              <tr><th>Pulse Rate</th><td>${vitals.PR || ""} bpm</td></tr>
-              <tr><th>SpO2</th><td>${vitals.SpO2 || ""} %</td></tr>
+              <tr><th>Blood Pressure</th><td>${vitals.BP ? `${vitals.BP} mmHg` : "NA"}</td></tr>
+              <tr><th>Pulse Rate</th><td>${vitals.PR ? `${vitals.PR} bpm` : "NA"}</td></tr>
+              <tr><th>SpO2</th><td>${vitals.SpO2 ? `${vitals.SpO2} %` : "NA"}</td></tr>
+              <tr><th>Temperature</th><td>${emrInfo?.generalPhysicalExamination?.temperature || ""} ${emrInfo?.generalPhysicalExamination?.temperatureVal ? `(${emrInfo?.generalPhysicalExamination?.temperatureVal} °F)` : "NA"}</td></tr>
               <tr>
                 <th>Height</th>
-                <td>${emrInfo?.generalPhysicalExamination?.height || ""} m</td>
+                <td>${emrInfo?.generalPhysicalExamination?.height ? `${emrInfo?.generalPhysicalExamination?.height} m` : "NA"}</td>
               </tr>
               <tr>
                 <th>Weight</th>
-                <td>${emrInfo?.generalPhysicalExamination?.weight || ""} kg</td>
+                <td>${emrInfo?.generalPhysicalExamination?.weight ? `${emrInfo?.generalPhysicalExamination?.weight} kg` : "NA"}</td>
               </tr>
               <tr>
                 <th>BMI</th>
-                <td>${emrInfo?.generalPhysicalExamination?.BMI || ""} kg / m<sup>2</sup></td>
+                <td>${emrInfo?.generalPhysicalExamination?.BMI ? `${emrInfo?.generalPhysicalExamination?.BMI} kg / m²` : "NA"}</td>
               </tr>
             </tbody>
           </table>

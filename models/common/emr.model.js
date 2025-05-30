@@ -21,6 +21,7 @@ const GeneralPhysicalExaminationSchema = new mongoose.Schema({
   regularity: { type: String },
   character: { type: String },
   temperature: { type: String },
+  temperatureVal: { type: Number },
   RR: { type: Number },
   SPO2: { type: Number },
   radioFemoralDelay: { type: String },
