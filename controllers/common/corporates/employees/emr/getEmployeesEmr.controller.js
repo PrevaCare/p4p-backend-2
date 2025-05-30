@@ -11,6 +11,7 @@ const {
 const immunizationModel = require("../../../../../models/patient/healthSummary/immunization.model.js");
 const currentConditionModel = require("../../../../../models/patient/healthSummary/currentCondition.model.js");
 const allergyModel = require("../../../../../models/patient/healthSummary/allergy.model.js");
+const labReportModel = require("../../../../../models/lab/labReport/labReport.model.js");
 const {
   getFormattedBasicInfo,
   defaultHistory,
@@ -266,18 +267,25 @@ const getInitialEmrFormData = async (req, res) => {
       }
     );
 
+    const pastLabReportPromise = labReportModel
+      .find({ user: userObjectId })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
     const [
       [latestEmr],
       pastEmrHistory,
       currentConditions,
       allergies,
       immunizations,
+      pastLabReports
     ] = await Promise.all([
       latestEmrPromise,
       pastEmrHistoryPromise,
       currentConditionsPromise,
       allergiesPromise,
       immunizationsPromise,
+      pastLabReportPromise
     ]);
 
     const pastComplaints =
@@ -331,6 +339,7 @@ const getInitialEmrFormData = async (req, res) => {
       doctorNotes: (latestEmr && latestEmr.doctorNotes) || "",
       consultationMode: (latestEmr && latestEmr.consultationMode) || "on site",
       doctor: (latestEmr && latestEmr.doctor) || "",
+      pastLabReports
     };
 
     // Only include gynaecologicalHistory if user is female
