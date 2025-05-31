@@ -18,6 +18,9 @@ const labReportValidationSchema = Joi.object({
     .valid("Blood Report", "Urine Report", "Imaging Reports", "Other")
     .required(),
   price: Joi.number().required(),
+  createdBy: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required(),
 });
 
 module.exports = {

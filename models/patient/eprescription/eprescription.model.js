@@ -61,6 +61,10 @@ const ePrescriptionSchema = new mongoose.Schema(
       type: String,
       // required: [true, "prescription pdf required !"],
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );

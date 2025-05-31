@@ -85,6 +85,7 @@ const createlabReport = async (req, res) => {
       user: req.body.user,
       doctor: assignedGeneralPhysicianDoctor[0]._id,
       labReportFile: uploadedLabReportFile.Location,
+      createdBy: req.body.createdBy,
     });
     const savedLabReport = await newLabReport.save();
     return Response.success(
