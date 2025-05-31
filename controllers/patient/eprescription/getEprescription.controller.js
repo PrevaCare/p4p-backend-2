@@ -9,7 +9,7 @@ const getAllEPrescriptionListPaginatedByUserId = async (req, res) => {
       page = 1,
       limit = 10,
       search = "",
-      sortBy = "date",
+      sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
 
@@ -22,9 +22,7 @@ const getAllEPrescriptionListPaginatedByUserId = async (req, res) => {
         "userId is missing !"
       );
     }
-    //   console.log("search");
-    //   console.log(search);
-    //   console.log(limit);
+
     const searchRegex = new RegExp(search, "i");
 
     // Regular EMR Aggregation
@@ -56,7 +54,7 @@ const getAllEPrescriptionListPaginatedByUserId = async (req, res) => {
       },
       {
         $project: {
-          date: 1,
+          createdAt: 1,
           firstName: "$doctor.firstName",
           lastName: "$doctor.lastName",
           specialization: "$doctor.specialization",
