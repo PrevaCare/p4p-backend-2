@@ -9,7 +9,7 @@ const getAllEPrescriptionListPaginatedByUserId = async (req, res) => {
       page = 1,
       limit = 10,
       search = "",
-      sortBy = "createdAt",
+      sortBy = "date",
       sortOrder = "desc",
     } = req.query;
 
@@ -54,7 +54,7 @@ const getAllEPrescriptionListPaginatedByUserId = async (req, res) => {
       },
       {
         $project: {
-          createdAt: 1,
+          date: 1,
           firstName: "$doctor.firstName",
           lastName: "$doctor.lastName",
           specialization: "$doctor.specialization",
