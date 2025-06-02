@@ -45,6 +45,8 @@ const {
 const { sendMessage } = require("./helper/otp/sentOtp.helper");
 const planAssignmentRoute = require("./routes/employee/planAssignment.route");
 const medicineScheduleRoutes = require("./routes/patient/medicineSchedule.routes");
+const labCategoryRoute = require("./routes/common/lab/labCategory.routes");
+
 const app = express();
 dotenv.config();
 const port = process.env.PORT;
@@ -185,6 +187,7 @@ app.use("/v1/package-types", packageTypeRoute); // package types and subtypes
 app.use("/v1/employee/plans", planAssignmentRoute);
 app.use("/v1/", superAdminRoute);
 app.use("/v1/", medicineScheduleRoutes); // Medicine schedule routes
+app.use("/v1/lab-category", labCategoryRoute); // lab categories route
 
 // Check for no-shows every 15 minutes
 if (process.env.NODE_ENV !== "development") {
