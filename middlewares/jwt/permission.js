@@ -6,7 +6,7 @@ const Permission = require("../../models/permission.model");
 module.exports = {
   verifyToken: (req, res, next) => {
     const authHeader = req.headers.authorization;
-    // console.log(authHeader);
+
     if (authHeader) {
       const token = authHeader.split(" ")[1];
       jwt.verify(token, process.env.JWT_TOKEN_SEC, (err, user) => {
@@ -31,6 +31,7 @@ module.exports = {
       const roles = await Role.findOne({ name: user.role }).populate({
         path: "permissions",
       });
+
       //   console.log(roles);
       //   return;
       if (!roles)
