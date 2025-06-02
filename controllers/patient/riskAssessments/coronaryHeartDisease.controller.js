@@ -19,9 +19,9 @@ const {
 
 // Create these utility functions locally in case the import fails
 const fallbackDetermineRiskLevel = (riskPercentage) => {
-  if (riskPercentage < 10) {
+  if (riskPercentage < 5) {
     return "Low";
-  } else if (riskPercentage >= 10 && riskPercentage < 20) {
+  } else if (riskPercentage >= 5 && riskPercentage < 20) {
     return "Moderate";
   } else if (riskPercentage >= 20 && riskPercentage < 30) {
     return "High";
