@@ -12,7 +12,7 @@ const liverRiskCalculatorValidationSchema = Joi.object({
   user: Joi.string().required().messages({
     "any.required": "User is required!",
   }),
-  age: Joi.string().valid("18-25", "26-40", "41-60", "Over 60").required(),
+  age: Joi.string().required(),
   gender: Joi.string().valid("Male", "Female", "Prefer not to say").required(),
   riskReasons: Joi.array().items(Joi.string()).required(),
   diabetes: Joi.string().valid("Yes", "No").required(),

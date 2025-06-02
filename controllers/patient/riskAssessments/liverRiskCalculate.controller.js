@@ -40,9 +40,24 @@ const createLiverRiskCalculator = async (req, res) => {
     // Calculate risk score and level
     const { riskScore, riskLevel } = calculateLiverRiskHelper(req.body);
 
+    const getFormattedAge = (age) => {
+      const parsedAge = typeof age === 'string' ? parseInt(age) : age
+
+      if (parsedAge <= 25) {
+        return "18-25"
+      } else if (parsedAge <= 40) {
+        return "26-40"
+      } else if (parsedAge <= 60) {
+        return "41-60"
+      } else {
+        return "Over 60"
+      }
+    }
+
     // Create new liver risk assessment
     const newLiverRisk = new liverRiskCalculateModel({
       ...req.body,
+      age: getFormattedAge(req.body.age),
       riskScore,
       riskLevel,
     });
