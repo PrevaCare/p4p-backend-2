@@ -387,14 +387,56 @@ const getLabPartnerPackages = async (req, res) => {
                       cityName: '$$cityAvail.cityName',
                       state: '$$cityAvail.state',
                       pinCodes_excluded: '$$cityAvail.pinCodes_excluded',
-                      billingRate: '$$cityAvail.billingRate',
-                      partnerRate: '$$cityAvail.partnerRate',
                       prevaCarePriceForCorporate: '$$cityAvail.prevaCarePriceForCorporate',
                       prevaCarePriceForIndividual: '$$cityAvail.prevaCarePriceForIndividual',
-                      discountPercentage: '$$cityAvail.discountPercentage',
                       homeCollectionCharge: '$$cityAvail.homeCollectionCharge',
                       homeCollectionAvailable: '$$cityAvail.homeCollectionAvailable',
                       isActive: '$$cityAvail.isActive',
+                      totalPrice: '$$cityAvail.billingRate',
+                      discountPercentageForCorporate: {
+                        $cond: [
+                          { $gt: ["$$cityAvail.billingRate", 0] },
+                          {
+                            $round: [
+                              {
+                                $multiply: [
+                                  {
+                                    $divide: [
+                                      { $subtract: ["$$cityAvail.billingRate", "$$cityAvail.prevaCarePriceForCorporate"] },
+                                      "$$cityAvail.billingRate"
+                                    ]
+                                  },
+                                  100
+                                ]
+                              },
+                              2  // rounds to 2 decimal places
+                            ]
+                          },
+                          null
+                        ]
+                      },
+                      discountPercentageForIndividual: {
+                        $cond: [
+                          { $gt: ["$$cityAvail.billingRate", 0] }, // prevent division by zero
+                          {
+                            $round: [
+                              {
+                                $multiply: [
+                                  {
+                                    $divide: [
+                                      { $subtract: ["$$cityAvail.billingRate", "$$cityAvail.prevaCarePriceForIndividual"] },
+                                      "$$cityAvail.billingRate"
+                                    ]
+                                  },
+                                  100
+                                ]
+                              },
+                              2 // rounds to 2 decimal places
+                            ]
+                          },
+                          null
+                        ]
+                      }
                     },
                   },
                 },
@@ -447,7 +489,7 @@ const getLabPartnerPackageById = async (req, res) => {
         path: 'labId',
         select: 'labName logo',
       })
-      .select('-__v')
+      .select('-__v -cityAvailability.partnerRate -cityAvailability.discountPercentage')
       .lean();
 
     if (!packageData) {
@@ -455,8 +497,30 @@ const getLabPartnerPackageById = async (req, res) => {
     }
 
     if (packageData.labId) {
-      Object.assign(packageData, packageData.labId);
+      Object.assign(packageData, { logo: packageData.labId.logo, labName: packageData.labId.labName });
       delete packageData.labId;
+    }
+
+    // Calculate discount percentages for each cityAvailability entry
+    if (Array.isArray(packageData.cityAvailability)) {
+      packageData.cityAvailability = packageData.cityAvailability.map(({billingRate, ...city}) => {
+        const prevaCarePriceForCorporate = city.prevaCarePriceForCorporate || 0;
+        const prevaCarePriceForIndividual = city.prevaCarePriceForIndividual || 0;
+
+        return {
+          ...city,
+          totalPrice: billingRate,
+          discountPercentageForCorporate:
+            billingRate > 0
+              ? (((billingRate - prevaCarePriceForCorporate) / billingRate) * 100).toFixed(2)
+              : null,
+          discountPercentageForIndividual:
+            billingRate > 0
+              ? (((billingRate - prevaCarePriceForIndividual) / billingRate) * 100).toFixed(2)
+              : null,
+              
+        };
+      });
     }
 
     return Response.success(
