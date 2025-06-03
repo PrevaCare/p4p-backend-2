@@ -330,7 +330,7 @@ const healthTrackerController = {
         isDrink: latestEMR?.history?.habits?.alcohol
           ? latestEMR?.history?.habits?.alcohol
           : false,
-        isDiabetic: ['yes', 'true'].includes(liverRisk?.toLowercase()) ?? false,
+        isDiabetic: ['yes', 'true'].includes(liverRisk?.diabetes?.toLowerCase()) ?? false,
         healthScore: latestHealthScore?.overallHealthScore
           ? latestHealthScore?.overallHealthScore
           : null,
