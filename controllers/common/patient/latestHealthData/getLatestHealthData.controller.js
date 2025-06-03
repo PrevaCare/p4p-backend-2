@@ -198,6 +198,13 @@ const healthTrackerController = {
         corporateDetails = await getCorporateDetails(patientId);
       }
 
+      let userAddress = null
+      if (userInfo.role === "Employee") {
+        userAddress = (await Employee.findById(patientId).select('address'))?.address;
+      } else if (userInfo.role === "IndividualUser") {
+        userAddress = (await IndividualUser.findById(patientId).select('address'))?.address;
+      }
+
       // Compile health data with preference to individual models
       const healthData = {
         bloodPressure: latestBP
@@ -349,6 +356,9 @@ const healthTrackerController = {
         bloodGroup: latestEMR?.basicInfo?.bloodGroup
           ? latestEMR?.basicInfo?.bloodGroup
           : null,
+        state: userAddress?.state || "",
+        city: userAddress?.city || "",
+        pincode: userAddress?.zipCode || "",
         _id: patientId,
 
         // Add corporate details if available
