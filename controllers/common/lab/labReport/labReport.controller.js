@@ -263,6 +263,7 @@ const getLabPartnerPackages = async (req, res) => {
                 packageCode: 1,
                 packageName: 1,
                 desc: 1,
+                long_desc: 1,
                 category: 1,
                 testIncluded: 1,
                 sampleRequired: 1,
