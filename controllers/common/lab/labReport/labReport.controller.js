@@ -112,49 +112,114 @@ const getLabPartners = async (req, res) => {
       limit = 10,
       search = "",
       sortBy = "labName",
-      sortOrder = "desc"
+      sortOrder = "desc",
+      city = "",
+      state = "",
+      pincode = "",
     } = req.query;
 
-    // Build search query
+    const pageNum = Math.max(parseInt(page, 10), 1);
+    const limitNum = Math.max(parseInt(limit, 10), 1);
+    const sortOrderNum = sortOrder.toLowerCase() === "asc" ? 1 : -1;
+
     const searchQuery = search
-      ? {
-          $or: [
-            { labName: { $regex: search, $options: "i" } },
-            // { labPersonName: { $regex: search, $options: "i" } },
-            // { "address.city": { $regex: search, $options: "i" } },
-            // { "address.state": { $regex: search, $options: "i" } }
-          ]
-        }
+      ? { labName: { $regex: search, $options: "i" } }
       : {};
 
-    // Calculate skip value for pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Valid sort fields to avoid injection
+    const validSortFields = ["labName", "labPersonName", "contactNumber"];
+    const safeSortBy = validSortFields.includes(sortBy) ? sortBy : "labName";
 
-    // Get total count for pagination
-    const total = await Lab.countDocuments(searchQuery);
+    const aggregationPipeline = [
+      { $match: searchQuery },
 
-    // Get lab partners with pagination and sorting
-    const labPartners = await Lab.find(searchQuery)
-      .select('logo labName labPersonName contactNumber address availableCities')
-      .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      {
+        $addFields: {
+          availableCities: {
+            $filter: {
+              input: "$availableCities",
+              as: "city",
+              cond: {
+                $and: [
+                  { $eq: ["$$city.isActive", true] },
 
-    const cleanedLabPartners = labPartners.map(lab => {
-      const cleanedLab = lab.toObject();
-    
-      if (cleanedLab.address) {
-        delete cleanedLab.address._id;
-      }
-      if (Array.isArray(cleanedLab.availableCities)) {
-        cleanedLab.availableCities = cleanedLab.availableCities.map(city => {
+                  city
+                    ? {
+                        $eq: [
+                          { $toLower: "$$city.cityName" },
+                          city.toLowerCase(),
+                        ],
+                      }
+                    : { $literal: true },
+
+                  state
+                    ? {
+                        $eq: [
+                          { $toLower: "$$city.state" },
+                          state.toLowerCase(),
+                        ],
+                      }
+                    : { $literal: true },
+
+                  pincode
+                    ? {
+                        $not: {
+                          $in: [pincode, "$$city.pinCodes_excluded"],
+                        },
+                      }
+                    : { $literal: true },
+                ],
+              },
+            },
+          },
+        },
+      },
+
+      {
+        $match: {
+          availableCities: { $ne: null },
+          $expr: { $gt: [{ $size: "$availableCities" }, 0] },
+        },
+      },
+
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [
+            { $sort: { [safeSortBy]: sortOrderNum } },
+            { $skip: (pageNum - 1) * limitNum },
+            { $limit: limitNum },
+            {
+              $project: {
+                logo: 1,
+                labName: 1,
+                labPersonName: 1,
+                contactNumber: 1,
+                address: 1,
+                availableCities: 1,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const [result] = await Lab.aggregate(aggregationPipeline);
+
+    const labs = result?.data || [];
+    const total = result?.metadata[0]?.total || 0;
+
+    // Clean _id in availableCities and address
+    const cleanedLabPartners = labs.map((lab) => {
+      if (Array.isArray(lab.availableCities)) {
+        lab.availableCities = lab.availableCities.map((city) => {
           const c = { ...city };
           delete c._id;
           return c;
         });
       }
-    
-      return cleanedLab;
+      if (lab.address) delete lab.address._id;
+      return lab;
     });
 
     return Response.success(
@@ -162,13 +227,14 @@ const getLabPartners = async (req, res) => {
       {
         labPartners: cleanedLabPartners,
         total,
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit))
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
       },
       200,
       "Lab partners retrieved successfully"
     );
   } catch (err) {
+    console.error("Error in getLabPartners:", err);
     return Response.error(
       res,
       500,
@@ -187,8 +253,9 @@ const getLabPartnerPackages = async (req, res) => {
       search = '',
       sortBy = 'packageCode', // Changed default to packageCode
       sortOrder = 'asc',
+      state = '',
       city = '',
-      pinCode = '',
+      pincode = '',
     } = req.query;
 
     // Validate labId format
@@ -236,9 +303,52 @@ const getLabPartnerPackages = async (req, res) => {
               cond: {
                 $and: [
                   { $eq: ['$$cityAvail.isActive', true] },
-                  city ? { $eq: ['$$cityAvail.cityName', city] } : { $literal: true },
-                  pinCode
-                    ? { $not: { $in: [pinCode, '$$cityAvail.pinCodes_excluded'] } }
+
+                  city
+                    ? {
+                        $eq: [
+                          { $toLower: '$$cityAvail.cityName' },
+                          city.toLowerCase(),
+                        ],
+                      }
+                    : { $literal: true },
+
+                  state
+                    ? {
+                        $eq: [
+                          { $toLower: '$$cityAvail.state' },
+                          state.toLowerCase(),
+                        ],
+                      }
+                    : { $literal: true },
+
+                  pincode
+                    ? {
+                      $and: [
+                        // pincode NOT in pinCodes_excluded:
+                        {
+                          $eq: [
+                            {
+                              $size: {
+                                $filter: {
+                                  input: '$$cityAvail.pinCodes_excluded',
+                                  cond: { $eq: ['$$this', pincode] }
+                                }
+                              }
+                            },
+                            0
+                          ]
+                        },
+
+                          // AND pinCode matches city pincodes OR city pincodes not defined (assume always true)
+                          // If you have pinCodes_included field, you can add:
+                          // {
+                          //   $in: [pinCode, '$$cityAvail.pinCodes_included']
+                          // }
+                          // For now, just pass true:
+                          { $literal: true },
+                        ],
+                      }
                     : { $literal: true },
                 ],
               },
@@ -278,6 +388,7 @@ const getLabPartnerPackages = async (req, res) => {
                       cityId: '$$cityAvail.cityId',
                       cityName: '$$cityAvail.cityName',
                       state: '$$cityAvail.state',
+                      pinCodes_excluded: '$$cityAvail.pinCodes_excluded',
                       billingRate: '$$cityAvail.billingRate',
                       partnerRate: '$$cityAvail.partnerRate',
                       prevaCarePriceForCorporate: '$$cityAvail.prevaCarePriceForCorporate',
