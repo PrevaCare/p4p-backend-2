@@ -20,12 +20,12 @@ const createLabPackage = async (req, res) => {
       packageName,
       packageCode,
       desc,
+      long_desc,
       category,
       gender,
       ageGroup,
     } = req.body;
 
-    console.log("req.body ", req);
     const body = req.body;
     const file = req.files.logo[0]; // This is your logo file
     // Convert stringified fields back to JSON
@@ -368,6 +368,7 @@ const createLabPackage = async (req, res) => {
       packageName: packageName.trim(),
       packageCode: packageCode.trim(),
       desc: desc || "",
+      long_desc: long_desc || "",
       category: category.trim(),
       testIncluded: processedTestIncluded,
       sampleRequired: sampleRequired || [],

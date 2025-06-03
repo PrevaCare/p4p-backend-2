@@ -8,6 +8,7 @@ const {
 } = require("../../../../validators/lab/labReport/labReport.validator");
 const Lab = require("../../../../models/lab/lab.model");
 const LabPackage = require("../../../../models/lab/labPackage.model");
+const mongoose = require("mongoose")
 
 const createlabReport = async (req, res) => {
   try {
@@ -183,42 +184,122 @@ const getLabPartnerPackages = async (req, res) => {
     const {
       page = 1,
       limit = 10,
-      search = "",
-      sortBy = "packageName",
-      sortOrder = "asc"
+      search = '',
+      sortBy = 'packageCode', // Changed default to packageCode
+      sortOrder = 'asc',
+      city = '',
+      pinCode = '',
     } = req.query;
 
-    // Verify if lab exists
-    const lab = await Lab.findById(labId);
-    if (!lab) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "Lab not found"
-      );
+    // Validate labId format
+    if (!mongoose.isValidObjectId(labId)) {
+      return Response.error(res, 400, AppConstant.FAILED, 'Invalid lab ID');
     }
 
-    console.log({lab})
+    // Verify if lab exists
+    const lab = await Lab.findById(labId).lean();
+    if (!lab) {
+      return Response.error(res, 404, AppConstant.FAILED, 'Lab not found');
+    }
 
-    // Build search query
-    const searchQuery = {
-      labId,
-      ...(search ? { packageName: { $regex: search, $options: "i" } } : {})
+    // Parse and validate query parameters
+    const pageNum = Math.max(parseInt(page, 10), 1);
+    const limitNum = Math.max(parseInt(limit, 10), 1);
+    const sortOrderNum = sortOrder.toLowerCase() === 'asc' ? 1 : -1;
+
+    // Build match query
+    const matchQuery = {
+      labId: new mongoose.Types.ObjectId(labId),
+      ...(search
+        ? {
+            $or: [
+              { packageCode: { $regex: search, $options: 'i' } }, // Prioritize packageCode
+              { packageName: { $regex: search, $options: 'i' } },
+            ],
+          }
+        : {}),
     };
 
-    // Calculate skip value for pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Define allowed sort fields to prevent injection
+    const validSortFields = ['packageCode', 'packageName', 'category'];
+    const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'packageCode'; // Default to packageCode
 
-    // Get total count for pagination
-    const total = await LabPackage.countDocuments(searchQuery);
+    const aggregationPipeline = [
+      { $match: matchQuery },
+      // Filter cityAvailability array
+      {
+        $addFields: {
+          cityAvailability: {
+            $filter: {
+              input: '$cityAvailability',
+              as: 'cityAvail',
+              cond: {
+                $and: [
+                  { $eq: ['$$cityAvail.isActive', true] },
+                  city ? { $eq: ['$$cityAvail.cityName', city] } : { $literal: true },
+                  pinCode
+                    ? { $not: { $in: [pinCode, '$$cityAvail.pinCodes_excluded'] } }
+                    : { $literal: true },
+                ],
+              },
+            },
+          },
+        },
+      },
+      // Exclude packages with no matching cityAvailability
+      { $match: { cityAvailability: { $ne: [] } } },
+      // Facet for total count and paginated results
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [
+            { $sort: { [safeSortBy]: sortOrderNum } },
+            { $skip: (pageNum - 1) * limitNum },
+            { $limit: limitNum },
+            {
+              $project: {
+                _id: 0,
+                logo: 1,
+                packageCode: 1,
+                packageName: 1,
+                desc: 1,
+                category: 1,
+                testIncluded: 1,
+                sampleRequired: 1,
+                preparationRequired: 1,
+                gender: 1,
+                ageGroup: 1,
+                cityAvailability: {
+                  $map: {
+                    input: '$cityAvailability',
+                    as: 'cityAvail',
+                    in: {
+                      cityId: '$$cityAvail.cityId',
+                      cityName: '$$cityAvail.cityName',
+                      state: '$$cityAvail.state',
+                      billingRate: '$$cityAvail.billingRate',
+                      partnerRate: '$$cityAvail.partnerRate',
+                      prevaCarePriceForCorporate: '$$cityAvail.prevaCarePriceForCorporate',
+                      prevaCarePriceForIndividual: '$$cityAvail.prevaCarePriceForIndividual',
+                      discountPercentage: '$$cityAvail.discountPercentage',
+                      homeCollectionCharge: '$$cityAvail.homeCollectionCharge',
+                      homeCollectionAvailable: '$$cityAvail.homeCollectionAvailable',
+                      isActive: '$$cityAvail.isActive',
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ];
 
-    // Get packages with pagination and sorting
-    const packages = await LabPackage.find(searchQuery)
-      .select('logo packageCode packageName desc category testIncluded sampleRequired preparationRequired gender ageGroup cityAvailability -_id')
-      .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    const [result] = await LabPackage.aggregate(aggregationPipeline);
+
+    // Handle empty data
+    const packages = result?.data || [];
+    const total = result?.metadata[0]?.total || 0;
 
     return Response.success(
       res,
@@ -226,18 +307,19 @@ const getLabPartnerPackages = async (req, res) => {
         labName: lab.labName,
         packages,
         total,
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit))
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
       },
       200,
-      "Lab partner packages retrieved successfully"
+      'Lab partner packages retrieved successfully'
     );
   } catch (err) {
+    console.error('Error in getLabPartnerPackages:', err);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      err.message || "Internal server error"
+      'Internal server error'
     );
   }
 };
