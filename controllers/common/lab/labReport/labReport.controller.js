@@ -109,7 +109,7 @@ const getLabPartners = async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 50,
       search = "",
       sortBy = "labName",
       sortOrder = "desc",
@@ -254,7 +254,7 @@ const getLabPartnerPackages = async (req, res) => {
     const { labId } = req.params;
     const {
       page = 1,
-      limit = 10,
+      limit = 50,
       search = '',
       sortBy = 'packageCode', // Changed default to packageCode
       sortOrder = 'asc',
@@ -366,7 +366,7 @@ const getLabPartnerPackages = async (req, res) => {
             { $limit: limitNum },
             {
               $project: {
-                _id: 0,
+                _id: 1,
                 logo: 1,
                 packageCode: 1,
                 packageName: 1,
@@ -434,4 +434,46 @@ const getLabPartnerPackages = async (req, res) => {
   }
 };
 
-module.exports = { createlabReport, getLabPartners, getLabPartnerPackages };
+const getLabPartnerPackageById = async (req, res) => {
+  try {
+    const { packageId } = req.params;
+
+    if (!mongoose.isValidObjectId(packageId)) {
+      return Response.error(res, 400, AppConstant.FAILED, 'Invalid package ID');
+    }
+
+    const packageData = await LabPackage.findById(packageId)
+      .populate({
+        path: 'labId',
+        select: 'labName logo',
+      })
+      .select('-__v')
+      .lean();
+
+    if (!packageData) {
+      return Response.error(res, 404, AppConstant.FAILED, 'Package not found');
+    }
+
+    if (packageData.labId) {
+      Object.assign(packageData, packageData.labId);
+      delete packageData.labId;
+    }
+
+    return Response.success(
+      res,
+      packageData,
+      200,
+      'Lab partner package retrieved successfully'
+    );
+  } catch (err) {
+    console.error('Error in getLabPartnerPackageById:', err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      'Internal server error'
+    );
+  }
+};
+
+module.exports = { createlabReport, getLabPartners, getLabPartnerPackages, getLabPartnerPackageById };

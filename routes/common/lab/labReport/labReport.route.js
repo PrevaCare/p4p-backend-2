@@ -2,7 +2,8 @@ const router = require("express").Router();
 const {
   createlabReport,
   getLabPartners,
-  getLabPartnerPackages
+  getLabPartnerPackages,
+  getLabPartnerPackageById,
 } = require("../../../../controllers/common/lab/labReport/labReport.controller.js");
 const {
   createReport,
@@ -52,6 +53,11 @@ router.get("/app/lab-partner-packages/:labId",
   verifyToken,
   getLabPartnerPackages
 );
+router.get(
+  "/app/lab-partners-package/:packageId",
+  verifyToken,
+  getLabPartnerPackageById,
+)
 router.post(
   "/admin/lab-report",
   anyFileUpload.fields([
