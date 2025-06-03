@@ -164,7 +164,12 @@ const getLabPartners = async (req, res) => {
                   pincode
                     ? {
                         $not: {
-                          $in: [pincode, "$$city.pinCodes_excluded"],
+                          $in: [
+                            pincode,
+                            {
+                              $ifNull: ["$$city.pinCodes_excluded", []]
+                            }
+                          ],
                         },
                       }
                     : { $literal: true },
@@ -323,15 +328,14 @@ const getLabPartnerPackages = async (req, res) => {
                     : { $literal: true },
 
                   pincode
-                    ? {
+                  ? {
                       $and: [
-                        // pincode NOT in pinCodes_excluded:
                         {
                           $eq: [
                             {
                               $size: {
                                 $filter: {
-                                  input: '$$cityAvail.pinCodes_excluded',
+                                  input: { $ifNull: ['$$cityAvail.pinCodes_excluded', []] },
                                   cond: { $eq: ['$$this', pincode] }
                                 }
                               }
@@ -339,17 +343,11 @@ const getLabPartnerPackages = async (req, res) => {
                             0
                           ]
                         },
-
-                          // AND pinCode matches city pincodes OR city pincodes not defined (assume always true)
-                          // If you have pinCodes_included field, you can add:
-                          // {
-                          //   $in: [pinCode, '$$cityAvail.pinCodes_included']
-                          // }
-                          // For now, just pass true:
-                          { $literal: true },
-                        ],
-                      }
-                    : { $literal: true },
+                        // For pinCodes_included or other checks, keep as true or add logic
+                        { $literal: true }
+                      ]
+                    }
+                  : { $literal: true }
                 ],
               },
             },
