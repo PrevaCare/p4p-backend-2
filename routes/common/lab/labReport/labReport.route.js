@@ -49,7 +49,7 @@ router.get(
   getLabPartners,
 )
 router.get("/app/lab-partner-packages/:labId",
-  // verifyToken,
+  verifyToken,
   getLabPartnerPackages
 );
 router.post(
