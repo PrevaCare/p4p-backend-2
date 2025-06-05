@@ -138,9 +138,13 @@ const getImmunizationFromLatestEmr = async (req, res) => {
     let immunizations = await immunizationModel
       .find(
         { emrId: latestEmr._id },
-        "immunizationType vaccinationName totalDose doseDates doctorName sideEffects immunizationNotes immunizationFileUrl"
+        "immunizationType vaccinationName totalDose doseDates doctorName sideEffects immunizationNotes immunizationFileUrl createdAt"
       )
       .populate({ path: "doctorId", select: "firstName lastName" });
+
+    if (immunizations.createdAt < latestEmr.createdAt) {
+      immunizations = latestEmr.immunization
+    }
 
     // Always populate doctorName, regardless of immunizationType
     immunizations = immunizations.map((immunization) => {

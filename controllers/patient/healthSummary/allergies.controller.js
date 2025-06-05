@@ -137,20 +137,35 @@ const getAllergiesFromLatestEmr = async (req, res) => {
         res,
         404,
         AppConstant.FAILED,
-        "insuranceFile is required !"
+        "User does not exist !"
       );
     }
 
-    const latestEmrId = await emrModel
+    const latestEmr = await emrModel
       .findOne({ user: existingUser._id })
       .sort({ createdAt: -1 });
 
-    const allergies = await allergyModel.find(
+    let allergies = await allergyModel.find(
       {
-        emrId: latestEmrId._id,
+        emrId: latestEmr._id,
       },
-      "allergyName pastAllergyDrugName pastAllergyFreequency advisedBy advise adviseAllergyDrugName adviseAllergyFreequency"
+      "allergyName pastAllergyDrugName pastAllergyFreequency advisedBy advise adviseAllergyDrugName adviseAllergyFreequency createdAt"
     );
+
+    if (allergies.createdAt < latestEmr.createdAt) {
+      const formattedAllergies = latestEmr?.history?.allergies?.newAllergyPrescription?.map(allergy => ({
+        allergyName: allergy.allergyName || '',
+        pastAllergyDrugName: allergy.drugs?.map(drug => drug.drugName).join(', ') || '',
+        pastAllergyFreequency: allergy.drugs?.map(drug => drug.frequency).join(', ') || '',
+        advisedBy: allergy.pastAllergyPrescriptionBy || '',
+        advise: allergy.pastAllergyNotes || '',
+        adviseAllergyDrugName: allergy.drugs?.map(drug => drug.drugName).join(', ') || '',
+        adviseAllergyFreequency: allergy.drugs?.map(drug => drug.frequency).join(', ') || '',
+        createdAt: latestEmr.createdAt
+      })) || [];
+      
+      allergies = formattedAllergies;
+    }
     return Response.success(res, allergies, 200, "allergies fetched !");
   } catch (err) {
     return Response.error(

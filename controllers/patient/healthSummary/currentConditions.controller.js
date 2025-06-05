@@ -47,20 +47,33 @@ const getCurrentConditionFromLatestEmr = async (req, res) => {
         res,
         404,
         AppConstant.FAILED,
-        "insuranceFile is required !"
+        "User does not exist!"
       );
     }
 
-    const latestEmrId = await emrModel
+    const latestEmr = await emrModel
       .findOne({ user: existingUser._id })
       .sort({ createdAt: -1 });
 
-    const currentConditions = await currentConditionModel.find(
+    let currentConditions = await currentConditionModel.find(
       {
-        emrId: latestEmrId._id,
+        emrId: latestEmr._id,
       },
-      "dateOfDiagnosis diagnosisName prescription referralNeeded advice"
-    );
+      "dateOfDiagnosis diagnosisName prescription referralNeeded advice createdAt"
+    ).lean();
+
+    if (latestEmr.createdAt > currentConditions.createdAt) {
+      if (latestEmr.diagnosis?.length > 0) {
+        currentConditions = {
+          ...latestEmr.diagnosis?.[0],
+          advice: latestEmr.advice,
+          referrals: latestEmr.referrals,
+        }
+      }
+    }
+
+    currentConditions = currentConditions.map(c => ({...c, advicedBy: 'Preva Care'}))
+
     return Response.success(
       res,
       currentConditions,
