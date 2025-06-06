@@ -8,47 +8,59 @@ const mongoose = require("mongoose");
 const healthScoreModel = require("../../../../models/patient/healthScore/healthScore.model.js");
 const Corporate = require("../../../../models/corporates/corporate.model.js");
 const userModel = require("../../../../models/common/user.model.js");
-const { ObjectId } = mongoose;
+
 const getAllCorporateEmployees = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
     const { _id, role } = req.user;
     const { corporateid } = req.query;
-    // console.log(corporateId);
-    // console.log(req.query);
-    // const doctorId = _id;
-    // const demo = await Employee.find({});
-    // console.log(demo);
-    const corporateEmployees =
-      role === "Doctor"
-        ? await Employee.find(
-            { assignedDoctors: _id },
-            "profileImg firstName lastName department address jobProfile gender phone"
-          ).populate({ path: "corporate", select: "companyName" })
-        : role === "Corporate"
-          ? await Employee.find(
-              { corporate: _id },
-              "profileImg firstName lastName department address jobProfile gender phone"
-            ).populate({ path: "corporate", select: "companyName" })
-          : role === "Superadmin" && corporateid
-            ? await Employee.find(
-                { corporate: corporateid },
-                "profileImg firstName lastName department address jobProfile assignedDoctors phone"
-              )
-                .populate({ path: "corporate", select: "companyName" })
-                .populate({
-                  path: "assignedDoctors",
-                  select: "firstName lastName",
-                })
-            : await Employee.find(
-                {},
-                "profileImg firstName lastName department address jobProfile assignedDoctors phone"
-              )
-                .populate({ path: "corporate", select: "companyName" })
-                .populate({
-                  path: "assignedDoctors",
-                  select: "firstName lastName",
-                });
-    // console.log(corporateEmployees);
+
+    let corporateEmployees;
+
+    if (role === "Doctor") {
+      corporateEmployees = await Employee.find(
+        { assignedDoctors: _id },
+        "profileImg firstName lastName department address jobProfile gender phone"
+      )
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "corporate", select: "companyName" });
+    } else if (role === "Corporate") {
+      corporateEmployees = await Employee.find(
+        { corporate: _id },
+        "profileImg firstName lastName department address jobProfile gender phone"
+      )
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "corporate", select: "companyName" });
+    } else if (role === "Superadmin" && corporateid) {
+      corporateEmployees = await Employee.find(
+        { corporate: corporateid },
+        "profileImg firstName lastName department address jobProfile assignedDoctors phone"
+      )
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "corporate", select: "companyName" })
+        .populate({
+          path: "assignedDoctors",
+          select: "firstName lastName",
+        });
+    } else {
+      corporateEmployees = await Employee.find(
+        {},
+        "profileImg firstName lastName department address jobProfile assignedDoctors phone"
+      )
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "corporate", select: "companyName" })
+        .populate({
+          path: "assignedDoctors",
+          select: "firstName lastName",
+        });
+    }
 
     if (!corporateEmployees) {
       return Response.error(
@@ -59,6 +71,7 @@ const getAllCorporateEmployees = async (req, res) => {
       );
     }
 
+    // Adding EMR status and health score
     const corporateEmployeesWithEmrStatus = await Promise.all(
       corporateEmployees.map(async (employee) => {
         const emrStatus = await EMR.findOne({ user: employee._id });
@@ -76,9 +89,22 @@ const getAllCorporateEmployees = async (req, res) => {
       })
     );
 
+    // Get total count of employees for pagination info
+    const totalEmployeesCount = await Employee.countDocuments();
+
+    const pagination = {
+      total: totalEmployeesCount,
+      totalPages: Math.ceil(totalEmployeesCount / limit),
+      page: page,
+      limit: limit,
+    };
+
     return Response.success(
       res,
-      corporateEmployeesWithEmrStatus,
+      {
+        data: corporateEmployeesWithEmrStatus,
+        pagination,
+      },
       200,
       AppConstant.SUCCESS
     );
