@@ -398,7 +398,7 @@ const EMRSchema = new mongoose.Schema(
     referrals: { type: String },
     followUpSchedule: { type: String },
     doctorNotes: { type: String },
-    consultationMode: { type: String, enum: ["on site", "online"] },
+    consultationMode: { type: String, enum: ["on site", "online", "home"] },
     emrPdfFileUrl: { type: String },
   },
   { timestamps: true }
