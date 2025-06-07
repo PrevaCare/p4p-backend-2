@@ -1317,6 +1317,10 @@ const getEPrescriptionPdfById = async (req, res) => {
       );
     }
 
+    if (existingEPrescription.link) {
+      return res.send(existingEPrescription.link)
+    }
+
     // Fetch the latest medicine schedule for the patient
     const MedicineSchedule = require("../../../../../models/patient/medicineSchedule.model");
     const patientId = existingEPrescription.user;
@@ -1441,24 +1445,21 @@ const getEPrescriptionPdfById = async (req, res) => {
     fs.writeFileSync(pdfFilePath, pdfBuffer);
 
     let pdfLink;
-    if (!existingEPrescription.link) {
-      try {
-        const s3UploadResult = await uploadToS3({
-          buffer: pdfBuffer,
-          originalname: pdfFileName,
-          mimetype: "application/pdf",
-        });
-        console.log("PDF uploaded to S3:", s3UploadResult);
-        pdfLink = s3UploadResult.Location;
-        await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
-          link: pdfLink,
-        });
-      } catch (uploadErr) {
-        console.error("Error uploading PDF to S3:", uploadErr);
-        // Continue execution even if S3 upload fails
-      }
+    try {
+      const s3UploadResult = await uploadToS3({
+        buffer: pdfBuffer,
+        originalname: pdfFileName,
+        mimetype: "application/pdf",
+      });
+      console.log("PDF uploaded to S3:", s3UploadResult);
+      pdfLink = s3UploadResult.Location;
+      await eprescriptionModel.findByIdAndUpdate(ePrescriptionId, {
+        link: pdfLink,
+      });
+    } catch (uploadErr) {
+      console.error("Error uploading PDF to S3:", uploadErr);
+      // Continue execution even if S3 upload fails
     }
-
     // Use res.download instead of res.send
     return res.send(pdfLink);
   } catch (err) {
