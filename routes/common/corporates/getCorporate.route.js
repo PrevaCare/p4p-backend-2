@@ -2,7 +2,7 @@ const router = require("express").Router();
 
 const {
   getAllCorporateEmployees,
-  getEmployeeForEMRPageApp,
+  getEmployeeEmrs,
   getListOfAssignedDoctorsOfEmployee,
   getAllCorporateEmployeesOfParticularCorporateById,
   getListOfAssignedDoctorsOfCorporate,
@@ -114,12 +114,12 @@ router.post(
   getCorrporateInfoByEmployeeId
 );
 // get employee and emr data for emr page in app
-// router.get(
-//   "/app/employees",
-//   verifyToken,
-//   // checkPermissions("READ", "Employee"),
-//   getEmployeeForEMRPageApp
-// );
+router.get(
+  "/app/employee/emrs",
+  verifyToken,
+  checkPermissions("READ", "Employee"),
+  getEmployeeEmrs
+);
 // router.post(
 //   "/app/employees",
 //   verifyToken,

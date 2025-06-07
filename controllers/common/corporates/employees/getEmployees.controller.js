@@ -1,6 +1,7 @@
 const Employee = require("../../../../models/patient/employee/employee.model.js");
 const User = require("../../../../models/common/user.model.js");
 const Response = require("../../../../utils/Response.js");
+const { convertToDDMMMYYYY } = require("../../../../utils/dateFormat/dateFormat.utils.js");
 const AppConstant = require("../../../../utils/AppConstant.js");
 const EMR = require("../../../../models/common/emr.model.js");
 const Insurance = require("../../../../models/patient/insurance/insurance.model.js");
@@ -8,6 +9,7 @@ const mongoose = require("mongoose");
 const healthScoreModel = require("../../../../models/patient/healthScore/healthScore.model.js");
 const Corporate = require("../../../../models/corporates/corporate.model.js");
 const userModel = require("../../../../models/common/user.model.js");
+const emrModel = require("../../../../models/common/emr.model.js")
 
 const getAllCorporateEmployees = async (req, res) => {
   try {
@@ -216,83 +218,102 @@ const getAllCorporateEmployeesOfParticularCorporateById = async (req, res) => {
 //     );
 //   }
 // };
-const getEmployeeForEMRPageApp = async (req, res) => {
+
+const getFormattedConsultationMode = (consultationMode) => {
+  switch (consultationMode) {
+    case "on site": return "On Site"
+    case "online": return "Tele Consultation"
+    case "home": return "At Home"
+    default: return ""
+  }
+}
+
+const getEmployeeEmrs = async (req, res) => {
   try {
     const { _id } = req.user;
 
-    const employeeData = await Employee.aggregate([
-      {
-        $match: { _id: new mongoose.Types.ObjectId(_id) },
-      },
-      {
-        $lookup: {
-          from: "emrs", // Collection name for EMR
-          let: { userId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$user", "$$userId"] } } },
-            { $sort: { createdAt: -1 } }, // Get the latest EMR
-            { $limit: 1 },
-            {
-              $project: {
-                bloodGroup: "$basicInfo.bloodGroup",
-                chiefComplaint: "$history.chiefComplaint",
-                diagonosisName: "$diagnosis.diagnosisName",
-              },
-            },
-          ],
-          as: "latestEmr",
-        },
-      },
-      {
-        $lookup: {
-          from: "insurances", // Collection name for Insurance
-          let: { userId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$user", "$$userId"] } } },
-            {
-              $project: {
-                insuranceName: 1,
-                insuranceFile: 1,
-              },
-            },
-          ],
-          as: "insurance",
-        },
-      },
-      {
-        $project: {
-          profileImg: 1,
-          firstName: 1,
-          lastName: 1,
-          gender: 1,
-          age: 1,
-          bloodGroup: { $arrayElemAt: ["$latestEmr.bloodGroup", 0] },
-          chiefComplaint: {
-            $ifNull: [{ $arrayElemAt: ["$latestEmr.chiefComplaint", 0] }, null],
-          },
-          diagonosisName: {
-            $ifNull: [{ $arrayElemAt: ["$latestEmr.diagonosisName", 0] }, null],
-          },
+    // Get page and limit from query params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
 
-          insuranceName: { $arrayElemAt: ["$insurance.insuranceName", 0] },
-          insuranceFile: { $arrayElemAt: ["$insurance.insuranceFile", 0] },
-          allergies: null, // Default to null
-        },
+    const emrs = await emrModel.aggregate([
+      {
+        $match: {
+          user: _id
+        }
       },
+      {
+        $lookup: {
+          from: 'doctors',
+          localField: 'doctor',
+          foreignField: '_id',
+          as: 'doctorDetails'
+        }
+      },
+      {
+        $unwind: {
+          path: '$doctorDetails',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $facet: {
+          metadata: [
+            { $count: 'total' }
+          ],
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $project: {
+                link: 1,
+                doctor: '$doctorDetails',
+                history: 1,
+                consultationMode: 1,
+                createdAt: 1
+              }
+            }
+          ]
+        }
+      }
     ]);
 
-    if (!employeeData || employeeData.length === 0) {
-      return Response.error(
-        res,
-        404,
-        AppConstant.FAILED,
-        "Corporate Employees not found !"
-      );
-    }
+    // Extract metadata and data
+    const totalCount = emrs[0]?.metadata[0]?.total || 0;
+    const paginatedEmrs = emrs[0]?.data || [];
+
+    // Format the data
+    const formattedEmrs = paginatedEmrs.map(emr => {
+      return {
+        emrDocumentLink: emr.link,
+        consultationMode: getFormattedConsultationMode(emr.consultationMode),
+        chiefComplaint: emr.history.chiefComplaint ??
+          emr.history?.complaints?.length > 0
+            ? emr.history.complaints.map(complaint => complaint.chiefComplaint).join(', ')
+            : '',
+        date: convertToDDMMMYYYY(emr.createdAt),
+        doctorDetails: {
+          name: `${emr.doctor.firstName} ${emr.doctor.lastName}`,
+          specialization: emr.doctor.specialization,
+          gender: emr.doctor.gender
+        }
+      };
+    });
+
+    const pagination = {
+      totalItems: totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: page,
+      pageSize: limit
+    };
 
     return Response.success(
       res,
-      employeeData[0],
+      {
+        emrs: formattedEmrs,
+        pagination
+      },
       200,
       AppConstant.SUCCESS,
       "Total EMR of an employee found !"
@@ -306,6 +327,7 @@ const getEmployeeForEMRPageApp = async (req, res) => {
     );
   }
 };
+
 
 // get list of assigned doctors
 const getListOfAssignedDoctorsOfEmployee = async (req, res) => {
@@ -668,7 +690,7 @@ const healthScoreCalculationEmrData = async (req, res) => {
 };
 module.exports = {
   getAllCorporateEmployees,
-  getEmployeeForEMRPageApp,
+  getEmployeeEmrs,
   getListOfAssignedDoctorsOfEmployee,
   getListOfAssignedDoctorsOfCorporateForDashboard,
   getAllCorporateEmployeesOfParticularCorporateById,
