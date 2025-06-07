@@ -62,7 +62,7 @@ const getCurrentConditionFromLatestEmr = async (req, res) => {
       "dateOfDiagnosis diagnosisName prescription referralNeeded advice createdAt"
     ).lean();
 
-    if (latestEmr.createdAt > currentConditions.createdAt) {
+    if (!currentConditions || currentConditions?.length === 0 || currentConditions.createdAt < latestEmr.createdAt) {
       if (latestEmr.diagnosis?.length > 0) {
         currentConditions = {
           ...latestEmr.diagnosis?.[0],
