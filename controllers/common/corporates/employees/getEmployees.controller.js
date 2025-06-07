@@ -1,7 +1,9 @@
 const Employee = require("../../../../models/patient/employee/employee.model.js");
 const User = require("../../../../models/common/user.model.js");
 const Response = require("../../../../utils/Response.js");
-const { convertToDDMMMYYYY } = require("../../../../utils/dateFormat/dateFormat.utils.js");
+const {
+  convertToDDMMMYYYY,
+} = require("../../../../utils/dateFormat/dateFormat.utils.js");
 const AppConstant = require("../../../../utils/AppConstant.js");
 const EMR = require("../../../../models/common/emr.model.js");
 const Insurance = require("../../../../models/patient/insurance/insurance.model.js");
@@ -9,7 +11,7 @@ const mongoose = require("mongoose");
 const healthScoreModel = require("../../../../models/patient/healthScore/healthScore.model.js");
 const Corporate = require("../../../../models/corporates/corporate.model.js");
 const userModel = require("../../../../models/common/user.model.js");
-const emrModel = require("../../../../models/common/emr.model.js")
+const emrModel = require("../../../../models/common/emr.model.js");
 
 const getAllCorporateEmployees = async (req, res) => {
   try {
@@ -221,12 +223,16 @@ const getAllCorporateEmployeesOfParticularCorporateById = async (req, res) => {
 
 const getFormattedConsultationMode = (consultationMode) => {
   switch (consultationMode) {
-    case "on site": return "On Site"
-    case "online": return "Tele Consultation"
-    case "home": return "At Home"
-    default: return ""
+    case "on site":
+      return "On Site";
+    case "online":
+      return "Tele Consultation";
+    case "home":
+      return "At Home";
+    default:
+      return "";
   }
-}
+};
 
 const getEmployeeEmrs = async (req, res) => {
   try {
@@ -240,43 +246,41 @@ const getEmployeeEmrs = async (req, res) => {
     const emrs = await emrModel.aggregate([
       {
         $match: {
-          user: _id
-        }
+          user: _id,
+        },
       },
       {
         $lookup: {
-          from: 'doctors',
-          localField: 'doctor',
-          foreignField: '_id',
-          as: 'doctorDetails'
-        }
+          from: "doctors",
+          localField: "doctor",
+          foreignField: "_id",
+          as: "doctorDetails",
+        },
       },
       {
         $unwind: {
-          path: '$doctorDetails',
-          preserveNullAndEmptyArrays: true
-        }
+          path: "$doctorDetails",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $facet: {
-          metadata: [
-            { $count: 'total' }
-          ],
+          metadata: [{ $count: "total" }],
           data: [
             { $skip: skip },
             { $limit: limit },
             {
               $project: {
                 link: 1,
-                doctor: '$doctorDetails',
+                doctor: "$doctorDetails",
                 history: 1,
                 consultationMode: 1,
-                createdAt: 1
-              }
-            }
-          ]
-        }
-      }
+                createdAt: 1,
+              },
+            },
+          ],
+        },
+      },
     ]);
 
     // Extract metadata and data
@@ -284,20 +288,22 @@ const getEmployeeEmrs = async (req, res) => {
     const paginatedEmrs = emrs[0]?.data || [];
 
     // Format the data
-    const formattedEmrs = paginatedEmrs.map(emr => {
+    const formattedEmrs = paginatedEmrs.map((emr) => {
       return {
         emrDocumentLink: emr.link,
         consultationMode: getFormattedConsultationMode(emr.consultationMode),
-        chiefComplaint: emr.history.chiefComplaint ??
-          emr.history?.complaints?.length > 0
-            ? emr.history.complaints.map(complaint => complaint.chiefComplaint).join(', ')
-            : '',
+        chiefComplaint:
+          (emr.history.chiefComplaint ?? emr.history?.complaints?.length > 0)
+            ? emr.history.complaints
+                .map((complaint) => complaint.chiefComplaint)
+                .join(", ")
+            : "",
         date: convertToDDMMMYYYY(emr.createdAt),
         doctorDetails: {
           name: `${emr.doctor.firstName} ${emr.doctor.lastName}`,
           specialization: emr.doctor.specialization,
-          gender: emr.doctor.gender
-        }
+          gender: emr.doctor.gender,
+        },
       };
     });
 
@@ -305,14 +311,14 @@ const getEmployeeEmrs = async (req, res) => {
       totalItems: totalCount,
       totalPages: Math.ceil(totalCount / limit),
       currentPage: page,
-      pageSize: limit
+      pageSize: limit,
     };
 
     return Response.success(
       res,
       {
         emrs: formattedEmrs,
-        pagination
+        pagination,
       },
       200,
       AppConstant.SUCCESS,
@@ -327,7 +333,6 @@ const getEmployeeEmrs = async (req, res) => {
     );
   }
 };
-
 
 // get list of assigned doctors
 const getListOfAssignedDoctorsOfEmployee = async (req, res) => {

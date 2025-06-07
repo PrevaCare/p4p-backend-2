@@ -1318,7 +1318,7 @@ const getEPrescriptionPdfById = async (req, res) => {
     }
 
     if (existingEPrescription.link) {
-      return res.send(existingEPrescription.link)
+      return res.send(existingEPrescription.link);
     }
 
     // Fetch the latest medicine schedule for the patient

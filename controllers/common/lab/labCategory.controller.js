@@ -67,7 +67,7 @@ const getAllLabCategories = async (req, res) => {
       .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
-      .select('-__v'); // Exclude version field
+      .select("-__v"); // Exclude version field
 
     const totalCount = await labCategoryModel.countDocuments(query);
 
@@ -122,16 +122,18 @@ const updateLabCategory = async (req, res) => {
       );
     }
 
-    const updatedCategory = await labCategoryModel.findByIdAndUpdate(
-      id,
-      {
-        name,
-        logo,
-        description,
-        isActive,
-      },
-      { new: true }
-    ).select('-__v'); // Exclude version field
+    const updatedCategory = await labCategoryModel
+      .findByIdAndUpdate(
+        id,
+        {
+          name,
+          logo,
+          description,
+          isActive,
+        },
+        { new: true }
+      )
+      .select("-__v"); // Exclude version field
 
     if (!updatedCategory) {
       return Response.error(
@@ -206,4 +208,4 @@ module.exports = {
   getAllLabCategories,
   updateLabCategory,
   deleteLabCategory,
-}; 
+};

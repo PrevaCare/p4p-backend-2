@@ -143,7 +143,7 @@ const getImmunizationFromLatestEmr = async (req, res) => {
       .populate({ path: "doctorId", select: "firstName lastName" });
 
     if (immunizations.createdAt < latestEmr.createdAt) {
-      immunizations = latestEmr.immunization
+      immunizations = latestEmr.immunization;
     }
 
     // Always populate doctorName, regardless of immunizationType

@@ -278,14 +278,14 @@ const getInitialEmrFormData = async (req, res) => {
       currentConditions,
       allergies,
       immunizations,
-      pastLabReports
+      pastLabReports,
     ] = await Promise.all([
       latestEmrPromise,
       pastEmrHistoryPromise,
       currentConditionsPromise,
       allergiesPromise,
       immunizationsPromise,
-      pastLabReportPromise
+      pastLabReportPromise,
     ]);
 
     const pastComplaints =
@@ -339,7 +339,7 @@ const getInitialEmrFormData = async (req, res) => {
       doctorNotes: (latestEmr && latestEmr.doctorNotes) || "",
       consultationMode: (latestEmr && latestEmr.consultationMode) || "on site",
       doctor: (latestEmr && latestEmr.doctor) || "",
-      pastLabReports
+      pastLabReports,
     };
 
     // Only include gynaecologicalHistory if user is female

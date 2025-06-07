@@ -32,4 +32,4 @@ const labCategorySchema = new mongoose.Schema(
 
 const labCategoryModel = mongoose.model("labcategories", labCategorySchema);
 
-module.exports = labCategoryModel; 
+module.exports = labCategoryModel;

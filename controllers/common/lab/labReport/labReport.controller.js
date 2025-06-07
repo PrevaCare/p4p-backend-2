@@ -8,7 +8,7 @@ const {
 } = require("../../../../validators/lab/labReport/labReport.validator");
 const Lab = require("../../../../models/lab/lab.model");
 const LabPackage = require("../../../../models/lab/labPackage.model");
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const createlabReport = async (req, res) => {
   try {
@@ -167,8 +167,8 @@ const getLabPartners = async (req, res) => {
                           $in: [
                             pincode,
                             {
-                              $ifNull: ["$$city.pinCodes_excluded", []]
-                            }
+                              $ifNull: ["$$city.pinCodes_excluded", []],
+                            },
                           ],
                         },
                       }
@@ -255,29 +255,29 @@ const getLabPartnerPackages = async (req, res) => {
     const {
       page = 1,
       limit = 50,
-      search = '',
-      sortBy = 'packageCode', // Changed default to packageCode
-      sortOrder = 'asc',
-      state = '',
-      city = '',
-      pincode = '',
+      search = "",
+      sortBy = "packageCode", // Changed default to packageCode
+      sortOrder = "asc",
+      state = "",
+      city = "",
+      pincode = "",
     } = req.query;
 
     // Validate labId format
     if (!mongoose.isValidObjectId(labId)) {
-      return Response.error(res, 400, AppConstant.FAILED, 'Invalid lab ID');
+      return Response.error(res, 400, AppConstant.FAILED, "Invalid lab ID");
     }
 
     // Verify if lab exists
     const lab = await Lab.findById(labId).lean();
     if (!lab) {
-      return Response.error(res, 404, AppConstant.FAILED, 'Lab not found');
+      return Response.error(res, 404, AppConstant.FAILED, "Lab not found");
     }
 
     // Parse and validate query parameters
     const pageNum = Math.max(parseInt(page, 10), 1);
     const limitNum = Math.max(parseInt(limit, 10), 1);
-    const sortOrderNum = sortOrder.toLowerCase() === 'asc' ? 1 : -1;
+    const sortOrderNum = sortOrder.toLowerCase() === "asc" ? 1 : -1;
 
     // Build match query
     const matchQuery = {
@@ -285,16 +285,18 @@ const getLabPartnerPackages = async (req, res) => {
       ...(search
         ? {
             $or: [
-              { packageCode: { $regex: search, $options: 'i' } }, // Prioritize packageCode
-              { packageName: { $regex: search, $options: 'i' } },
+              { packageCode: { $regex: search, $options: "i" } }, // Prioritize packageCode
+              { packageName: { $regex: search, $options: "i" } },
             ],
           }
         : {}),
     };
 
     // Define allowed sort fields to prevent injection
-    const validSortFields = ['packageCode', 'packageName', 'category'];
-    const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'packageCode'; // Default to packageCode
+    const validSortFields = ["packageCode", "packageName", "category"];
+    const safeSortBy = validSortFields.includes(sortBy)
+      ? sortBy
+      : "packageCode"; // Default to packageCode
 
     const aggregationPipeline = [
       { $match: matchQuery },
@@ -303,16 +305,16 @@ const getLabPartnerPackages = async (req, res) => {
         $addFields: {
           cityAvailability: {
             $filter: {
-              input: '$cityAvailability',
-              as: 'cityAvail',
+              input: "$cityAvailability",
+              as: "cityAvail",
               cond: {
                 $and: [
-                  { $eq: ['$$cityAvail.isActive', true] },
+                  { $eq: ["$$cityAvail.isActive", true] },
 
                   city
                     ? {
                         $eq: [
-                          { $toLower: '$$cityAvail.cityName' },
+                          { $toLower: "$$cityAvail.cityName" },
                           city.toLowerCase(),
                         ],
                       }
@@ -321,33 +323,38 @@ const getLabPartnerPackages = async (req, res) => {
                   state
                     ? {
                         $eq: [
-                          { $toLower: '$$cityAvail.state' },
+                          { $toLower: "$$cityAvail.state" },
                           state.toLowerCase(),
                         ],
                       }
                     : { $literal: true },
 
                   pincode
-                  ? {
-                      $and: [
-                        {
-                          $eq: [
-                            {
-                              $size: {
-                                $filter: {
-                                  input: { $ifNull: ['$$cityAvail.pinCodes_excluded', []] },
-                                  cond: { $eq: ['$$this', pincode] }
-                                }
-                              }
-                            },
-                            0
-                          ]
-                        },
-                        // For pinCodes_included or other checks, keep as true or add logic
-                        { $literal: true }
-                      ]
-                    }
-                  : { $literal: true }
+                    ? {
+                        $and: [
+                          {
+                            $eq: [
+                              {
+                                $size: {
+                                  $filter: {
+                                    input: {
+                                      $ifNull: [
+                                        "$$cityAvail.pinCodes_excluded",
+                                        [],
+                                      ],
+                                    },
+                                    cond: { $eq: ["$$this", pincode] },
+                                  },
+                                },
+                              },
+                              0,
+                            ],
+                          },
+                          // For pinCodes_included or other checks, keep as true or add logic
+                          { $literal: true },
+                        ],
+                      }
+                    : { $literal: true },
                 ],
               },
             },
@@ -359,7 +366,7 @@ const getLabPartnerPackages = async (req, res) => {
       // Facet for total count and paginated results
       {
         $facet: {
-          metadata: [{ $count: 'total' }],
+          metadata: [{ $count: "total" }],
           data: [
             { $sort: { [safeSortBy]: sortOrderNum } },
             { $skip: (pageNum - 1) * limitNum },
@@ -380,19 +387,22 @@ const getLabPartnerPackages = async (req, res) => {
                 ageGroup: 1,
                 cityAvailability: {
                   $map: {
-                    input: '$cityAvailability',
-                    as: 'cityAvail',
+                    input: "$cityAvailability",
+                    as: "cityAvail",
                     in: {
-                      cityId: '$$cityAvail.cityId',
-                      cityName: '$$cityAvail.cityName',
-                      state: '$$cityAvail.state',
-                      pinCodes_excluded: '$$cityAvail.pinCodes_excluded',
-                      prevaCarePriceForCorporate: '$$cityAvail.prevaCarePriceForCorporate',
-                      prevaCarePriceForIndividual: '$$cityAvail.prevaCarePriceForIndividual',
-                      homeCollectionCharge: '$$cityAvail.homeCollectionCharge',
-                      homeCollectionAvailable: '$$cityAvail.homeCollectionAvailable',
-                      isActive: '$$cityAvail.isActive',
-                      totalPrice: '$$cityAvail.billingRate',
+                      cityId: "$$cityAvail.cityId",
+                      cityName: "$$cityAvail.cityName",
+                      state: "$$cityAvail.state",
+                      pinCodes_excluded: "$$cityAvail.pinCodes_excluded",
+                      prevaCarePriceForCorporate:
+                        "$$cityAvail.prevaCarePriceForCorporate",
+                      prevaCarePriceForIndividual:
+                        "$$cityAvail.prevaCarePriceForIndividual",
+                      homeCollectionCharge: "$$cityAvail.homeCollectionCharge",
+                      homeCollectionAvailable:
+                        "$$cityAvail.homeCollectionAvailable",
+                      isActive: "$$cityAvail.isActive",
+                      totalPrice: "$$cityAvail.billingRate",
                       discountPercentageForCorporate: {
                         $cond: [
                           { $gt: ["$$cityAvail.billingRate", 0] },
@@ -402,18 +412,23 @@ const getLabPartnerPackages = async (req, res) => {
                                 $multiply: [
                                   {
                                     $divide: [
-                                      { $subtract: ["$$cityAvail.billingRate", "$$cityAvail.prevaCarePriceForCorporate"] },
-                                      "$$cityAvail.billingRate"
-                                    ]
+                                      {
+                                        $subtract: [
+                                          "$$cityAvail.billingRate",
+                                          "$$cityAvail.prevaCarePriceForCorporate",
+                                        ],
+                                      },
+                                      "$$cityAvail.billingRate",
+                                    ],
                                   },
-                                  100
-                                ]
+                                  100,
+                                ],
                               },
-                              2  // rounds to 2 decimal places
-                            ]
+                              2, // rounds to 2 decimal places
+                            ],
                           },
-                          null
-                        ]
+                          null,
+                        ],
                       },
                       discountPercentageForIndividual: {
                         $cond: [
@@ -424,19 +439,24 @@ const getLabPartnerPackages = async (req, res) => {
                                 $multiply: [
                                   {
                                     $divide: [
-                                      { $subtract: ["$$cityAvail.billingRate", "$$cityAvail.prevaCarePriceForIndividual"] },
-                                      "$$cityAvail.billingRate"
-                                    ]
+                                      {
+                                        $subtract: [
+                                          "$$cityAvail.billingRate",
+                                          "$$cityAvail.prevaCarePriceForIndividual",
+                                        ],
+                                      },
+                                      "$$cityAvail.billingRate",
+                                    ],
                                   },
-                                  100
-                                ]
+                                  100,
+                                ],
                               },
-                              2 // rounds to 2 decimal places
-                            ]
+                              2, // rounds to 2 decimal places
+                            ],
                           },
-                          null
-                        ]
-                      }
+                          null,
+                        ],
+                      },
                     },
                   },
                 },
@@ -463,15 +483,15 @@ const getLabPartnerPackages = async (req, res) => {
         totalPages: Math.ceil(total / limitNum),
       },
       200,
-      'Lab partner packages retrieved successfully'
+      "Lab partner packages retrieved successfully"
     );
   } catch (err) {
-    console.error('Error in getLabPartnerPackages:', err);
+    console.error("Error in getLabPartnerPackages:", err);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      'Internal server error'
+      "Internal server error"
     );
   }
 };
@@ -481,63 +501,83 @@ const getLabPartnerPackageById = async (req, res) => {
     const { packageId } = req.params;
 
     if (!mongoose.isValidObjectId(packageId)) {
-      return Response.error(res, 400, AppConstant.FAILED, 'Invalid package ID');
+      return Response.error(res, 400, AppConstant.FAILED, "Invalid package ID");
     }
 
     const packageData = await LabPackage.findById(packageId)
       .populate({
-        path: 'labId',
-        select: 'labName logo',
+        path: "labId",
+        select: "labName logo",
       })
-      .select('-__v -cityAvailability.partnerRate -cityAvailability.discountPercentage')
+      .select(
+        "-__v -cityAvailability.partnerRate -cityAvailability.discountPercentage"
+      )
       .lean();
 
     if (!packageData) {
-      return Response.error(res, 404, AppConstant.FAILED, 'Package not found');
+      return Response.error(res, 404, AppConstant.FAILED, "Package not found");
     }
 
     if (packageData.labId) {
-      Object.assign(packageData, { logo: packageData.labId.logo, labName: packageData.labId.labName });
+      Object.assign(packageData, {
+        logo: packageData.labId.logo,
+        labName: packageData.labId.labName,
+      });
       delete packageData.labId;
     }
 
     // Calculate discount percentages for each cityAvailability entry
     if (Array.isArray(packageData.cityAvailability)) {
-      packageData.cityAvailability = packageData.cityAvailability.map(({billingRate, ...city}) => {
-        const prevaCarePriceForCorporate = city.prevaCarePriceForCorporate || 0;
-        const prevaCarePriceForIndividual = city.prevaCarePriceForIndividual || 0;
+      packageData.cityAvailability = packageData.cityAvailability.map(
+        ({ billingRate, ...city }) => {
+          const prevaCarePriceForCorporate =
+            city.prevaCarePriceForCorporate || 0;
+          const prevaCarePriceForIndividual =
+            city.prevaCarePriceForIndividual || 0;
 
-        return {
-          ...city,
-          totalPrice: billingRate,
-          discountPercentageForCorporate:
-            billingRate > 0
-              ? (((billingRate - prevaCarePriceForCorporate) / billingRate) * 100).toFixed(2)
-              : null,
-          discountPercentageForIndividual:
-            billingRate > 0
-              ? (((billingRate - prevaCarePriceForIndividual) / billingRate) * 100).toFixed(2)
-              : null,
-              
-        };
-      });
+          return {
+            ...city,
+            totalPrice: billingRate,
+            discountPercentageForCorporate:
+              billingRate > 0
+                ? (
+                    ((billingRate - prevaCarePriceForCorporate) / billingRate) *
+                    100
+                  ).toFixed(2)
+                : null,
+            discountPercentageForIndividual:
+              billingRate > 0
+                ? (
+                    ((billingRate - prevaCarePriceForIndividual) /
+                      billingRate) *
+                    100
+                  ).toFixed(2)
+                : null,
+          };
+        }
+      );
     }
 
     return Response.success(
       res,
       packageData,
       200,
-      'Lab partner package retrieved successfully'
+      "Lab partner package retrieved successfully"
     );
   } catch (err) {
-    console.error('Error in getLabPartnerPackageById:', err);
+    console.error("Error in getLabPartnerPackageById:", err);
     return Response.error(
       res,
       500,
       AppConstant.FAILED,
-      'Internal server error'
+      "Internal server error"
     );
   }
 };
 
-module.exports = { createlabReport, getLabPartners, getLabPartnerPackages, getLabPartnerPackageById };
+module.exports = {
+  createlabReport,
+  getLabPartners,
+  getLabPartnerPackages,
+  getLabPartnerPackageById,
+};

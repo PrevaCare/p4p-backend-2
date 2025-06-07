@@ -21,7 +21,7 @@ const userModel = require("../../../../models/common/user.model.js");
 const Corporate = require("../../../../models/corporates/corporate.model.js");
 const corporatePlanModel = require("../../../../models/corporates/corporatePlan.model.js");
 const Employee = require("../../../../models/patient/employee/employee.model.js");
-const LiverRiskCalculator = require("../../../../models/patient/riskAssessments/liverRiskCalculate.model.js")
+const LiverRiskCalculator = require("../../../../models/patient/riskAssessments/liverRiskCalculate.model.js");
 
 const healthTrackerController = {
   async getLatestHealthData(req, res) {
@@ -173,7 +173,7 @@ const healthTrackerController = {
         planFeatures,
         latestStress,
         latestDepression,
-        liverRisk
+        liverRisk,
       ] = await Promise.all([
         getLatestRecord(PatientBP),
         getLatestRecord(PatientBMI),
@@ -189,7 +189,7 @@ const healthTrackerController = {
         getPlanFeatures(patientId),
         getLatestRecord(PatientStress),
         getLatestRecord(PatientDepression),
-        LiverRiskCalculator.findOne({ user: patientId }).sort({ date: -1 })
+        LiverRiskCalculator.findOne({ user: patientId }).sort({ date: -1 }),
       ]);
 
       // Get corporate details if user is an employee
@@ -198,11 +198,14 @@ const healthTrackerController = {
         corporateDetails = await getCorporateDetails(patientId);
       }
 
-      let userAddress = null
+      let userAddress = null;
       if (userInfo.role === "Employee") {
-        userAddress = (await Employee.findById(patientId).select('address'))?.address;
+        userAddress = (await Employee.findById(patientId).select("address"))
+          ?.address;
       } else if (userInfo.role === "IndividualUser") {
-        userAddress = (await IndividualUser.findById(patientId).select('address'))?.address;
+        userAddress = (
+          await IndividualUser.findById(patientId).select("address")
+        )?.address;
       }
 
       // Compile health data with preference to individual models
@@ -337,7 +340,8 @@ const healthTrackerController = {
         isDrink: latestEMR?.history?.habits?.alcohol
           ? latestEMR?.history?.habits?.alcohol
           : false,
-        isDiabetic: ['yes', 'true'].includes(liverRisk?.diabetes?.toLowerCase()) ?? false,
+        isDiabetic:
+          ["yes", "true"].includes(liverRisk?.diabetes?.toLowerCase()) ?? false,
         healthScore: latestHealthScore?.overallHealthScore
           ? latestHealthScore?.overallHealthScore
           : null,

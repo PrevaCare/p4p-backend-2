@@ -44,20 +44,17 @@ router.post(
   createExistingPatientLabReport
 );
 
+router.get("/app/lab-partners", verifyToken, getLabPartners);
 router.get(
-  "/app/lab-partners",
-  verifyToken,
-  getLabPartners,
-)
-router.get("/app/lab-partner-packages/:labId",
+  "/app/lab-partner-packages/:labId",
   verifyToken,
   getLabPartnerPackages
 );
 router.get(
   "/app/lab-partners-package/:packageId",
   verifyToken,
-  getLabPartnerPackageById,
-)
+  getLabPartnerPackageById
+);
 router.post(
   "/admin/lab-report",
   anyFileUpload.fields([

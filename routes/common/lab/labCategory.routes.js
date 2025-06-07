@@ -11,7 +11,12 @@ const {
   checkPermissions,
 } = require("../../../middlewares/jwt/permission");
 
-router.post("/", verifyToken, checkPermissions("CREATE", "Employee"), createLabCategory);
+router.post(
+  "/",
+  verifyToken,
+  checkPermissions("CREATE", "Employee"),
+  createLabCategory
+);
 router.get("/", verifyToken, getAllLabCategories);
 router.put(
   "/:id",
@@ -26,4 +31,4 @@ router.delete(
   deleteLabCategory
 );
 
-module.exports = router; 
+module.exports = router;

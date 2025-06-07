@@ -23,7 +23,7 @@ const currentCondtionSchema = mongoose.Schema(
         drugName: String,
         freequency: String,
         duration: String,
-        givenBy: String
+        givenBy: String,
       },
     ],
     referralNeeded: {

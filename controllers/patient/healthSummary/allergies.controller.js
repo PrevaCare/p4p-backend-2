@@ -153,17 +153,24 @@ const getAllergiesFromLatestEmr = async (req, res) => {
     );
 
     if (allergies.createdAt < latestEmr.createdAt) {
-      const formattedAllergies = latestEmr?.history?.allergies?.newAllergyPrescription?.map(allergy => ({
-        allergyName: allergy.allergyName || '',
-        pastAllergyDrugName: allergy.drugs?.map(drug => drug.drugName).join(', ') || '',
-        pastAllergyFreequency: allergy.drugs?.map(drug => drug.frequency).join(', ') || '',
-        advisedBy: allergy.pastAllergyPrescriptionBy || '',
-        advise: allergy.pastAllergyNotes || '',
-        adviseAllergyDrugName: allergy.drugs?.map(drug => drug.drugName).join(', ') || '',
-        adviseAllergyFreequency: allergy.drugs?.map(drug => drug.frequency).join(', ') || '',
-        createdAt: latestEmr.createdAt
-      })) || [];
-      
+      const formattedAllergies =
+        latestEmr?.history?.allergies?.newAllergyPrescription?.map(
+          (allergy) => ({
+            allergyName: allergy.allergyName || "",
+            pastAllergyDrugName:
+              allergy.drugs?.map((drug) => drug.drugName).join(", ") || "",
+            pastAllergyFreequency:
+              allergy.drugs?.map((drug) => drug.frequency).join(", ") || "",
+            advisedBy: allergy.pastAllergyPrescriptionBy || "",
+            advise: allergy.pastAllergyNotes || "",
+            adviseAllergyDrugName:
+              allergy.drugs?.map((drug) => drug.drugName).join(", ") || "",
+            adviseAllergyFreequency:
+              allergy.drugs?.map((drug) => drug.frequency).join(", ") || "",
+            createdAt: latestEmr.createdAt,
+          })
+        ) || [];
+
       allergies = formattedAllergies;
     }
     return Response.success(res, allergies, 200, "allergies fetched !");
