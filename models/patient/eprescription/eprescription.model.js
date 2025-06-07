@@ -57,7 +57,7 @@ const ePrescriptionSchema = new mongoose.Schema(
       enum: ["on site", "online"],
     },
 
-    ePrescriptionFileUrl: {
+    link: {
       type: String,
       // required: [true, "prescription pdf required !"],
     },

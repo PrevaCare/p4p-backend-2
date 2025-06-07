@@ -97,7 +97,7 @@ const getListOfExistingPatientEprescription = async (req, res) => {
     // find emr form our system
     const userEPrescriptionOurSystem = await eprescriptionModel.find(
       { user: _id },
-      "_id createdAt doctor ePrescriptionFileUrl"
+      "_id createdAt doctor link"
     );
 
     const userEPrescriptionOurSystemRequiredFieldOnly =
@@ -108,7 +108,7 @@ const getListOfExistingPatientEprescription = async (req, res) => {
               date: item.createdAt,
               doctorName: item?.doctor.firstName + " " + item?.doctor.lastName,
               speciality: item?.doctor.specialization,
-              ePrescriptionFileUrl: item.ePrescriptionFileUrl,
+              ePrescriptionFileUrl: item.link,
               documentType: "E-Prescription",
               hospitalName: "Preva Care",
             };
