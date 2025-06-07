@@ -86,6 +86,13 @@ router.get(
   getReportsByUser
 );
 
+router.get(
+  "/app/lab-reports",
+  verifyToken,
+  checkPermissions("READ", "Employee"),
+  retrievalRateLimit,
+  getBothLabReportOfAllUsers
+);
 //
 router.get(
   "/admin/lab-reports",
