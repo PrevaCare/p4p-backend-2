@@ -147,12 +147,13 @@ const getAllergiesFromLatestEmr = async (req, res) => {
 
     let allergies = await allergyModel.find(
       {
-        emrId: latestEmr._id,
+        userId: existingUser._id,
       },
       "allergyName pastAllergyDrugName pastAllergyFreequency advisedBy advise adviseAllergyDrugName adviseAllergyFreequency createdAt"
-    );
+    ).sort({createdAt: -1})
+    .lean();
 
-    if (allergies.createdAt < latestEmr.createdAt) {
+    if (!(allergies?.length > 1) || allergies[0].createdAt < latestEmr.createdAt) {
       const formattedAllergies =
         latestEmr?.history?.allergies?.newAllergyPrescription?.map(
           (allergy) => ({

@@ -124,7 +124,8 @@ const getImmunizationFromLatestEmr = async (req, res) => {
 
     const latestEmr = await emrModel
       .findOne({ user: existingUser._id })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (!latestEmr) {
       return Response.error(
@@ -137,12 +138,14 @@ const getImmunizationFromLatestEmr = async (req, res) => {
 
     let immunizations = await immunizationModel
       .find(
-        { emrId: latestEmr._id },
+        { userId: existingUser._id },
         "immunizationType vaccinationName totalDose doseDates doctorName sideEffects immunizationNotes immunizationFileUrl createdAt"
       )
-      .populate({ path: "doctorId", select: "firstName lastName" });
+      .populate({ path: "doctorId", select: "firstName lastName" })
+      .sort({createdAt: -1 })
+      .lean();
 
-    if (immunizations.createdAt < latestEmr.createdAt) {
+    if (!immunizations || immunizations.length === 0 || immunizations?.[0]?.createdAt < latestEmr.createdAt) {
       immunizations = latestEmr.immunization;
     }
 

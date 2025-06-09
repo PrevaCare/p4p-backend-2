@@ -54,7 +54,8 @@ const getCurrentConditionFromLatestEmr = async (req, res) => {
 
     const latestEmr = await emrModel
       .findOne({ user: existingUser._id })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
       let currentConditions = await currentConditionModel
       .find({
@@ -68,27 +69,30 @@ const getCurrentConditionFromLatestEmr = async (req, res) => {
         createdAt: 1
       })
       .sort({ createdAt: -1 })
-      .limit(1)
       .lean();
 
-    if (currentConditions?.length > 0) {
-      currentConditions = currentConditions[0]
-    }
+    console.log({currentConditions, latestEmr, conditions: (!currentConditions ||
+      !(currentConditions.length > 1) ||
+      currentConditions[0].createdAt < latestEmr.createdAt)})
 
     if (
       !currentConditions ||
-      currentConditions.createdAt < latestEmr.createdAt
+      !(currentConditions.length > 1) ||
+      currentConditions[0].createdAt < latestEmr.createdAt
     ) {
       if (latestEmr.diagnosis?.length > 0) {
-        currentConditions = {
+        currentConditions = [{
           ...latestEmr.diagnosis?.[0],
           advice: latestEmr.advice,
           referrals: latestEmr.referrals,
-        };
+        }];
       }
     }
 
-    currentConditions.advicedBy = "Preva Care"
+    currentConditions = currentConditions.map(c => ({
+      ...c,
+      advicedBy: "Preva Care"
+    }))
 
     return Response.success(
       res,
