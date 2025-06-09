@@ -17,6 +17,7 @@ const getAllCorporateEmployees = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
+    const search = req.query.search?.trim() || "";
     const skip = (page - 1) * limit;
 
     const { _id, role } = req.user;
@@ -24,9 +25,25 @@ const getAllCorporateEmployees = async (req, res) => {
 
     let corporateEmployees;
 
+    let searchQuery = {};
+
+    if (search) {
+      searchQuery = {
+        $or: [
+          { firstName: { $regex: search, $options: "i" } },
+          { lastName: { $regex: search, $options: "i" } },
+          { phone: { $regex: search, $options: "i" } },
+          { "address.city": { $regex: search, $options: "i" } }
+        ]
+      };
+    }
+
     if (role === "Doctor") {
       corporateEmployees = await Employee.find(
-        { assignedDoctors: _id },
+        {
+          assignedDoctors: _id,
+          ...searchQuery
+        },
         "profileImg firstName lastName department address jobProfile gender phone"
       )
         .skip(skip)
@@ -34,7 +51,7 @@ const getAllCorporateEmployees = async (req, res) => {
         .populate({ path: "corporate", select: "companyName" });
     } else if (role === "Corporate") {
       corporateEmployees = await Employee.find(
-        { corporate: _id },
+        { corporate: _id, ...searchQuery },
         "profileImg firstName lastName department address jobProfile gender phone"
       )
         .skip(skip)
@@ -42,7 +59,7 @@ const getAllCorporateEmployees = async (req, res) => {
         .populate({ path: "corporate", select: "companyName" });
     } else if (role === "Superadmin" && corporateid) {
       corporateEmployees = await Employee.find(
-        { corporate: corporateid },
+        { corporate: corporateid, ...searchQuery },
         "profileImg firstName lastName department address jobProfile assignedDoctors phone"
       )
         .skip(skip)
@@ -54,7 +71,7 @@ const getAllCorporateEmployees = async (req, res) => {
         });
     } else {
       corporateEmployees = await Employee.find(
-        {},
+        { ...searchQuery },
         "profileImg firstName lastName department address jobProfile assignedDoctors phone"
       )
         .skip(skip)
@@ -94,7 +111,15 @@ const getAllCorporateEmployees = async (req, res) => {
     );
 
     // Get total count of employees for pagination info
-    const totalEmployeesCount = await Employee.countDocuments();
+    const totalEmployeesCount = await Employee.countDocuments(
+      role === "Doctor"
+        ? { assignedDoctors: _id, ...searchQuery }
+        : role === "Corporate"
+        ? { corporate: _id, ...searchQuery }
+        : role === "Superadmin" && corporateid
+        ? { corporate: corporateid, ...searchQuery }
+        : { ...searchQuery }
+    );
 
     const pagination = {
       total: totalEmployeesCount,
@@ -704,3 +729,4 @@ module.exports = {
   getListOfAssignedDoctorByPatientId,
   getCorrporateInfoByEmployeeId,
 };
+

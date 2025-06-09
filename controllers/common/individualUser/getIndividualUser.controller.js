@@ -8,22 +8,48 @@ const getAllIndividualUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
+    const search = req.query?.search?.trim() || ""
     const skip = (page - 1) * limit;
 
     const { _id, role } = req.user;
 
     let individualUsers;
 
+    let searchQuery = {};
+
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex special chars
+    
+      searchQuery = {
+        $or: [
+          { firstName: { $regex: `^${escapedSearch}`, $options: "i" } },
+          { lastName: { $regex: `^${escapedSearch}`, $options: "i" } },
+          {
+            phone: {
+              $regex: `^${escapedSearch}`,
+              $options: "i"
+            }
+          },
+          {
+            "address.city": {
+              $regex: `^${escapedSearch}`,
+              $options: "i"
+            }
+          }
+        ]
+      };
+    }
+
     if (role === "Doctor") {
       individualUsers = await IndividualUser.find(
-        { assignedDoctors: _id },
+        { assignedDoctors: _id, ...searchQuery },
         "profileImg firstName lastName jobProfile address gender phone"
       )
         .skip(skip)
         .limit(limit);
     } else {
       individualUsers = await IndividualUser.find(
-        {},
+        { ...searchQuery },
         "profileImg firstName lastName jobProfile address phone"
       )
         .skip(skip)
@@ -62,7 +88,13 @@ const getAllIndividualUsers = async (req, res) => {
     );
 
     // Get total count of individual users for pagination info
-    const totalUsersCount = await IndividualUser.countDocuments();
+    const baseFilter = role === "Doctor" ? { assignedDoctors: _id } : {};
+
+    const totalUsersCount = await IndividualUser.countDocuments(
+      search
+        ? { $and: [baseFilter, searchQuery] }
+        : baseFilter
+    );
 
     const pagination = {
       total: totalUsersCount,
