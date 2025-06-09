@@ -36,7 +36,7 @@ const allergySchema = mongoose.Schema(
     },
     allergyFileUrl: { type: String },
   },
-  { timestamp: true }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Allergy", allergySchema);

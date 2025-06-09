@@ -32,7 +32,7 @@ const immunizationSchema = mongoose.Schema(
     immunizationNotes: { type: String, trim: true },
     immunizationFileUrl: { type: String },
   },
-  { timestamp: true }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Immunization", immunizationSchema);
