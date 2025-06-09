@@ -7,6 +7,7 @@ const {
   immunizationValidationSchema,
 } = require("../../../validators/patient/healthSummary/immunization.validator");
 const mongoose = require("mongoose")
+const { uploadToS3 } = require("../../../middlewares/uploads/awsConfig");
 
 // create immunization and add to latest emr
 const addImmunization = async (req, res) => {
@@ -14,8 +15,28 @@ const addImmunization = async (req, res) => {
 
   try {
     session.startTransaction();
-    const { error } = immunizationValidationSchema.validate(req.body);
     const immunizationFile = req.file;
+    const reconstructedDoseDates = [];
+
+    Object.keys(req.body).forEach((key) => {
+      const match = key.match(/^doseDates\[(\d+)\]\.(\w+)$/);
+      if (match) {
+        const index = parseInt(match[1]);
+        const field = match[2];
+
+        if (!reconstructedDoseDates[index]) {
+          reconstructedDoseDates[index] = {};
+        }
+        reconstructedDoseDates[index][field] = req.body[key];
+        delete req.body[key];
+      }
+    });
+
+    if (reconstructedDoseDates.length > 0) {
+      req.body.doseDates = reconstructedDoseDates;
+    }
+
+    const { error } = immunizationValidationSchema.validate(req.body);
 
     if (error) {
       return Response.error(
@@ -48,7 +69,7 @@ const addImmunization = async (req, res) => {
     }
 
     const dataToAddInEmr = {
-      immunizationType: allergyName || "up to date",
+      immunizationType: immunizationType || "up to date",
       vaccinationName: vaccinationName || "",
       totalDose: totalDose || 0,
       totalDose: totalDose || 0,
