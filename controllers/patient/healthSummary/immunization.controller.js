@@ -14,9 +14,7 @@ const addImmunization = async (req, res) => {
 
   try {
     session.startTransaction();
-
     const { error } = immunizationValidationSchema.validate(req.body);
-
     const immunizationFile = req.file;
 
     if (error) {
@@ -49,16 +47,6 @@ const addImmunization = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "user not found !");
     }
 
-    // check emr
-    // const latestEmr = await emrModel
-    //   .findOne({ user: existingUser._id })
-    //   .sort({ createdAt: -1 })
-    //   .session(session);
-
-    // if (!latestEmr) {
-    //   return Response.error(res, 404, AppConstant.FAILED, "EMR  not found !");
-    // }
-
     const dataToAddInEmr = {
       immunizationType: allergyName || "up to date",
       vaccinationName: vaccinationName || "",
@@ -69,8 +57,6 @@ const addImmunization = async (req, res) => {
       sideEffects: sideEffects || "",
       immunizationNotes: immunizationNotes || "",
     };
-    // latestEmr.immunization.push(dataToAddInEmr);
-    // latestEmr.save({ session });
 
     let uploadedImmunizationFileUrl = immunizationFile
       ? (await uploadToS3(immunizationFile)).Location

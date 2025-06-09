@@ -48,16 +48,6 @@ const addAllergy = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, "user not found !");
     }
 
-    // check emr
-    // const latestEmr = await emrModel
-    //   .findOne({ user: existingUser._id })
-    //   .sort({ createdAt: -1 })
-    //   .session(session);
-
-    // if (!latestEmr) {
-    //   return Response.error(res, 404, AppConstant.FAILED, "EMR  not found !");
-    // }
-
     if (
       pastAllergyDrugName &&
       pastAllergyFreequency &&
@@ -83,17 +73,15 @@ const addAllergy = async (req, res) => {
       );
     }
 
-    // const dataToAddInEmr = {
-    //   allergyName: allergyName || "",
-    //   pastAllergyDrugName: pastAllergyDrugName || [],
-    //   pastAllergyFreequency: pastAllergyFreequency || [],
-    //   advisedBy: advisedBy || "",
-    //   advise: advise || "",
-    //   adviseAllergyDrugName: adviseAllergyDrugName || [],
-    //   adviseAllergyFreequency: adviseAllergyFreequency || [],
-    // };
-    // latestEmr.history.allergies.push(dataToAddInEmr);
-    // latestEmr.save({ session });
+    const dataToAddInEmr = {
+      allergyName: allergyName || "",
+      pastAllergyDrugName: pastAllergyDrugName || [],
+      pastAllergyFreequency: pastAllergyFreequency || [],
+      advisedBy: advisedBy || "",
+      advise: advise || "",
+      adviseAllergyDrugName: adviseAllergyDrugName || [],
+      adviseAllergyFreequency: adviseAllergyFreequency || [],
+    };
 
     let uploadedAllergyFileUrl = allergiFile
       ? (await uploadToS3(allergiFile)).Location
