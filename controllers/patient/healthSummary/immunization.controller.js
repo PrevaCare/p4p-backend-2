@@ -6,6 +6,7 @@ const Response = require("../../../utils/Response");
 const {
   immunizationValidationSchema,
 } = require("../../../validators/patient/healthSummary/immunization.validator");
+const mongoose = require("mongoose")
 
 // create immunization and add to latest emr
 const addImmunization = async (req, res) => {
@@ -142,8 +143,7 @@ const getImmunizationFromLatestEmr = async (req, res) => {
         "immunizationType vaccinationName totalDose doseDates doctorName sideEffects immunizationNotes immunizationFileUrl createdAt"
       )
       .populate({ path: "doctorId", select: "firstName lastName" })
-      .sort({createdAt: -1 })
-      .lean();
+      .sort({createdAt: -1 });
 
     if (!immunizations || immunizations.length === 0 || immunizations?.[0]?.createdAt < latestEmr.createdAt) {
       immunizations = latestEmr.immunization;
