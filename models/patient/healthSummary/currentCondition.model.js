@@ -36,7 +36,7 @@ const currentCondtionSchema = mongoose.Schema(
     },
     condtionFileUrl: { type: String },
   },
-  { timestamp: true }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("CurrentCondition", currentCondtionSchema);

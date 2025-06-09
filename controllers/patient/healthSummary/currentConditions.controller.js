@@ -42,6 +42,7 @@ const getCurrentConditionFromLatestEmr = async (req, res) => {
   try {
     const { patientId } = req.body;
     const existingUser = await userModel.findOne({ _id: patientId });
+
     if (!existingUser) {
       return Response.error(
         res,
@@ -55,18 +56,27 @@ const getCurrentConditionFromLatestEmr = async (req, res) => {
       .findOne({ user: existingUser._id })
       .sort({ createdAt: -1 });
 
-    let currentConditions = await currentConditionModel
-      .find(
-        {
-          emrId: latestEmr._id,
-        },
-        "dateOfDiagnosis diagnosisName prescription referralNeeded advice createdAt"
-      )
+      let currentConditions = await currentConditionModel
+      .find({
+        userId: existingUser._id
+      }, {
+        dateOfDiagnosis: 1,
+        diagnosisName: 1,
+        prescription: 1,
+        referralNeeded: 1,
+        advice: 1,
+        createdAt: 1
+      })
+      .sort({ createdAt: -1 })
+      .limit(1)
       .lean();
+
+    if (currentConditions?.length > 0) {
+      currentConditions = currentConditions[0]
+    }
 
     if (
       !currentConditions ||
-      currentConditions?.length === 0 ||
       currentConditions.createdAt < latestEmr.createdAt
     ) {
       if (latestEmr.diagnosis?.length > 0) {
@@ -78,10 +88,7 @@ const getCurrentConditionFromLatestEmr = async (req, res) => {
       }
     }
 
-    currentConditions = currentConditions.map((c) => ({
-      ...c,
-      advicedBy: "Preva Care",
-    }));
+    currentConditions.advicedBy = "Preva Care"
 
     return Response.success(
       res,
