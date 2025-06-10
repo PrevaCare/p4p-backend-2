@@ -5,7 +5,7 @@ const medicineSchema = Joi.object({
   dosage: Joi.string().required(),
   source: Joi.string(),
   frequency: Joi.string().required(),
-  timing: Joi.array().items(Joi.string()),
+  doseCycleGap: Joi.string(),
   startDate: Joi.date().required(),
   endDate: Joi.date().allow(null),
   status: Joi.string().valid('Active', 'Completed', 'Stopped').default('Active')

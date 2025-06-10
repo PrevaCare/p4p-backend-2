@@ -23,7 +23,7 @@ const UserMedicineScheduleSchema = new mongoose.Schema(
         dosage: { type: String, required: true },
         source: { type: String },
         frequency: { type: String, required: true },
-        timing: [String],
+        doseCycleGap: { type: String },
         startDate: { type: Date, required: true },
         endDate: Date,
         status: {
