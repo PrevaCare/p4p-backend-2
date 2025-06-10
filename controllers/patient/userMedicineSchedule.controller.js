@@ -27,8 +27,8 @@ exports.getUserMedicineSchedules = async (req, res) => {
             }
         },
         200,
+        "User medicine schedules retreived successfully",
         AppConstant.SUCCESS,
-        "User medicine schedules retreived successfully"
     );
   } catch (error) {
     console.error('Error fetching medicine schedules:', error);
@@ -49,7 +49,7 @@ exports.createUserMedicineSchedule = async (req, res) => {
     const schedule = new UserMedicineSchedule(scheduleData);
     await schedule.save();
 
-    return Response.success(res, schedule, 201, AppConstant.SUCCESS, "User medicine schedule created successfully!");
+    return Response.success(res, schedule, 201, "User medicine schedule created successfully!", AppConstant.SUCCESS);
   } catch (error) {
     console.error('Error creating medicine schedule:', error);
     return Response.error(res, 500, AppConstant.FAILED, error.message);
@@ -76,9 +76,7 @@ exports.updateUserMedicineSchedule = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, 'Medicine schedule not found');
     }
 
-    return Response.success(res, 200, AppConstant.SUCCESS, {
-      schedule
-    });
+    return Response.success(res, schedule, 200, 'User medicine schedule updated successfully!', AppConstant.SUCCESS);
   } catch (error) {
     console.error('Error updating medicine schedule:', error);
     return Response.error(res, 500, AppConstant.FAILED, error.message);
@@ -100,9 +98,7 @@ exports.deleteUserMedicineSchedule = async (req, res) => {
       return Response.error(res, 404, AppConstant.FAILED, 'Medicine schedule not found');
     }
 
-    return Response.success(res, 200, AppConstant.SUCCESS, {
-      message: 'Medicine schedule deleted successfully'
-    });
+    return Response.success(res, schedule, 200, 'Medicine schedule deleted successfully', AppConstant.SUCCESS);
   } catch (error) {
     console.error('Error deleting medicine schedule:', error);
     return Response.error(res, 500, AppConstant.FAILED, error.message);
