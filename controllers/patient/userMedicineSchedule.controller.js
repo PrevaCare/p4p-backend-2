@@ -15,15 +15,21 @@ exports.getUserMedicineSchedules = async (req, res) => {
 
     const total = await UserMedicineSchedule.countDocuments({ user: userId });
 
-    return Response.success(res, 200, AppConstant.SUCCESS, {
-      schedules,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit)
-      }
-    });
+    return Response.success(
+        res,
+        {
+            schedules,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit)
+            }
+        },
+        200,
+        AppConstant.SUCCESS,
+        "User medicine schedules retreived successfully"
+    );
   } catch (error) {
     console.error('Error fetching medicine schedules:', error);
     return Response.error(res, 500, AppConstant.FAILED, error.message);
@@ -43,9 +49,7 @@ exports.createUserMedicineSchedule = async (req, res) => {
     const schedule = new UserMedicineSchedule(scheduleData);
     await schedule.save();
 
-    return Response.success(res, 201, AppConstant.SUCCESS, {
-      schedule
-    });
+    return Response.success(res, schedule, 201, AppConstant.SUCCESS, "User medicine schedule created successfully!");
   } catch (error) {
     console.error('Error creating medicine schedule:', error);
     return Response.error(res, 500, AppConstant.FAILED, error.message);
