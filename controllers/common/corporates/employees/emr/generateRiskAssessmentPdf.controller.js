@@ -471,12 +471,11 @@ function getRiskAssessmentHTML(data) {
             <h4 class="section-title">Stroke Risk Assessment</h4>
             ${renderTable(
               strokeRiskScoreData,
-              ["Date", "Lower Risk Score", "Higher Risk Score", "Description"],
+              ["Date", "Risk Score", "Description"],
               (assessment) => `
                     <tr>
                         <td>${formatDate(assessment.createdAt)}</td>
-                        <td>${assessment.lowerRiskScore}</td>
-                        <td>${assessment.higherRiskScore}</td>
+                        <td>${((assessment.lowerRiskScore+assessment.higherRiskScore)/2).toFixed(2)}</td>
                         <td>${assessment.desc || "Not Available"}</td>
                     </tr>
                 `
