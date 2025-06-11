@@ -497,7 +497,7 @@ const getLabBookingDetails = async (req, res) => {
         "packageId",
         "packageName packageCode desc category testIncluded sampleRequired preparationRequired"
       )
-      .populate("userId", "name email phone address")
+      .populate("bookedby", "name email phone address")
       .populate("statusHistory.updatedBy", "name email");
 
     if (!booking) {
@@ -505,7 +505,7 @@ const getLabBookingDetails = async (req, res) => {
     }
 
     // Check if the booking belongs to the authenticated user
-    if (booking.userId._id.toString() !== req.user._id.toString()) {
+    if (booking.bookedby._id.toString() !== req.user._id.toString()) {
       return Response.error(
         res,
         403,
