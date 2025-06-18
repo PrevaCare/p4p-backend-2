@@ -7,6 +7,13 @@ const {
   checkPermissions,
 } = require("../../../middlewares/jwt/permission");
 
+// Update display order of doctor categories (admin and superadmin only)
+router.patch(
+  "/common/doctor/categories/update-order",
+  verifyToken,
+  doctorCategoriesController.updateCategoriesOrder
+);
+
 // Create a new doctor category with image upload (admin and superadmin only)
 router.post(
   "/common/doctor/categories",

@@ -1,4 +1,5 @@
 const Doctor = require("../../models/doctors/doctor.model.js");
+const DoctorCategory = require("../../models/common/doctor.categories.model.js");
 const User = require("../../models/common/user.model.js");
 const Response = require("../../utils/Response.js");
 const AppConstant = require("../../utils/AppConstant.js");
@@ -100,10 +101,54 @@ const getSingleDoctorDetail = async (req, res) => {
 
 const getCategoryOfDoctor = async (req, res) => {
   try {
-    const categories = await User.distinct("specialization", {
-      role: "Doctor",
-    });
-    if (!categories) {
+    const categories = await DoctorCategory.aggregate([
+      { $match: { isActive: true } },
+      { $sort: { displayOrder: 1 } },
+      {
+        $lookup: {
+          from: "users",
+          let: { categoryName: "$name" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$role", "Doctor"] },
+                    {
+                      $regexMatch: {
+                        input: "$specialization",
+                        regex: "$$categoryName",
+                        options: "i"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "doctors"
+        }
+      },
+      {
+        $match: {
+          "doctors.0": { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          names: { $push: "$name" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          names: 1
+        }
+      }
+    ]);
+
+    if (!categories || categories.length === 0) {
       return Response.error(
         res,
         404,
@@ -112,9 +157,11 @@ const getCategoryOfDoctor = async (req, res) => {
       );
     }
 
+    const categoryNames = categories[0]?.names || []
+
     return Response.success(
       res,
-      { categories },
+      { categories: categoryNames },
       200,
       AppConstant.SUCCESS,
       "Categories Found Successfully!"

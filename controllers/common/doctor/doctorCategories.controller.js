@@ -41,7 +41,7 @@ exports.createDoctorCategory = catchAsync(async (req, res, next) => {
 
 // Get all doctor categories
 exports.getAllDoctorCategories = catchAsync(async (req, res, next) => {
-  const categories = await DoctorCategory.find({ isActive: true });
+  const categories = await DoctorCategory.find({ isActive: true }).sort({ displayOrder: 1 });
 
   res.status(200).json({
     status: "success",
@@ -195,6 +195,33 @@ exports.findDoctorsBySpecialization = catchAsync(async (req, res, next) => {
     results: doctors.length,
     data: {
       doctors,
+    },
+  });
+});
+
+// Update display order of doctor categories
+exports.updateCategoriesOrder = catchAsync(async (req, res, next) => {
+  const { categories } = req.body;
+
+  if (!categories || !Array.isArray(categories)) {
+    return next(new AppError("Categories array is required", 400));
+  }
+
+  // Update each category's displayOrder
+  const updatePromises = categories.map((category, index) => {
+    return DoctorCategory.findByIdAndUpdate(
+      category._id,
+      { displayOrder: index + 1 },
+      { new: true, runValidators: true }
+    );
+  });
+
+  const updatedCategories = await Promise.all(updatePromises);
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      categories: updatedCategories,
     },
   });
 });

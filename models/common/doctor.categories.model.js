@@ -21,6 +21,10 @@ const doctorCategoriesSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    displayOrder: {
+      type: Number,
+      unique: true,
+    },
   },
   {
     timestamps: true,
