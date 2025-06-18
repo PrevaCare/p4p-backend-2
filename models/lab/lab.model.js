@@ -27,10 +27,12 @@ const availableCitySchema = new mongoose.Schema({
   state: {
     type: String,
     required: true,
+    trim: true,
   },
   cityName: {
     type: String,
     required: true,
+    trim: true,
   },
   pinCodes_excluded: {
     type: [String],

@@ -14,10 +14,12 @@ const cityAvailabilitySchema = new mongoose.Schema({
   },
   cityName: {
     type: String,
+    trim: true,
     required: true,
   },
   state: {
     type: String,
+    trim: true,
     required: true,
   },
   pinCodes_excluded: {
@@ -50,7 +52,7 @@ const cityAvailabilitySchema = new mongoose.Schema({
   },
   discountPercentage: {
     type: Number,
-    required: [true, "City-specific discount percentage is required!"],
+    // required: [true, "City-specific discount percentage is required!"],
   },
   homeCollectionCharge: {
     type: Number,
