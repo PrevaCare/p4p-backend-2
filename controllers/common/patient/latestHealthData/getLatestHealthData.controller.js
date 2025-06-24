@@ -45,18 +45,7 @@ const healthTrackerController = {
           }
         ).sort({ createdAt: -1 });
       };
-      // Function to get latest healthScore record
-      const getLatestHealthScore = async () => {
-        return await healthScoreModel
-          .findOne(
-            { user: patientId },
-            {
-              overallHealthScore: 1,
-              // createdAt: 1,
-            }
-          )
-          .sort({ createdAt: -1 });
-      };
+
       const getUserInfo = async () => {
         return await userModel.findOne(
           {
@@ -168,12 +157,12 @@ const healthTrackerController = {
         // latestBloodGlucose,
         // latestWaterIntake,
         latestEMR,
-        latestHealthScore,
         userInfo,
         planFeatures,
         latestStress,
         latestDepression,
         liverRisk,
+        latestScore
       ] = await Promise.all([
         getLatestRecord(PatientBP),
         getLatestRecord(PatientBMI),
@@ -190,7 +179,16 @@ const healthTrackerController = {
         getLatestRecord(PatientStress),
         getLatestRecord(PatientDepression),
         LiverRiskCalculator.findOne({ user: patientId }).sort({ date: -1 }),
+        HealthScore.findOne({ user: patientId }).sort({ createdAt: -1 })
       ]);
+
+      const latestHealthScore = {
+        heartScore: latestScore?.heartScore?.overAllHeartScore || 0,
+        gutScore: latestScore?.gutScore?.overAllGutScore || 0,
+        mentalScore: latestScore?.mentalScore?.overAllMentalScore || 0,
+        metabolicScore: latestScore?.metabolicScore?.overAllMetabolicScore || 0,
+        healthScore: latestScore?.overallHealthScore
+      }
 
       // Get corporate details if user is an employee
       let corporateDetails = null;
@@ -207,6 +205,8 @@ const healthTrackerController = {
           await IndividualUser.findById(patientId).select("address")
         )?.address;
       }
+
+      console.log({latestScore, latestHealthScore})
 
       // Compile health data with preference to individual models
       const healthData = {
@@ -342,10 +342,7 @@ const healthTrackerController = {
           : false,
         isDiabetic:
           ["yes", "true"].includes(liverRisk?.diabetes?.toLowerCase()) ?? false,
-        healthScore: latestHealthScore?.overallHealthScore
-          ? latestHealthScore?.overallHealthScore
-          : null,
-
+        healthScoreData: latestHealthScore,
         email: userInfo?.email ? userInfo?.email : null,
         phone: userInfo?.phone ? userInfo?.phone : null,
         role: userInfo?.role ? userInfo?.role : null,
