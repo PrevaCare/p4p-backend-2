@@ -16,7 +16,7 @@ router.post(
 );
 
 // Get all plan categories
-router.get("/", verifyToken, planCategoryController.getAllPlanCategories);
+router.get("/", planCategoryController.getAllPlanCategories);
 
 // Update display order
 router.patch(

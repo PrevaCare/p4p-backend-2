@@ -47,6 +47,7 @@ const {
 const {
   createLabPackage,
   updateLabPackage,
+  getAllPlanCategories,
 } = require("../../../controllers/common/lab/labPackage/labPackage.controller.js");
 const {
   checkPermissions,
@@ -137,6 +138,12 @@ router.post(
   // checkPermissions("READ", "Employee"),
   getAllCategoryOfPackageOfParticularLab
 );
+
+router.get(
+  "/app/lab-package/category/:categoryId",
+  verifyToken,
+  getAllPlanCategories
+)
 
 // Update package details by packageId
 router.patch(

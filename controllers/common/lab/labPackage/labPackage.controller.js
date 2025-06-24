@@ -647,7 +647,25 @@ function stringSimilarity(str1, str2) {
   return 1.0 - distance / maxLen;
 }
 
+const getAllPlanCategories = async (req, res) => {
+  try {
+    const categoryId = req.params.categoryId
+
+    const plans = await LabPackage.find({ planCategory: categoryId }).populate("planCategory")
+
+    return Response.success(res, plans, 200, "Plans retrieved successfully")
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error"
+    );
+  }
+}
+
 module.exports = {
   createLabPackage,
   updateLabPackage,
+  getAllPlanCategories,
 };

@@ -71,6 +71,11 @@ const labPackage = new mongoose.Schema(
       type: String,
       default: "",
     },
+    planCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PlanCategory",
+      required: true,
+    },
     labId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lab",
