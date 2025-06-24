@@ -47,6 +47,7 @@ const planAssignmentRoute = require("./routes/employee/planAssignment.route");
 const medicineScheduleRoutes = require("./routes/patient/medicineSchedule.routes");
 const labCategoryRoute = require("./routes/common/lab/labCategory.routes");
 const userMedicineScheduleRoutes = require("./routes/patient/userMedicineSchedule.routes")
+const planCategoryRoute = require("./routes/plans/planCategory.route");
 
 const app = express();
 dotenv.config();
@@ -190,6 +191,7 @@ app.use("/v1/", superAdminRoute);
 app.use("/v1/", medicineScheduleRoutes); // Medicine schedule routes
 app.use("/v1/lab-category", labCategoryRoute); // lab categories route
 app.use("/v1/", userMedicineScheduleRoutes); // lab categories route
+app.use("/v1/plan-categories", planCategoryRoute); // plan categories route
 
 // Check for no-shows every 15 minutes
 if (process.env.NODE_ENV !== "development") {
