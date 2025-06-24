@@ -22,6 +22,7 @@ const Corporate = require("../../../../models/corporates/corporate.model.js");
 const corporatePlanModel = require("../../../../models/corporates/corporatePlan.model.js");
 const Employee = require("../../../../models/patient/employee/employee.model.js");
 const LiverRiskCalculator = require("../../../../models/patient/riskAssessments/liverRiskCalculate.model.js");
+const HealthScore = require("../../../../models/patient/healthScore/healthScore.model.js")
 
 const healthTrackerController = {
   async getLatestHealthData(req, res) {
@@ -173,7 +174,6 @@ const healthTrackerController = {
         // getLatestRecord(PatientBloodGlucose),
         // getLatestRecord(PatientWaterIntake),
         getLatestEMR(),
-        getLatestHealthScore(),
         getUserInfo(),
         getPlanFeatures(patientId),
         getLatestRecord(PatientStress),
@@ -205,8 +205,6 @@ const healthTrackerController = {
           await IndividualUser.findById(patientId).select("address")
         )?.address;
       }
-
-      console.log({latestScore, latestHealthScore})
 
       // Compile health data with preference to individual models
       const healthData = {
