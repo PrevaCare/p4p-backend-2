@@ -137,7 +137,7 @@ const getAllergiesFromLatestEmr = async (req, res) => {
       {
         userId: existingUser._id,
       },
-      "allergyName pastAllergyDrugName pastAllergyFreequency advisedBy advise adviseAllergyDrugName adviseAllergyFreequency createdAt"
+      "allergyName pastAllergyDrugName pastAllergyFreequency advisedBy advise adviseAllergyDrugName adviseAllergyFreequency createdAt allergyFileUrl"
     ).sort({createdAt: -1})
     .lean();
 
@@ -156,11 +156,16 @@ const getAllergiesFromLatestEmr = async (req, res) => {
               allergy.drugs?.map((drug) => drug.drugName).join(", ") || "",
             adviseAllergyFreequency:
               allergy.drugs?.map((drug) => drug.frequency).join(", ") || "",
+            allergyFileUrl: "",
             createdAt: latestEmr.createdAt,
           })
         ) || [];
 
       allergies = formattedAllergies;
+    }
+
+    if (allergies?.length > 0) {
+      allergies = allergies.map(a => ({ ...a, dateOfDiagnosis: a.createdAt}))
     }
     return Response.success(res, allergies, 200, "allergies fetched !");
   } catch (err) {
