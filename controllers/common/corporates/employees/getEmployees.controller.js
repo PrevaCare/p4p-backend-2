@@ -316,7 +316,7 @@ const getEmployeeEmrs = async (req, res) => {
     // Format the data
     const formattedEmrs = paginatedEmrs?.map((emr) => {
       return {
-        emrDocumentLink: emr.link,
+        emrDocumentLink: emr.link || "",
         consultationMode: getFormattedConsultationMode(emr.consultationMode),
         chiefComplaint: emr?.history?.chiefComplaint || 
           emr?.history?.complaints?.map(complaint => complaint?.chiefComplaint).join(", ") || "",
