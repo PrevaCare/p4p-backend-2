@@ -271,12 +271,12 @@ const getEmployeeEmrs = async (req, res) => {
     const emrs = await emrModel.aggregate([
       {
         $match: {
-          user: _id,
+          user: new mongoose.Types.ObjectId(_id),
         },
       },
       {
         $lookup: {
-          from: "doctors",
+          from: "users",
           localField: "doctor",
           foreignField: "_id",
           as: "doctorDetails",
@@ -308,26 +308,23 @@ const getEmployeeEmrs = async (req, res) => {
       },
     ]);
 
+    
     // Extract metadata and data
-    const totalCount = emrs[0]?.metadata[0]?.total || 0;
-    const paginatedEmrs = emrs[0]?.data || [];
-
+    const totalCount = emrs?.[0]?.metadata[0]?.total || 0;
+    const paginatedEmrs = emrs?.[0]?.data || [];
+    
     // Format the data
-    const formattedEmrs = paginatedEmrs.map((emr) => {
+    const formattedEmrs = paginatedEmrs?.map((emr) => {
       return {
         emrDocumentLink: emr.link,
         consultationMode: getFormattedConsultationMode(emr.consultationMode),
-        chiefComplaint:
-          (emr.history.chiefComplaint ?? emr.history?.complaints?.length > 0)
-            ? emr.history.complaints
-                .map((complaint) => complaint.chiefComplaint)
-                .join(", ")
-            : "",
+        chiefComplaint: emr?.history?.chiefComplaint || 
+          emr?.history?.complaints?.map(complaint => complaint?.chiefComplaint).join(", ") || "",
         date: convertToDDMMMYYYY(emr.createdAt),
         doctorDetails: {
-          name: `${emr.doctor.firstName} ${emr.doctor.lastName}`,
-          specialization: emr.doctor.specialization,
-          gender: emr.doctor.gender,
+          name: `${emr.doctor?.firstName} ${emr.doctor?.lastName}`,
+          specialization: emr.doctor?.specialization,
+          gender: emr.doctor?.gender,
         },
       };
     });
