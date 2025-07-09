@@ -503,7 +503,7 @@ const createLabBooking = async (req, res) => {
         bookingType === "Test" ? service.testName : service.packageName,
         adjustedDate,
         adjustedTime,
-        paymentLink
+        paymentLink?.short_url
       )
 
       return Response.success(
