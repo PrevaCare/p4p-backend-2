@@ -23,6 +23,10 @@ const cityAvailabilitySchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  pinCodes_included: {
+    type: [String],
+    default: []
+  },
   regions_excluded: {
     type: [String],
     default: [],

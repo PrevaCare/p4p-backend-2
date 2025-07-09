@@ -5,24 +5,108 @@ const LabBooking = require("../../../models/lab/labBooking.model");
 const IndividualLabTest = require("../../../models/lab/individualLabTest.model");
 const LabPackage = require("../../../models/lab/labPackage.model");
 const Lab = require("../../../models/lab/lab.model");
+const userModel = require("../../../models/common/user.model")
 const {
   labBookingCreateSchema,
   labBookingUpdateSchema,
 } = require("../../../validators/lab/labBooking.validator");
 const dayjs = require("dayjs");
 const { razorpayInstance } = require("../../../config/razorpay.config");
+const moment = require("moment-timezone")
 
 /**
  * Create a new lab test/package booking
  * @route POST /v1/app/lab-bookings
  */
-const createLabBooking = async (req, res) => {
+
+function adjustSchedule(scheduledDate, scheduledTime) {
+  // Parse the scheduled date and time
+  let scheduledDateTime = moment(`${scheduledDate} ${scheduledTime}`, 'YYYY-MM-DD HH:mm');
+
+  // Get current time
+  const currentTime = moment();
+
+  let adjustedDate;
+  let adjustedTime;
+
+  // Check if the scheduled time is before or after noon
+  if (scheduledDateTime.isBefore(moment().startOf('day').add(12, 'hours'))) {
+    // Before 12:00 PM (same day)
+    if (currentTime.isBefore(scheduledDateTime)) {
+      adjustedDate = scheduledDate;
+      adjustedTime = currentTime.add(3, 'hours').format('HH:mm'); // Add 3 hours
+    }
+  } else if (scheduledDateTime.isAfter(moment().startOf('day').add(12, 'hours')) && scheduledDateTime.isBefore(moment().startOf('day').add(20, 'hours'))) {
+    // After 12:00 PM to 7:59 PM, next day
+    adjustedDate = moment().add(1, 'days').format('YYYY-MM-DD');  // Set the next day
+    adjustedTime = '07:00'; // Set start time to 7:00 AM
+  } else if (scheduledDateTime.isAfter(moment().startOf('day').add(20, 'hours'))) {
+    // After 8:00 PM, day after tomorrow
+    adjustedDate = moment().add(2, 'days').format('YYYY-MM-DD');  // Set the day after tomorrow
+    adjustedTime = '07:00'; // Set start time to 7:00 AM
+  } else {
+    // Default case (Anytime), 24-hour rule
+    adjustedDate = currentTime.add(1, 'days').format('YYYY-MM-DD');
+    adjustedTime = moment().add(24, 'hours').format('HH:mm');
+  }
+
+  return { adjustedDate, adjustedTime };
+}
+
+async function sendLabBookingRequestMsgToPatient(
+  mobile,
+  patientname,
+  testName,
+  appointmentDate,
+  appointmentTime,
+  paymentLink
+) {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const senderId = process.env.MSG91_SENDER_ID;
+  const templateId =
+    process.env.MSG91_LAB_BOOKING_TEMPLATE_ID_FOR_PATIENT;
+
+  const url = `https://control.msg91.com/api/v5/flow/`;
+
   try {
-    console.log(
-      "Lab booking request received:",
-      JSON.stringify(req.body, null, 2)
+    const response = await axios.post(
+      url,
+      {
+        flow_id: templateId,
+        recipients: [
+          {
+            mobiles: `91${mobile}`,
+            var1: patientname,
+            var2: testName,
+            var3: appointmentDate,
+            var4: appointmentTime,
+            var5: paymentLink,
+          },
+        ],
+        sender: senderId,
+        authkey: authKey,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
     );
 
+    if (response.data.type === "success") {
+      console.log("Booking msg sent successfully!");
+      return true;
+    } else {
+      //   return new Error(response.data);
+      throw new Error(response.data);
+    }
+  } catch (error) {
+    return new Error(error);
+  }
+};
+
+const createLabBooking = async (req, res) => {
+  try {
     // Validate request body
     const { error, value } = labBookingCreateSchema.validate(req.body);
     if (error) {
@@ -35,23 +119,21 @@ const createLabBooking = async (req, res) => {
       );
     }
 
-    console.log(
-      "Validation passed, processing values:",
-      JSON.stringify(value, null, 2)
-    );
-
     const {
       labId,
-      bookingType,
+      // bookingType,
       testId,
-      packageId,
+      // packageId,
       scheduledDate,
       scheduledTime,
       homeCollection = false,
-      location,
+      // location,
       bookingFor = "self",
-      patientDetails,
+      patientId,
+      pinCode
     } = value;
+
+    const { adjustedDate, adjustedTime } = adjustSchedule(scheduledDate, scheduledTime);
 
     // Verify lab exists
     const lab = await Lab.findById(labId);
@@ -63,115 +145,24 @@ const createLabBooking = async (req, res) => {
     let bookedFor = req.user._id; // Default: booking for self
 
     // If booking for someone else, create or find user
-    if (bookingFor === "other" && patientDetails) {
-      console.log(
-        "Creating booking for someone else with details:",
-        JSON.stringify(patientDetails, null, 2)
-      );
-
-      const User = require("../../../models/common/user.model");
-
-      // Check if user already exists with the provided phone or email
-      let existingUser = null;
-
-      if (patientDetails.phone) {
-        existingUser = await User.findOne({ phone: patientDetails.phone });
-      }
-
-      if (!existingUser && patientDetails.email) {
-        existingUser = await User.findOne({ email: patientDetails.email });
-      }
-
-      // Extract firstName and lastName
-      let firstName, lastName;
-
-      if (patientDetails.firstName && patientDetails.lastName) {
-        firstName = patientDetails.firstName;
-        lastName = patientDetails.lastName;
-      } else if (patientDetails.name) {
-        // Split the full name into firstName and lastName
-        const nameParts = patientDetails.name.trim().split(" ");
-        firstName = nameParts[0];
-        lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
-      }
-
-      // Convert gender to the expected format (M, F, O)
-      let formattedGender;
-      if (patientDetails.gender) {
-        if (patientDetails.gender.toLowerCase() === "male") {
-          formattedGender = "M";
-        } else if (patientDetails.gender.toLowerCase() === "female") {
-          formattedGender = "F";
-        } else {
-          formattedGender = "O"; // Other
-        }
-      } else {
-        formattedGender = "O"; // Default
-      }
-
-      console.log(
-        `Determined patient name: ${firstName} ${lastName}, gender: ${formattedGender}`
-      );
-
-      if (existingUser) {
-        // Use existing user
-        console.log("Using existing user with ID:", existingUser._id);
-        bookedFor = existingUser._id;
-      } else {
-        // Create new user with patientDetails
-        // Generate a random password for the new user (they can reset it later if needed)
-        const generateRandomPassword = () => {
-          return Math.random().toString(36).slice(-8); // 8-character random string
-        };
-
-        console.log(
-          `Creating new user with firstName: ${firstName}, lastName: ${lastName}`
-        );
-
-        const newUser = new User({
-          firstName: firstName,
-          lastName: lastName,
-          email:
-            patientDetails.email ||
-            `${firstName.toLowerCase()}.${Date.now()}@placeholder.com`,
-          phone:
-            patientDetails.phone ||
-            `9999${Math.floor(Math.random() * 10000000)}`,
-          gender: formattedGender,
-          age: patientDetails.age,
-          userType: "IndividualUser",
-          role: "IndividualUser",
-          password: generateRandomPassword(),
-          createdBy: req.user._id,
-        });
-
-        try {
-          const savedUser = await newUser.save();
-          console.log("New user created with ID:", savedUser._id);
-          bookedFor = savedUser._id;
-        } catch (userError) {
-          console.error("Error creating user:", userError);
-          return Response.error(
-            res,
-            500,
-            AppConstant.FAILED,
-            `Error creating user: ${userError.message}`
-          );
-        }
-      }
+    if (bookingFor !== "self") {
+      bookedFor = patientId
     }
 
     // Verify test or package exists based on bookingType
-    let service;
-    let serviceId;
+    let bookingType = "Test"
+    let serviceId = testId;
+    let service = await IndividualLabTest.findById(testId);
+
+    if (!service) {
+      service = await LabPackage.findById(testId);
+      bookingType = "Package"
+    }
 
     if (bookingType === "Test") {
-      service = await IndividualLabTest.findById(testId);
-      serviceId = testId;
       if (!service) {
         return Response.error(res, 404, AppConstant.FAILED, "Test not found");
       }
-      // Check if the test belongs to the specified lab
       if (service.lab.toString() !== labId) {
         return Response.error(
           res,
@@ -181,8 +172,6 @@ const createLabBooking = async (req, res) => {
         );
       }
     } else {
-      service = await LabPackage.findById(packageId);
-      serviceId = packageId;
       if (!service) {
         return Response.error(
           res,
@@ -191,6 +180,7 @@ const createLabBooking = async (req, res) => {
           "Package not found"
         );
       }
+
       // Check if the package belongs to the specified lab
       if (service.labId.toString() !== labId) {
         return Response.error(
@@ -202,136 +192,171 @@ const createLabBooking = async (req, res) => {
       }
     }
 
-    // Validate time slot
-    const validationError = await LabBooking.validateTimeSlot({
-      labId,
-      scheduledDate,
-      scheduledTime,
+    const userInfo = await userModel.findOne(
+      {
+        _id: bookedFor,
+        $or: [{ role: "Employee" }, { role: "IndividualUser" }, { role: "Superadmin"} ],
+      },
+      {
+        email: 1,
+        phone: 1,
+        role: 1,
+        profileImg: 1,
+        firstName: 1,
+        lastName: 1,
+        gender: 1,
+        address: 1,
+        isMarried: 1,
+        age: 1,
+        weight: 1,
+        jobProfile: 1,
+        department: 1,
+        corporate: 1,
+        // createdAt: 1,
+      }
+    );
+
+    console.log({userInfo})
+    let userAddress = null;
+    if (userInfo.role === "Employee") {
+      userAddress = (await Employee.findById(patientId).select("address"))
+        ?.address;
+    } else if (userInfo.role === "IndividualUser") {
+      userAddress = (
+        await IndividualUser.findById(patientId).select("address")
+      )?.address;
+    }
+
+    // Check if service is available in the specified userAddress
+    // if (userAddress) {
+    //   const { city, state, pinCode } = userAddress;
+    //   console.log(
+    //     `Checking availability in ${city}, ${state || ""} ${pinCode || ""}`
+    //   );
+
+    //   // Find matching city in the service's cityAvailability array
+    //   let matchingCity = null;
+
+    //   if (service.cityAvailability && service.cityAvailability.length > 0) {
+    //     console.log(
+    //       "Available cities:",
+    //       service.cityAvailability.map((c) => c.cityName).join(", ")
+    //     );
+
+    //     // Try to match by city name (case-insensitive)
+    //     const normalizedCityName = city.toLowerCase().trim();
+    //     const normalizedState = state ? state.toLowerCase().trim() : null;
+
+    //     matchingCity = service.cityAvailability.find((cityData) => {
+    //       const cityMatches =
+    //         cityData.cityName &&
+    //         cityData.cityName.toLowerCase().trim() === normalizedCityName;
+
+    //       // If state is provided, match that too
+    //       if (normalizedState && cityMatches) {
+    //         return (
+    //           cityData.state &&
+    //           cityData.state.toLowerCase().trim() === normalizedState
+    //         );
+    //       }
+
+    //       return cityMatches;
+    //     });
+
+    //     // If no match by name, try by pin code if provided
+    //     if (!matchingCity && pinCode) {
+    //       matchingCity = service.cityAvailability.find((cityData) => {
+    //         // Check if pinCode is not in the excluded list
+    //         return (
+    //           cityData.cityName.toLowerCase().includes(normalizedCityName) &&
+    //           (!cityData.pinCodes_excluded ||
+    //             !cityData.pinCodes_excluded.includes(pinCode))
+    //         );
+    //       });
+    //     }
+    //   }
+
+    //   if (!matchingCity) {
+    //     console.log("No matching city found for location");
+    //     return Response.error(
+    //       res,
+    //       400,
+    //       AppConstant.FAILED,
+    //       `${bookingType} is not available in the specified location (${city}, ${
+    //         state || ""
+    //       } ${pinCode || ""})`
+    //     );
+    //   }
+
+    //   console.log("Matching city found:", matchingCity.cityName);
+    //   console.log(
+    //     "Home collection available:",
+    //     matchingCity.homeCollectionAvailable
+    //   );
+
+    //   // If home collection is requested, check if it's available in this location
+    //   if (homeCollection && !matchingCity.homeCollectionAvailable) {
+    //     return Response.error(
+    //       res,
+    //       400,
+    //       AppConstant.FAILED,
+    //       "Home collection is not available in this location"
+    //     );
+    //   }
+
+    //   // Use the matching city for pricing
+    //   var cityAvailability = matchingCity;
+    // } else {
+    //   // Fall back to finding any available city
+    //   var cityAvailability = service.cityAvailability?.[0];
+    // }
+
+    // if (!cityAvailability) {
+    //   return Response.error(
+    //     res,
+    //     400,
+    //     AppConstant.FAILED,
+    //     `${bookingType} is not available in any city`
+    //   );
+    // }
+
+    let cityAvailability = service.cityAvailability?.find((cityData) => {
+      const { pinCodes_included = [], pinCodes_excluded = [] } = cityData;
+    
+      return (
+        pinCodes_included.includes(pinCode) || !pinCodes_excluded.includes(pinCode)
+      );
     });
 
-    if (validationError) {
-      return Response.error(res, 400, AppConstant.FAILED, validationError);
-    }
-
-    // Check if service is available in the specified location
-    if (location) {
-      const { city, state, pinCode } = location;
-      console.log(
-        `Checking availability in ${city}, ${state || ""} ${pinCode || ""}`
-      );
-
-      // Find matching city in the service's cityAvailability array
-      let matchingCity = null;
-
-      if (service.cityAvailability && service.cityAvailability.length > 0) {
-        console.log(
-          "Available cities:",
-          service.cityAvailability.map((c) => c.cityName).join(", ")
-        );
-
-        // Try to match by city name (case-insensitive)
-        const normalizedCityName = city.toLowerCase().trim();
-        const normalizedState = state ? state.toLowerCase().trim() : null;
-
-        matchingCity = service.cityAvailability.find((cityData) => {
-          const cityMatches =
-            cityData.cityName &&
-            cityData.cityName.toLowerCase().trim() === normalizedCityName;
-
-          // If state is provided, match that too
-          if (normalizedState && cityMatches) {
-            return (
-              cityData.state &&
-              cityData.state.toLowerCase().trim() === normalizedState
-            );
-          }
-
-          return cityMatches;
-        });
-
-        // If no match by name, try by pin code if provided
-        if (!matchingCity && pinCode) {
-          matchingCity = service.cityAvailability.find((cityData) => {
-            // Check if pinCode is not in the excluded list
-            return (
-              cityData.cityName.toLowerCase().includes(normalizedCityName) &&
-              (!cityData.pinCodes_excluded ||
-                !cityData.pinCodes_excluded.includes(pinCode))
-            );
-          });
-        }
-      }
-
-      if (!matchingCity) {
-        console.log("No matching city found for location");
-        return Response.error(
-          res,
-          400,
-          AppConstant.FAILED,
-          `${bookingType} is not available in the specified location (${city}, ${
-            state || ""
-          } ${pinCode || ""})`
-        );
-      }
-
-      console.log("Matching city found:", matchingCity.cityName);
-      console.log(
-        "Home collection available:",
-        matchingCity.homeCollectionAvailable
-      );
-
-      // If home collection is requested, check if it's available in this location
-      if (homeCollection && !matchingCity.homeCollectionAvailable) {
-        return Response.error(
-          res,
-          400,
-          AppConstant.FAILED,
-          "Home collection is not available in this location"
-        );
-      }
-
-      // Use the matching city for pricing
-      var cityAvailability = matchingCity;
-    } else {
-      // Fall back to finding any available city
-      var cityAvailability = service.cityAvailability?.[0];
-    }
-
-    if (!cityAvailability) {
+    if (homeCollection && !cityAvailability.homeCollectionAvailable) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        `${bookingType} is not available in any city`
+        "Home collection is not available in this location"
       );
     }
 
+    let amount = 0
+    if (userInfo.role === "IndividualUser") {
+      amount = cityAvailability.prevaCarePriceForIndividual;
+    } else {
+      amount = cityAvailability.prevaCarePriceForCorporate
+    }
+
     // Calculate amounts
-    let amount = cityAvailability.prevaCarePriceForIndividual;
     let homeCollectionCharge = 0;
 
     // If home collection is requested and available
     if (homeCollection && cityAvailability.homeCollectionAvailable) {
       homeCollectionCharge = cityAvailability.homeCollectionCharge;
-    } else if (homeCollection && !cityAvailability.homeCollectionAvailable) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        "Home collection is not available for this service"
-      );
     }
 
     // Calculate discount and total amount
-    const discountAmount = (amount * cityAvailability.discountPercentage) / 100;
+    // const discountAmount = (amount * cityAvailability.discountPercentage) / 100;
+    const discountAmount = 0;
+    console.log({amount, homeCollectionCharge, homeCollection, cityAvailability})
     const totalAmount = amount + homeCollectionCharge - discountAmount;
-
-    console.log("Booking financial details:", {
-      amount,
-      homeCollectionCharge,
-      discountAmount,
-      totalAmount,
-    });
 
     // Create the booking
     const bookingData = {
@@ -339,8 +364,8 @@ const createLabBooking = async (req, res) => {
       bookedFor: bookedFor,
       labId,
       bookingType,
-      scheduledDate,
-      scheduledTime,
+      scheduledDate: adjustedDate,
+      scheduledTime: adjustedTime,
       homeCollection,
       amount,
       homeCollectionCharge,
@@ -351,26 +376,28 @@ const createLabBooking = async (req, res) => {
     };
 
     // Add location data if provided
-    if (location) {
-      bookingData.location = location;
+    if (cityAvailability) {
+      bookingData.location = {
+        city: cityAvailability.cityName,
+        state: cityAvailability.state,
+        pinCode,
+        address: cityAvailability.state || cityAvailability.cityName
+      };
     }
 
     // Add patient relationship if provided
-    if (patientDetails && patientDetails.relationship) {
-      bookingData.patientRelationship = patientDetails.relationship;
+    if (bookedFor && bookedFor !== "self") {
+      bookingData.patientRelationship = bookedFor;
     }
 
     // Add the appropriate ID field based on booking type
     if (bookingType === "Test") {
       bookingData.testId = testId;
     } else {
-      bookingData.packageId = packageId;
+      bookingData.packageId = testId;
     }
 
-    console.log(
-      "Creating new booking with data:",
-      JSON.stringify(bookingData, null, 2)
-    );
+    console.log({bookingData})
 
     const newBooking = new LabBooking(bookingData);
     try {
@@ -386,12 +413,98 @@ const createLabBooking = async (req, res) => {
       );
     }
 
-    return Response.success(
-      res,
-      newBooking,
-      201,
-      `Lab ${bookingType.toLowerCase()} booking created successfully`
-    );
+    console.log({newBooking})
+
+    const shortBookingId = newBooking.toString().substring(0, 10);
+    const reference_id = `book_${shortBookingId}_${Date.now() % 10000000}`; // Ensure less than 40 chars
+
+    const customerName =
+    `${newBooking.bookedby.firstName || ""} ${
+      newBooking.bookedby.lastName || ""
+    }`.trim() || "Customer";
+
+    // Get service name based on booking type
+    const serviceName =
+    newBooking.bookingType === "Test"
+      ? newBooking.testId?.testName
+      : newBooking.packageId?.packageName;
+
+    const paymentLinkData = {
+      amount: amount, // Amount in smallest currency unit (paise)
+      // amount: 100, // Amount in smallest currency unit (paise)
+      currency: "INR",
+      accept_partial: false,
+      description: `Payment for ${serviceName} at ${newBooking.labId.labName}`,
+      customer: {
+        name: customerName,
+        email: newBooking.bookedby.email || `user${Date.now()}@example.com`,
+        contact: newBooking.bookedby.phone ? `+91${newBooking.bookedby.phone}` : "+919899500873",
+        // contact: "+917667629574",
+      },
+      notify: {
+        sms: true, // Disable SMS notifications as requested
+        email: false, // Disable email notifications as requested
+      },
+      reminder_enable: false, // Disable reminders as well
+      notes: {
+        booking_id: newBooking._id.toString(),
+        service_name: serviceName,
+        booking_type: newBooking.bookingType,
+      },
+      callback_url: `${
+        process.env.FRONTEND_URL || "https://preva.care"
+      }/payment/callback?bookingId=${newBooking._id.toString()}`,
+      callback_method: "get",
+      reference_id: reference_id,
+    };
+
+    try {
+      // Create payment link using Razorpay API
+      const paymentLink =
+        await razorpayInstance.paymentLink.create(paymentLinkData);
+
+      // Update booking with payment link details
+      newBooking.paymentLink = paymentLink.short_url;
+      newBooking.paymentLinkId = paymentLink.id;
+
+      // Add note to status history
+      newBooking.statusHistory.push({
+        status: newBooking.status,
+        timestamp: new Date(),
+        notes: "Payment link generated",
+        updatedBy: req.user._id,
+      });
+
+      await newBooking.save();
+
+      await sendLabBookingRequestMsgToPatient(
+        userInfo.mobile,
+        customerName,
+        bookingType === "Test" ? service.testName : service.packageName,
+        adjustedDate,
+        adjustedTime,
+        paymentLink
+      )
+
+      return Response.success(
+        res,
+        newBooking,
+        200,
+        `Lab ${bookingType.toLowerCase()} booking created successfully`
+      );
+    } catch (razorpayError) {
+      console.error("Razorpay API error:", razorpayError);
+      return Response.error(
+        res,
+        500,
+        AppConstant.FAILED,
+        `Error from payment gateway: ${
+          razorpayError.error?.description ||
+          razorpayError.message ||
+          "Unknown payment gateway error"
+        }`
+      );
+    }
   } catch (error) {
     console.error("Error creating lab booking:", error);
     return Response.error(
@@ -416,8 +529,11 @@ const getUserLabBookings = async (req, res) => {
     const bookingType = req.query.bookingType;
 
     // Build query to get bookings where user is either the booker or the person booked for
+    // const query = {
+    //   $or: [{ bookedby: req.user._id }, { bookedFor: req.user._id }],
+    // };
     const query = {
-      $or: [{ bookedby: req.user._id }, { bookedFor: req.user._id }],
+      $or: [{ bookedFor: req.user._id }],
     };
 
     // Add filters if provided
@@ -440,15 +556,16 @@ const getUserLabBookings = async (req, res) => {
     const selfBookings = bookings.filter(
       (booking) => booking.bookingFor === "self"
     );
-    const otherBookings = bookings.filter(
-      (booking) => booking.bookingFor === "other"
-    );
+    // const otherBookings = bookings.filter(
+    //   (booking) => booking.bookingFor === "other"
+    // );
 
     return Response.success(
       res,
       {
-        selfBookings,
-        otherBookings,
+        // selfBookings,
+        // otherBookings,
+        bookings: selfBookings,
         pagination: {
           total: totalBookings,
           pages: Math.ceil(totalBookings / limit),
