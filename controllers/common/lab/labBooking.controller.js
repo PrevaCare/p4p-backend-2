@@ -13,6 +13,7 @@ const {
 const dayjs = require("dayjs");
 const { razorpayInstance } = require("../../../config/razorpay.config");
 const moment = require("moment-timezone")
+const axios = require("axios")
 
 /**
  * Create a new lab test/package booking
@@ -61,12 +62,29 @@ async function sendLabBookingRequestMsgToPatient(
   appointmentTime,
   paymentLink
 ) {
+  mobile = '7455090168'
   const authKey = process.env.MSG91_AUTH_KEY;
   const senderId = process.env.MSG91_SENDER_ID;
   const templateId =
     process.env.MSG91_LAB_BOOKING_TEMPLATE_ID_FOR_PATIENT;
-
-  const url = `https://control.msg91.com/api/v5/flow/`;
+    
+    const url = `https://control.msg91.com/api/v5/flow/`;
+    console.log(url,
+      {
+        flow_id: templateId,
+        recipients: [
+          {
+            mobiles: `91${mobile}`,
+            var1: patientname,
+            var2: testName,
+            var3: appointmentDate,
+            var4: appointmentTime,
+            var5: paymentLink,
+          },
+        ],
+        sender: senderId,
+        authkey: authKey,
+      })
 
   try {
     const response = await axios.post(
@@ -92,6 +110,7 @@ async function sendLabBookingRequestMsgToPatient(
         },
       }
     );
+    console.log({response})
 
     if (response.data.type === "success") {
       console.log("Booking msg sent successfully!");
@@ -101,6 +120,7 @@ async function sendLabBookingRequestMsgToPatient(
       throw new Error(response.data);
     }
   } catch (error) {
+    console.log({error})
     return new Error(error);
   }
 };
