@@ -557,7 +557,22 @@ const getUserLabBookings = async (req, res) => {
     };
 
     // Add filters if provided
-    if (status) query.status = status;
+    if (status) {
+      switch (status) {
+        case 'active':
+          query.status = { $nin: ['Completed', 'Cancelled', 'Rejected'] };
+          break;
+        case 'closed':
+          query.status = { $in: ['Cancelled', 'Rejected'] };
+          break;
+        case 'completed':
+          query.status = 'Completed'
+          break;
+        default:
+          query.status = status
+      }
+    };
+
     if (bookingType) query.bookingType = bookingType;
 
     const bookings = await LabBooking.find(query)
