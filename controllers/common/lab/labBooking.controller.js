@@ -236,16 +236,15 @@ const createLabBooking = async (req, res) => {
       }
     );
 
-    console.log({userInfo})
-    let userAddress = null;
-    if (userInfo.role === "Employee") {
-      userAddress = (await Employee.findById(patientId).select("address"))
-        ?.address;
-    } else if (userInfo.role === "IndividualUser") {
-      userAddress = (
-        await IndividualUser.findById(patientId).select("address")
-      )?.address;
-    }
+    // let userAddress = null;
+    // if (userInfo.role === "Employee") {
+    //   userAddress = (await Employee.findById(patientId).select("address"))
+    //     ?.address;
+    // } else if (userInfo.role === "IndividualUser") {
+    //   userAddress = (
+    //     await IndividualUser.findById(patientId).select("address")
+    //   )?.address;
+    // }
 
     // Check if service is available in the specified userAddress
     // if (userAddress) {
