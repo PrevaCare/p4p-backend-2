@@ -568,6 +568,9 @@ const getUserLabBookings = async (req, res) => {
         case 'completed':
           query.status = 'Completed'
           break;
+        case 'past':
+          query.status = { $in: ['Cancelled', 'Rejected', 'Completed'] };
+          break;
         default:
           query.status = status
       }
