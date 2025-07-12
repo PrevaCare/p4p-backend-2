@@ -62,7 +62,6 @@ async function sendLabBookingRequestMsgToPatient(
   appointmentTime,
   paymentLink
 ) {
-  mobile = '7455090168'
   const authKey = process.env.MSG91_AUTH_KEY;
   const senderId = process.env.MSG91_SENDER_ID;
   const templateId =
@@ -120,7 +119,7 @@ async function sendLabBookingRequestMsgToPatient(
       throw new Error(response.data);
     }
   } catch (error) {
-    console.log({error})
+    console.log("sendLabBookingRequestMsgToPatient", {error})
     return new Error(error);
   }
 };
@@ -150,11 +149,11 @@ const createLabBooking = async (req, res) => {
       // location,
       bookingFor = "self",
       patientId,
-      pinCode
     } = value;
 
+    let pinCode = value?.pinCode || ""
+
     const { adjustedDate, adjustedTime } = adjustSchedule(scheduledDate, scheduledTime);
-    console.log({scheduledDate, scheduledTime, adjustedDate, adjustedTime })
 
     // Verify lab exists
     const lab = await Lab.findById(labId);
@@ -237,7 +236,9 @@ const createLabBooking = async (req, res) => {
       }
     );
 
-    console.log({service, userInfo, bookedFor})
+    if (!pinCode) {
+      pinCode = userInfo?.address?.pinCode || userInfo?.address?.zipCode || ""
+    }
 
     // let userAddress = null;
     // if (userInfo.role === "Employee") {
@@ -350,8 +351,6 @@ const createLabBooking = async (req, res) => {
       );
     });
 
-    console.log({pinCode, cityAvailability, serviceCity: JSON.stringify(service?.cityAvailability)})
-
     if (homeCollection && (!cityAvailability || !cityAvailability?.homeCollectionAvailable)) {
       return Response.error(
         res,
@@ -379,7 +378,6 @@ const createLabBooking = async (req, res) => {
     // Calculate discount and total amount
     // const discountAmount = (amount * cityAvailability.discountPercentage) / 100;
     const discountAmount = 0;
-    console.log({amount, homeCollectionCharge, homeCollection, cityAvailability})
     const totalAmount = amount + homeCollectionCharge - discountAmount;
 
     // Create the booking
@@ -421,8 +419,6 @@ const createLabBooking = async (req, res) => {
       bookingData.packageId = testId;
     }
 
-    console.log({bookingData})
-
     const newBooking = new LabBooking(bookingData);
     try {
       await newBooking.save();
@@ -436,8 +432,6 @@ const createLabBooking = async (req, res) => {
         `Error saving booking: ${bookingError.message}`
       );
     }
-
-    console.log({newBooking})
 
     const shortBookingId = newBooking.toString().substring(0, 10);
     const reference_id = `book_${shortBookingId}_${Date.now() % 10000000}`; // Ensure less than 40 chars

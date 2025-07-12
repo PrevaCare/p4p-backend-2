@@ -260,9 +260,15 @@ const getLabPartnerPackages = async (req, res) => {
       sortOrder = "asc",
       state = "",
       city = "",
-      pincode = "",
     } = req.query;
-
+    
+    let pincode = req.query?.pincode
+    
+    if (!pincode) {
+      const user = await User.findById(req.user?._id)
+      pincode = user?.address?.zipCode || user?.address?.pinCode
+    }
+  
     // Validate labId format
     if (!mongoose.isValidObjectId(labId)) {
       return Response.error(res, 400, AppConstant.FAILED, "Invalid lab ID");
