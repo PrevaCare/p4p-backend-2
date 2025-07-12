@@ -154,6 +154,7 @@ const createLabBooking = async (req, res) => {
     } = value;
 
     const { adjustedDate, adjustedTime } = adjustSchedule(scheduledDate, scheduledTime);
+    console.log({scheduledDate, scheduledTime, adjustedDate, adjustedTime })
 
     // Verify lab exists
     const lab = await Lab.findById(labId);
@@ -235,6 +236,8 @@ const createLabBooking = async (req, res) => {
         // createdAt: 1,
       }
     );
+
+    console.log({service, userInfo, bookedFor})
 
     // let userAddress = null;
     // if (userInfo.role === "Employee") {
@@ -347,7 +350,9 @@ const createLabBooking = async (req, res) => {
       );
     });
 
-    if (homeCollection && !cityAvailability.homeCollectionAvailable) {
+    console.log({pinCode, cityAvailability, serviceCity: JSON.stringify(service?.cityAvailability)})
+
+    if (homeCollection && !cityAvailability?.homeCollectionAvailable) {
       return Response.error(
         res,
         400,
@@ -367,7 +372,7 @@ const createLabBooking = async (req, res) => {
     let homeCollectionCharge = 0;
 
     // If home collection is requested and available
-    if (homeCollection && cityAvailability.homeCollectionAvailable) {
+    if (homeCollection && cityAvailability?.homeCollectionAvailable) {
       homeCollectionCharge = cityAvailability.homeCollectionCharge;
     }
 
