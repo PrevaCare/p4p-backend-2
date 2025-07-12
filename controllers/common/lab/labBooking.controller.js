@@ -342,7 +342,7 @@ const createLabBooking = async (req, res) => {
     //   );
     // }
 
-    let cityAvailability = service.cityAvailability?.find((cityData) => {
+    let cityAvailability = service?.cityAvailability?.find((cityData) => {
       const { pinCodes_included = [], pinCodes_excluded = [] } = cityData;
     
       return (
@@ -352,7 +352,7 @@ const createLabBooking = async (req, res) => {
 
     console.log({pinCode, cityAvailability, serviceCity: JSON.stringify(service?.cityAvailability)})
 
-    if (homeCollection && !cityAvailability?.homeCollectionAvailable) {
+    if (homeCollection && (!cityAvailability || !cityAvailability?.homeCollectionAvailable)) {
       return Response.error(
         res,
         400,
