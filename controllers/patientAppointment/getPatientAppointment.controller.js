@@ -534,6 +534,142 @@ const myAppointmentTableList = async (req, res) => {
     );
   }
 };
+
+const myAppointmentsList = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, startDate, endDate } = req.query;
+
+    // Initialize status filter
+    let statusQuery = {};
+    if (status) {
+      switch (status) {
+        case 'active': {
+          statusQuery.status = { $nin: ['completed', 'cancelled'] };  // Active appointments
+          break;
+        }
+        case 'past': {
+          statusQuery.status = { $in: ['completed', 'cancelled'] };  // Past appointments
+          break;
+        }
+        default: {
+          statusQuery.status = status;  // Exact status match
+        }
+      }
+    }
+
+    // Handle date range filter
+    let dateQuery = {};
+    if (startDate && endDate) {
+      // Both start and end dates provided
+      dateQuery.appointmentDate = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    } else if (startDate) {
+      // Only start date provided
+      dateQuery.appointmentDate = { $gte: new Date(startDate) };
+    } else if (endDate) {
+      // Only end date provided
+      dateQuery.appointmentDate = { $lte: new Date(endDate) };
+    }
+
+    // Build the aggregation pipeline with filters
+    const aggregationPipeline = [
+      {
+        $match: {
+          ...statusQuery,  // Status filter
+          ...dateQuery,    // Date range filter
+          patientId: new mongoose.Types.ObjectId(req.user._id)
+        },
+      },
+      // Lookup for doctor details
+      {
+        $lookup: {
+          from: "users",  // Assuming "users" collection contains the doctor data
+          localField: "doctorId",
+          foreignField: "_id",
+          as: "doctorDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$doctorDetails",  // Unwind the doctor details array (since $lookup returns an array)
+          preserveNullAndEmptyArrays: true,  // If no doctor data exists
+        },
+      },
+      {
+        $project: {
+          appointmentDate: 1,
+          startTime: 1,
+          endTime: 1,
+          status: 1,
+          consultationType: 1,
+          cancellationReason: 1,
+          doctorNotes: 1,
+          symptoms: 1,
+          symptomsInDetail: 1,
+          patientId: 1,
+          doctorDetails: {
+            name: { 
+              $concat: [
+                "$doctorDetails.firstName", 
+                " ",
+                "$doctorDetails.lastName"
+              ]
+            },
+            phone: "$doctorDetails.phone",
+            email: "$doctorDetails.email",
+            profileImg: "$doctorDetails.profileImg"
+          }
+        },
+      },
+      {
+        $facet: {
+          paginatedResults: [
+            {
+              $skip: (Number(page) - 1) * Number(limit),  // Pagination
+            },
+            {
+              $limit: Number(limit),
+            },
+          ],
+          totalCount: [
+            {
+              $count: "total",  // Count total appointments
+            },
+          ],
+        },
+      },
+    ];
+
+    // Execute aggregation query
+    const results = await patientAppointmentModel.aggregate(aggregationPipeline);
+
+    const appointmentList = results[0].paginatedResults;
+    const totalCount = results[0].totalCount[0]?.total || 0;
+
+    return Response.success(
+      res,
+      {
+        appointmentList,
+        totalPages: Math.ceil(totalCount / limit),
+        currentPage: Number(page),
+        totalAppointments: totalCount,
+      },
+      200,
+      AppConstant.SUCCESS,
+      "Appointments retrieved successfully!"
+    );
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error"
+    );
+  }
+};
+
 // my appointment table data
 const upcomingConsultationTableData = async (req, res) => {
   try {
@@ -895,6 +1031,7 @@ module.exports = {
   getDateIsAvailableAndAvailableTimeSlotToBookAnAppointment,
   getAppointmentDashboardCardDataByDoctorId,
   myAppointmentTableList,
+  myAppointmentsList,
   upcomingConsultationTableData,
   getAppointmentById,
   getAllPatientDoctorAppointmentListForAdmin,

@@ -4,6 +4,7 @@ const {
   getDateIsAvailableAndAvailableTimeSlotToBookAnAppointment,
   getAppointmentDashboardCardDataByDoctorId,
   myAppointmentTableList,
+  myAppointmentsList,
   upcomingConsultationTableData,
   getAppointmentById,
   getAllPatientDoctorAppointmentListForAdmin,
@@ -66,6 +67,12 @@ router.post(
   verifyToken, // Modify to check if the doctor requests for the table-data for herself only
   myAppointmentTableList
 );
+
+router.get(
+  "/patient/appointments/list",
+  verifyToken,
+  myAppointmentsList
+)
 //  upcoming appointment dashboard cards
 router.post(
   "/patient/appointments/upcoming-appointments",
@@ -73,7 +80,7 @@ router.post(
   upcomingConsultationTableData
 );
 // get appointment by id
-router.post("/patient/appointments/single", verifyToken, getAppointmentById);
+router.post("/patient/appointment", verifyToken, getAppointmentById);
 router.get(
   "/admin/patient/appointments-all",
   verifyToken,
