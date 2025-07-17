@@ -577,9 +577,9 @@ const getUserLabBookings = async (req, res) => {
     if (bookingType) query.bookingType = bookingType;
 
     const bookings = await LabBooking.find(query)
-      .populate("labId", "labName")
+      .populate("labId", "labName logo")
       .populate("testId", "testName testCode")
-      .populate("packageId", "packageName packageCode")
+      .populate("packageId", "packageName packageCode category")
       .populate("bookedby", "firstName lastName email phone")
       .populate("bookedFor", "firstName lastName email phone")
       .sort({ createdAt: -1 })
