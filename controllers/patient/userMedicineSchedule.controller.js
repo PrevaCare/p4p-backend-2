@@ -17,7 +17,7 @@ exports.getUserMedicineSchedules = async (req, res) => {
       .limit(parseInt(limit))
       .lean();
 
-    schedules = schedules?.map(s => ({ ...s, dateOfDiagnosis: s.createdAt }));
+    schedules = schedules?.map(s => ({ ...s, createdBy: "self", dateOfDiagnosis: s.createdAt }));
 
     // Fetch Adult Male and Female EMR schedules
     let maleEMRs = await AdultMaleEMR.find({ user: userId })
@@ -71,6 +71,7 @@ exports.getUserMedicineSchedules = async (req, res) => {
               createdAt: emr.createdAt,
               updatedAt: emr.updatedAt,
               __v: emr?.__v || 0,
+              createdBy: "emr"
             });
           }
         });
