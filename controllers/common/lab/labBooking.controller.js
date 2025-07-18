@@ -504,7 +504,6 @@ const createLabBooking = async (req, res) => {
         paymentLink?.short_url
       )
 
-      console.log({service})
       let formattedService = null
       if (bookingType === "Test") {
         formattedService = {
@@ -643,8 +642,6 @@ const getUserLabBookings = async (req, res) => {
       };
     });
 
-    console.log({ formattedSelfBookings });
-
     return Response.success(
       res,
       {
@@ -698,11 +695,41 @@ const getLabBookingDetails = async (req, res) => {
         "packageName packageCode desc category testIncluded sampleRequired preparationRequired"
       )
       .populate("bookedby", "name email phone address")
-      .populate("statusHistory.updatedBy", "name email");
+      .populate("statusHistory.updatedBy", "name email")
+      .lean()
 
     if (!booking) {
       return Response.error(res, 404, AppConstant.FAILED, "Booking not found");
     }
+
+    let formattedBooking = null
+      if (booking?.testId) {
+        formattedBooking = {
+          ...booking,
+          testId: {
+            ...booking.testId,
+            sampleRequiredCount: booking?.testId?.sampleRequired?.length || 0,
+            preparationRequiredCount: booking?.testId?.preparationRequired?.length || 0,
+            testIncluded: {
+              ...booking?.testId?.testIncluded,
+              totalParameters: booking?.testId?.testIncluded?.parameters?.length || 0
+            }
+          }
+        };
+      } else {
+        formattedBooking = {
+          ...booking,
+          packageId: {
+            ...booking.packageId,
+            sampleRequiredCount: booking?.packageId?.sampleRequired?.length || 0,
+            preparationRequiredCount: booking?.packageId?.preparationRequired?.length || 0,
+            testIncluded: booking?.packageId?.testIncluded?.map(test => ({
+              ...test,
+              totalParameters: test?.parameters?.length || 0
+            }))
+          }
+        };
+      }
 
     // Check if the booking belongs to the authenticated user
     if (booking.bookedby._id.toString() !== req.user._id.toString()) {
@@ -716,7 +743,7 @@ const getLabBookingDetails = async (req, res) => {
 
     return Response.success(
       res,
-      booking,
+      formattedBooking,
       200,
       "Booking details retrieved successfully"
     );
