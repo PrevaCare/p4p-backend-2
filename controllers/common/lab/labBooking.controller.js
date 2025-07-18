@@ -172,10 +172,10 @@ const createLabBooking = async (req, res) => {
     // Verify test or package exists based on bookingType
     let bookingType = "Test"
     let serviceId = testId;
-    let service = await IndividualLabTest.findById(testId);
+    let service = await IndividualLabTest.findById(testId).lean();
 
     if (!service) {
-      service = await LabPackage.findById(testId);
+      service = await LabPackage.findById(testId).lean();
       bookingType = "Package"
     }
 
@@ -444,15 +444,15 @@ const createLabBooking = async (req, res) => {
     // Get service name based on booking type
     const serviceName =
     newBooking.bookingType === "Test"
-      ? newBooking.testId?.testName
-      : newBooking.packageId?.packageName;
+      ? service?.testName
+      : service?.packageName;
 
     const paymentLinkData = {
       amount: amount, // Amount in smallest currency unit (paise)
       // amount: 100, // Amount in smallest currency unit (paise)
       currency: "INR",
       accept_partial: false,
-      description: `Payment for ${serviceName} at ${newBooking.labId.labName}`,
+      description: `Payment for ${serviceName} at ${lab.labName}`,
       customer: {
         name: customerName,
         email: newBooking.bookedby.email || `user${Date.now()}@example.com`,
@@ -504,9 +504,33 @@ const createLabBooking = async (req, res) => {
         paymentLink?.short_url
       )
 
+      console.log({service})
+      let formattedService = null
+      if (bookingType === "Test") {
+        formattedService = {
+          ...service,
+          sampleRequiredCount: service?.sampleRequired?.length || 0,
+          preparationRequiredCount: service?.preparationRequired?.length || 0,
+          testIncluded: {
+            ...service?.testIncluded,
+            totalParameters: service?.testIncluded?.parameters?.length || 0
+          }
+        };
+      } else {
+        formattedService = {
+          ...service,
+          sampleRequiredCount: service?.sampleRequired?.length || 0,
+          preparationRequiredCount: service?.preparationRequired?.length || 0,
+          testIncluded: service?.testIncluded?.map(test => ({
+            ...test,
+            totalParameters: test?.parameters?.length || 0
+          }))
+        };
+      }
+  
       return Response.success(
         res,
-        newBooking,
+        { booking: newBooking, testDetails: formattedService},
         200,
         `Lab ${bookingType.toLowerCase()} booking created successfully`
       );
@@ -536,7 +560,7 @@ const createLabBooking = async (req, res) => {
 
 /**
  * Get all lab bookings for authenticated user
- * @route GET /v1/app/lab-bookings
+ * @route GET /v1/app/lab-booking
  */
 const getUserLabBookings = async (req, res) => {
   try {
@@ -547,9 +571,6 @@ const getUserLabBookings = async (req, res) => {
     const bookingType = req.query.bookingType;
 
     // Build query to get bookings where user is either the booker or the person booked for
-    // const query = {
-    //   $or: [{ bookedby: req.user._id }, { bookedFor: req.user._id }],
-    // };
     const query = {
       $or: [{ bookedFor: req.user._id }],
     };
@@ -564,44 +585,70 @@ const getUserLabBookings = async (req, res) => {
           query.status = { $in: ['Cancelled', 'Rejected'] };
           break;
         case 'completed':
-          query.status = 'Completed'
+          query.status = 'Completed';
           break;
         case 'past':
           query.status = { $in: ['Cancelled', 'Rejected', 'Completed'] };
           break;
         default:
-          query.status = status
+          query.status = status;
       }
-    };
+    }
 
     if (bookingType) query.bookingType = bookingType;
 
     const bookings = await LabBooking.find(query)
       .populate("labId", "labName logo")
-      .populate("testId", "testName testCode")
-      .populate("packageId", "packageName packageCode category")
+      .populate("testId")
+      .populate("packageId")
       .populate("bookedby", "firstName lastName email phone")
       .populate("bookedFor", "firstName lastName email phone")
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     const totalBookings = await LabBooking.countDocuments(query);
 
     // Separate bookings into self and other bookings
-    const selfBookings = bookings.filter(
-      (booking) => booking.bookingFor === "self"
-    );
-    // const otherBookings = bookings.filter(
-    //   (booking) => booking.bookingFor === "other"
-    // );
+    const selfBookings = bookings.filter((booking) => booking.bookingFor === "self");
+
+    const formattedSelfBookings = selfBookings?.map(booking => {
+      if (booking?.testId) {
+        return {
+          ...booking,
+          testId: {
+            ...booking.testId,
+            sampleRequiredCount: booking?.testId?.sampleRequired?.length || 0,
+            preparationRequiredCount: booking?.testId?.preparationRequired?.length || 0,
+            testIncluded: {
+              ...booking?.testId?.testIncluded,
+              totalParameters: booking?.testId?.testIncluded?.parameters?.length || 0
+            }
+          }
+        };
+      }
+
+      return {
+        ...booking,
+        packageId: {
+          ...booking.packageId,
+          sampleRequiredCount: booking?.packageId?.sampleRequired?.length || 0,
+          preparationRequiredCount: booking?.packageId?.preparationRequired?.length || 0,
+          testIncluded: booking?.packageId?.testIncluded?.map(test => ({
+            ...test,
+            totalParameters: test?.parameters?.length || 0
+          }))
+        }
+      };
+    });
+
+    console.log({ formattedSelfBookings });
 
     return Response.success(
       res,
       {
-        // selfBookings,
-        // otherBookings,
-        bookings: selfBookings,
+        bookings: formattedSelfBookings,
         pagination: {
           total: totalBookings,
           pages: Math.ceil(totalBookings / limit),
