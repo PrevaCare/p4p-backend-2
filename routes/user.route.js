@@ -111,6 +111,12 @@ router.delete(
   deleteEmployeeOrIndividualUser
 );
 
+router.delete(
+  "/app/patient-delete/:patientId",
+  verifyAndAuthoriseToken,
+  deleteEmployeeOrIndividualUser
+);
+
 // doctor delete
 router.delete(
   "/admin/doctor-delete/:doctorId",
