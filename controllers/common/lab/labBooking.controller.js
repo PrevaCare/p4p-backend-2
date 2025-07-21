@@ -600,8 +600,8 @@ const getUserLabBookings = async (req, res) => {
       .populate("labId", "labName logo")
       .populate("testId")
       .populate("packageId")
-      .populate("bookedby", "firstName lastName email phone")
-      .populate("bookedFor", "firstName lastName email phone")
+      .populate("bookedby", "firstName lastName email phone profileImg")
+      .populate("bookedFor", "firstName lastName email phone profileImg")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -694,7 +694,8 @@ const getLabBookingDetails = async (req, res) => {
         "packageId",
         "packageName packageCode desc category testIncluded sampleRequired preparationRequired"
       )
-      .populate("bookedby", "name email phone address")
+      .populate("bookedFor", "firstName lastName email phone profileImg")
+      .populate("bookedby", "name email phone address profileImg")
       .populate("statusHistory.updatedBy", "name email")
       .lean()
 
