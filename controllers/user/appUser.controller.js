@@ -111,7 +111,7 @@ const getUserPlans = async (req, res) => {
 
 const updateUserDetails = async (req, res) => {
   try {
-  const { firstName, lastName, gender, age, weight, height, addressName, jobProfile, isMarried } = req.body;
+  const { firstName, lastName, gender, age, weight, height, addressName, street, state, city, zipCode, jobProfile, isMarried } = req.body;
   const userId = req.user._id
   const UserModel = req.user.role === 'Employee' ? require('../../models/patient/employee/employee.model.js') : require('../../models/individualUser/induvidualUser.model.js');
 
