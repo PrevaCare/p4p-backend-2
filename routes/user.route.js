@@ -25,6 +25,7 @@ const {
 } = require("../controllers/rolesAndPermission.controller.js");
 const {
   getAppUserDetails,
+  getUserPlans
 } = require("../controllers/user/appUser.controller.js");
 const { getUserById } = require("../controllers/user/getUser.controller.js");
 const {
@@ -142,5 +143,11 @@ router.post(
   verifyToken,
   markReadNotificationById
 );
+
+router.get(
+  "/app/user-plans",
+  verifyToken,
+  getUserPlans
+)
 
 module.exports = router;
