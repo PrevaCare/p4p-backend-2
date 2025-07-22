@@ -12,6 +12,7 @@ const healthScoreModel = require("../../../../models/patient/healthScore/healthS
 const Corporate = require("../../../../models/corporates/corporate.model.js");
 const userModel = require("../../../../models/common/user.model.js");
 const emrModel = require("../../../../models/common/emr.model.js");
+const GlobalSetting = require("../../../../models/settings/globalSetting.model.js");
 
 const getAllCorporateEmployees = async (req, res) => {
   try {
@@ -539,6 +540,9 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
     const specializations = assignedDoctors.map(
       (doctor) => doctor.specialization
     );
+
+    const globalSettings = await GlobalSetting.findOne().select("consultationFee corporateDiscount individualUserDiscount")
+    
     const responseData = assignedDoctors.map((doctor) => {
       const {
         _id,
@@ -550,12 +554,7 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
         specialization,
         role,
       } = doctor;
-      console.log("specialization: ", specialization);
-      console.log("noOfYearExperience: ", noOfYearExperience);
-      console.log("education: ", education);
-      console.log("profileImg: ", profileImg);
-      console.log("firstName: ", firstName);
-      console.log("lastName: ", lastName);
+
       // Extract courses and degrees if education exists
       const courseList = Array.isArray(education)
         ? education.map((item) => item.course || null)
@@ -574,6 +573,9 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
         noOfYearExperience: noOfYearExperience || null,
         specialization: specialization || null,
         role: role || null,
+        consultationFee: globalSettings.consultationFee,
+        remainingConsultationsAvailable: 0,
+        discount: existingUser.role === "Employee" ? globalSettings.corporateDiscount : globalSettings.individualUserDiscount
       };
     });
 

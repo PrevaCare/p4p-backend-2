@@ -10,6 +10,7 @@ const {
 } = require("../../middlewares/uploads/awsConfig.js");
 const CryptoJS = require("crypto-js");
 const userModel = require("../../models/common/user.model.js");
+const GlobalSetting = require("../../models/settings/globalSetting.model.js");
 
 // get all corporates --> for admin
 const getAllDoctors = async (req, res) => {
@@ -182,7 +183,8 @@ const getDoctorByCategory = async (req, res) => {
     const doctors = await User.find({
       specialization: category,
       role: "Doctor",
-    }).select("firstName lastName _id");
+    }).select("firstName lastName _id")
+    .lean();
 
     if (!doctors) {
       return Response.error(
@@ -193,9 +195,19 @@ const getDoctorByCategory = async (req, res) => {
       );
     }
 
+    const globalSettings = await GlobalSetting.findOne().select("consultationFee corporateDiscount individualUserDiscount")
+
+    const formattedDoctors = doctors.map(d => 
+      ({
+        ...d,
+        consultationFee: globalSettings.consultationFee,
+        remainingConsultationsAvailable: 0,
+        discount: req.user?.role === "Employee" ? globalSettings.corporateDiscount : globalSettings.individualUserDiscount
+      }))
+
     return Response.success(
       res,
-      { doctorsTotal: doctors.length, doctors },
+      { doctorsTotal: formattedDoctors.length, doctors: formattedDoctors },
       200,
       AppConstant.SUCCESS,
       "Doctors Found Successfully!"
