@@ -25,7 +25,8 @@ const {
 } = require("../controllers/rolesAndPermission.controller.js");
 const {
   getAppUserDetails,
-  getUserPlans
+  getUserPlans,
+  updateUserDetails
 } = require("../controllers/user/appUser.controller.js");
 const { getUserById } = require("../controllers/user/getUser.controller.js");
 const {
@@ -148,6 +149,13 @@ router.get(
   "/app/user-plans",
   verifyToken,
   getUserPlans
+)
+
+router.post(
+  "/app/user/update",
+  verifyToken,
+  upload.fields([{ name: "profileImg", maxCount: 1 }]),
+  updateUserDetails
 )
 
 module.exports = router;

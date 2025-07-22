@@ -5,6 +5,7 @@ const Response = require("../../utils/Response.js");
 const AppConstant = require("../../utils/AppConstant.js");
 const EMR = require("../../models/common/emr.model.js");
 const UserPlansBalance = require("../../models/corporates/individualPlan.model");
+const { uploadToS3 } = require("../../middlewares/uploads/awsConfig.js");
 
 const getAppUserDetails = async (req, res) => {
   try {
@@ -104,12 +105,67 @@ const getUserPlans = async (req, res) => {
       total: servicePlans?.length
     })
   } catch (err) {
-    console.log({err})
     return res.status(500).json({ message: 'Internal server error!'})
   }
 };
 
+const updateUserDetails = async (req, res) => {
+  try {
+  const { firstName, lastName, gender, age, weight, height, addressName, jobProfile, isMarried } = req.body;
+  const userId = req.user._id
+  const UserModel = req.user.role === 'Employee' ? require('../../models/patient/employee/employee.model.js') : require('../../models/individualUser/induvidualUser.model.js');
+
+  const user = await UserModel.findById(userId);
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found!' });
+  }
+
+  const files = req.files.profileImg
+
+  let profileImgUrl = ""
+
+  if (files && files?.length > 0) {
+    try {
+      const uploadedFile = await uploadToS3(files[0]);
+      profileImgUrl = uploadedFile?.Location
+    } catch (err) {
+      return res.status(404).json({ message: 'Error occured in profile image processing'})
+    }
+  }
+
+  if (addressName && user.address) user.address.name = addressName;
+  if (street && user.address) user.address.street = street;
+  if (city && user.address) user.address.city = city;
+  if (state && user.address) user.address.state = state;
+  if (zipCode && user.address) user.address.zipCode = zipCode;
+
+  // Update other user details if provided
+  if (profileImgUrl) user.profileImg = profileImgUrl;
+  if (firstName) user.firstName = firstName;
+  if (lastName) user.lastName = lastName;
+  if (gender) user.gender = gender;
+  if (age) user.age = age;
+  if (weight) user.weight = weight;
+  if (height) user.height = height;
+  if (jobProfile) user.jobProfile = jobProfile;
+  if (isMarried) user.isMarried = !!isMarried;
+
+   // Save the updated user details
+   const updatedUser = await user.save();
+
+   return res.status(200).json({
+     message: 'User details updated successfully!',
+     data: updatedUser,
+   });
+  } catch (err) {
+    console.log({err})
+    return res.status(500).json({ message: 'Internal server error!'})
+  }
+}
+
 module.exports = {
   getAppUserDetails,
-  getUserPlans
+  getUserPlans,
+  updateUserDetails
 };
