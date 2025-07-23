@@ -86,8 +86,6 @@ const getUserPlans = async (req, res) => {
       userId: req.user._id,
     });
 
-    console.log({userPlan, user: req.user})
-  
     const servicePlans = userPlan?.activeCountFeatures
       ?.filter(f => f.totalRemaining > 0 && new Date(f.expiresAt) > new Date()) // Filter out expired plans and those with no remaining units
       .map(f => ({
@@ -164,8 +162,36 @@ const updateUserDetails = async (req, res) => {
   }
 }
 
+const getUserPackages = async (req, res) => {
+  try {
+    const userPlan = await UserPlansBalance.findOne({
+      userId: req.user._id,
+    });
+
+    const servicePlans = userPlan?.activeCountFeatures
+      ?.filter(f => f.totalRemaining > 0 && new Date(f.expiresAt) > new Date()) // Filter out expired plans and those with no remaining units
+      .map(f => ({
+        service: f.featureName,
+        type: f.type,
+        totalAllowed: f.totalAllowed,
+        totalUsed: f.totalUsed,
+        totalRemaining: f.totalRemaining,
+        expiredAt: f.expiresAt,
+        planType: f.planType,
+      }));
+  
+    return res.json({
+      data: servicePlans,
+      total: servicePlans?.length
+    })
+  } catch (err) {
+    return res.status(500).json({ message: 'Internal server error!'})
+  }
+}
+
 module.exports = {
   getAppUserDetails,
   getUserPlans,
-  updateUserDetails
+  updateUserDetails,
+  getUserPackages
 };

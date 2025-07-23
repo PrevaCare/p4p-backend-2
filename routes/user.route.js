@@ -26,7 +26,8 @@ const {
 const {
   getAppUserDetails,
   getUserPlans,
-  updateUserDetails
+  updateUserDetails,
+  getUserPackages
 } = require("../controllers/user/appUser.controller.js");
 const { getUserById } = require("../controllers/user/getUser.controller.js");
 const {
@@ -148,7 +149,13 @@ router.post(
 router.get(
   "/app/user-plans",
   verifyToken,
-  getUserPlans
+  getUserPlans // All the plans is grouped by service/package
+)
+
+router.get(
+  "/app/user/packages",
+  verifyToken,
+  getUserPackages // Retrieved all the plans
 )
 
 router.post(
