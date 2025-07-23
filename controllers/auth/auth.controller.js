@@ -726,16 +726,20 @@ const verifyOtpAndLogin = async (req, res) => {
       );
     }
 
-    // compare otp if ok then delete from otp
-    const existingOtp = await otpModel.findOne({
-      $and: [{ phone }, { otp }],
-    });
-    if (!existingOtp) {
-      return Response.error(res, 404, AppConstant.FAILED, "wrong otp !");
+    if (phone === "9899500873" && otp === "000000") {
+      // continue this phone and otp for testing
+    } else {
+      // compare otp if ok then delete from otp
+      const existingOtp = await otpModel.findOne({
+        $and: [{ phone }, { otp }],
+      });
+      if (!existingOtp) {
+        return Response.error(res, 404, AppConstant.FAILED, "wrong otp !");
+      }
+      // await otpModel.deleteMany({ phone });
+      existingOtp.isVerified = true;
+      await existingOtp.save();
     }
-    // await otpModel.deleteMany({ phone });
-    existingOtp.isVerified = true;
-    await existingOtp.save();
 
     // Find user by phone
     let existingUser = await User.findOne({ phone });
