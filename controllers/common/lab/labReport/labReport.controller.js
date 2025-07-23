@@ -502,6 +502,239 @@ const getLabPartnerPackages = async (req, res) => {
   }
 };
 
+const getAllLabPartnerPackages = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 50,
+      search = "",
+      sortBy = "packageCode", // Changed default to packageCode
+      sortOrder = "asc",
+      state = "",
+      city = "",
+      pincode = ""
+    } = req.query;
+
+    // Parse and validate query parameters
+    const pageNum = Math.max(parseInt(page, 10), 1);
+    const limitNum = Math.max(parseInt(limit, 10), 1);
+    const sortOrderNum = sortOrder.toLowerCase() === "asc" ? 1 : -1;
+
+    // Build match query
+    const matchQuery = {
+      ...(search
+        ? {
+            $or: [
+              { packageCode: { $regex: search, $options: "i" } }, // Prioritize packageCode
+              { packageName: { $regex: search, $options: "i" } },
+            ],
+          }
+        : {}),
+    };
+
+    // Define allowed sort fields to prevent injection
+    const validSortFields = ["packageCode", "packageName", "category"];
+    const safeSortBy = validSortFields.includes(sortBy)
+      ? sortBy
+      : "packageCode"; // Default to packageCode
+
+    const aggregationPipeline = [
+      { $match: matchQuery },
+      // Filter cityAvailability array
+      {
+        $addFields: {
+          cityAvailability: {
+            $filter: {
+              input: "$cityAvailability",
+              as: "cityAvail",
+              cond: {
+                $and: [
+                  { $eq: ["$$cityAvail.isActive", true] },
+
+                  city
+                    ? {
+                        $eq: [
+                          { $toLower: "$$cityAvail.cityName" },
+                          city.toLowerCase(),
+                        ],
+                      }
+                    : { $literal: true },
+
+                  state
+                    ? {
+                        $eq: [
+                          { $toLower: "$$cityAvail.state" },
+                          state.toLowerCase(),
+                        ],
+                      }
+                    : { $literal: true },
+
+                  pincode
+                    ? {
+                        $and: [
+                          {
+                            $eq: [
+                              {
+                                $size: {
+                                  $filter: {
+                                    input: {
+                                      $ifNull: [
+                                        "$$cityAvail.pinCodes_excluded",
+                                        [],
+                                      ],
+                                    },
+                                    cond: { $eq: ["$$this", pincode] },
+                                  },
+                                },
+                              },
+                              0,
+                            ],
+                          },
+                          // For pinCodes_included or other checks, keep as true or add logic
+                          { $literal: true },
+                        ],
+                      }
+                    : { $literal: true },
+                ],
+              },
+            },
+          },
+        },
+      },
+      // Exclude packages with no matching cityAvailability
+      { $match: { cityAvailability: { $ne: [] } } },
+      // Facet for total count and paginated results
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [
+            { $sort: { [safeSortBy]: sortOrderNum } },
+            { $skip: (pageNum - 1) * limitNum },
+            { $limit: limitNum },
+            {
+              $project: {
+                _id: 1,
+                logo: 1,
+                packageCode: 1,
+                packageName: 1,
+                desc: 1,
+                long_desc: 1,
+                category: 1,
+                testIncluded: 1,
+                sampleRequired: 1,
+                preparationRequired: 1,
+                gender: 1,
+                ageGroup: 1,
+                cityAvailability: {
+                  $map: {
+                    input: "$cityAvailability",
+                    as: "cityAvail",
+                    in: {
+                      cityId: "$$cityAvail.cityId",
+                      cityName: "$$cityAvail.cityName",
+                      state: "$$cityAvail.state",
+                      pinCodes_excluded: "$$cityAvail.pinCodes_excluded",
+                      prevaCarePriceForCorporate:
+                        "$$cityAvail.prevaCarePriceForCorporate",
+                      prevaCarePriceForIndividual:
+                        "$$cityAvail.prevaCarePriceForIndividual",
+                      homeCollectionCharge: "$$cityAvail.homeCollectionCharge",
+                      homeCollectionAvailable:
+                        "$$cityAvail.homeCollectionAvailable",
+                      isActive: "$$cityAvail.isActive",
+                      totalPrice: "$$cityAvail.billingRate",
+                      discountPercentageForCorporate: {
+                        $cond: [
+                          { $gt: ["$$cityAvail.billingRate", 0] },
+                          {
+                            $round: [
+                              {
+                                $multiply: [
+                                  {
+                                    $divide: [
+                                      {
+                                        $subtract: [
+                                          "$$cityAvail.billingRate",
+                                          "$$cityAvail.prevaCarePriceForCorporate",
+                                        ],
+                                      },
+                                      "$$cityAvail.billingRate",
+                                    ],
+                                  },
+                                  100,
+                                ],
+                              },
+                              2, // rounds to 2 decimal places
+                            ],
+                          },
+                          null,
+                        ],
+                      },
+                      discountPercentageForIndividual: {
+                        $cond: [
+                          { $gt: ["$$cityAvail.billingRate", 0] }, // prevent division by zero
+                          {
+                            $round: [
+                              {
+                                $multiply: [
+                                  {
+                                    $divide: [
+                                      {
+                                        $subtract: [
+                                          "$$cityAvail.billingRate",
+                                          "$$cityAvail.prevaCarePriceForIndividual",
+                                        ],
+                                      },
+                                      "$$cityAvail.billingRate",
+                                    ],
+                                  },
+                                  100,
+                                ],
+                              },
+                              2, // rounds to 2 decimal places
+                            ],
+                          },
+                          null,
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const [result] = await LabPackage.aggregate(aggregationPipeline);
+
+    // Handle empty data
+    const packages = result?.data || [];
+    const total = result?.metadata[0]?.total || 0;
+
+    return Response.success(
+      res,
+      {
+        packages,
+        total,
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+      200,
+      "Lab partner packages retrieved successfully"
+    );
+  } catch (err) {
+    console.error("Error in getLabPartnerPackages:", err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      "Internal server error"
+    );
+  }
+};
+
 const getLabPartnerPackageById = async (req, res) => {
   try {
     const { packageId } = req.params;
@@ -586,4 +819,5 @@ module.exports = {
   getLabPartners,
   getLabPartnerPackages,
   getLabPartnerPackageById,
+  getAllLabPartnerPackages
 };

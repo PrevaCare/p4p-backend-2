@@ -49,6 +49,7 @@ const labCategoryRoute = require("./routes/common/lab/labCategory.routes");
 const userMedicineScheduleRoutes = require("./routes/patient/userMedicineSchedule.routes")
 const planCategoryRoute = require("./routes/plans/planCategory.route");
 const globalSettingRoute = require("./routes/admin/globalSetting.route");
+const bannerRoute = require("./routes/common/banner/banner.route");
 
 const app = express();
 dotenv.config();
@@ -194,6 +195,7 @@ app.use("/v1/lab-category", labCategoryRoute); // lab categories route
 app.use("/v1/", userMedicineScheduleRoutes); // lab categories route
 app.use("/v1/plan-categories", planCategoryRoute); // plan categories route
 app.use("/v1/admin/global-settings", globalSettingRoute);
+app.use("/v1/", bannerRoute)
 
 // Check for no-shows every 15 minutes
 if (process.env.NODE_ENV !== "development") {

@@ -4,6 +4,7 @@ const {
   getLabPartners,
   getLabPartnerPackages,
   getLabPartnerPackageById,
+  getAllLabPartnerPackages
 } = require("../../../../controllers/common/lab/labReport/labReport.controller.js");
 const {
   createReport,
@@ -44,6 +45,8 @@ router.post(
   createExistingPatientLabReport
 );
 
+router.get("/admin/lab-partners", verifyToken, checkPermissions('READ', 'Superadmin'), getLabPartners);
+router.get("/admin/lab-partner-packages", verifyToken, checkPermissions('READ', 'Superadmin'), getAllLabPartnerPackages);
 router.get("/app/lab-partners", verifyToken, getLabPartners);
 router.get(
   "/app/lab-partner-packages/:labId",
