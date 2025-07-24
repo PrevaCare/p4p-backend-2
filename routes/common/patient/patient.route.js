@@ -14,6 +14,7 @@ const {
 } = require("../../../controllers/patient/corporate/viewCorporateEmployees");
 const {
   createInsurance,
+  getAllUserInsurance
 } = require("../../../controllers/patient/insurance/insurance.controller");
 const {
   verifyToken,
@@ -32,6 +33,12 @@ router.post(
   getSingleEmployeesDetailById
 );
 
+router.get(
+  "/app/insurance",
+  verifyToken,
+  checkPermissions("CREATE", "Employee"), // wiil do later
+  getAllUserInsurance
+);
 // create insurance
 router.post(
   "/app/insurance",
