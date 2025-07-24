@@ -19,6 +19,7 @@ const {
   getNotificationCountByUserId,
   getAllNotifications,
   markReadNotificationById,
+  markAsReadUserNotifications,
 } = require("../controllers/common/notifications/notifications.controller.js");
 const {
   createPermissionsAndRoles,
@@ -144,6 +145,24 @@ router.post(
   "/admin/notifications-mark-read",
   verifyToken,
   markReadNotificationById
+);
+
+// App  notifications routes
+router.get(
+  "/app/notification-counts",
+  verifyToken,
+  getNotificationCountByUserId
+);
+router.get("/app/notifications", verifyToken, getAllNotifications);
+router.post(
+  "/app/notifications-mark-read",
+  verifyToken,
+  markReadNotificationById
+);
+router.get(
+  "/app/all-notifications-mark-read",
+  verifyToken,
+  markAsReadUserNotifications
 );
 
 router.get(

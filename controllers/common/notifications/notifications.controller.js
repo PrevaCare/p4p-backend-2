@@ -119,8 +119,34 @@ const markReadNotificationById = async (req, res) => {
   }
 };
 
+// update user notification - mark read
+const markAsReadUserNotifications = async (req, res) => {
+  try {
+    const userId = req.user._id
+
+    const result = await notificationsModel.updateMany(
+      { userId, read: { $ne: true } },  // Update only unread notifications
+      { $set: { read: true } }  // Set 'read' to true
+    );
+
+    if (result.nModified > 0) {
+      return Response.success(res, null, 200, "All notifications marked as read!");
+    }
+
+    return Response.success(res, null, 200, "No unread notifications found.");
+  } catch (err) {
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal Server error!"
+    );
+  }
+};
+
 module.exports = {
   getNotificationCountByUserId,
   getAllNotifications,
   markReadNotificationById,
+  markAsReadUserNotifications
 };
