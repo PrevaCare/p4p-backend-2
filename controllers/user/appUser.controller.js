@@ -88,15 +88,28 @@ const getUserPlans = async (req, res) => {
 
     const servicePlans = userPlan?.activeCountFeatures
       ?.filter(f => f.totalRemaining > 0 && new Date(f.expiresAt) > new Date()) // Filter out expired plans and those with no remaining units
-      .map(f => ({
-        service: f.featureName,
-        type: f.type,
-        totalAllowed: f.totalAllowed,
-        totalUsed: f.totalUsed,
-        totalRemaining: f.totalRemaining,
-        expiredAt: f.expiresAt,
-        planType: f.planType,
-      }));
+      .reduce((acc, f) => {
+        // Find if the service already exists in the accumulator
+        const existingService = acc.find(service => service.service === f.featureName);
+
+        if (existingService) {
+          // If the service already exists, merge the counts
+          existingService.totalAllowed += f.totalAllowed;
+          existingService.totalUsed += f.totalUsed;
+          existingService.totalRemaining += f.totalRemaining;
+        } else {
+          // If the service does not exist, add it to the accumulator
+          acc.push({
+            service: f.featureName,
+            type: f.type,
+            totalAllowed: f.totalAllowed,
+            totalUsed: f.totalUsed,
+            totalRemaining: f.totalRemaining
+          });
+        }
+
+        return acc;
+      }, []); // Initialize accumulator as an empty array
   
     return res.json({
       data: servicePlans,
@@ -164,11 +177,12 @@ const updateUserDetails = async (req, res) => {
 
 const getUserPackages = async (req, res) => {
   try {
-    const userPlan = await UserPlansBalance.findOne({
+    const userPlans = await UserPlansBalance.findOne({
       userId: req.user._id,
     });
 
-    const servicePlans = userPlan?.activeCountFeatures
+    // Iterate through all the user plans and fetch the details of active count features
+    const servicePlans = userPlans?.activeCountFeatures
       ?.filter(f => f.totalRemaining > 0 && new Date(f.expiresAt) > new Date()) // Filter out expired plans and those with no remaining units
       .map(f => ({
         service: f.featureName,
@@ -176,18 +190,19 @@ const getUserPackages = async (req, res) => {
         totalAllowed: f.totalAllowed,
         totalUsed: f.totalUsed,
         totalRemaining: f.totalRemaining,
-        expiredAt: f.expiresAt,
-        planType: f.planType,
+        expiredAt: f.expiresAt, // Expiry date of the plan
+        planType: f.planType, // Plan type (e.g., Basic, Premium, etc.)
       }));
-  
+
     return res.json({
       data: servicePlans,
-      total: servicePlans?.length
-    })
+      total: servicePlans?.length || 0
+    });
   } catch (err) {
-    return res.status(500).json({ message: 'Internal server error!'})
+    console.error("Error fetching user packages:", err);
+    return res.status(500).json({ message: 'Internal server error!' });
   }
-}
+};
 
 module.exports = {
   getAppUserDetails,
