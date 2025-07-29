@@ -12,6 +12,7 @@ const {
 } = require("../controllers/auth/auth.controller.js");
 const {
   deleteEmployeeOrIndividualUser,
+  deleteEmployeeOrIndividualUserForApp,
   deleteDoctorById,
   deleteCorporateUser,
 } = require("../controllers/auth/deleteUser.controller.js");
@@ -116,9 +117,9 @@ router.delete(
 );
 
 router.delete(
-  "/app/patient-delete/:patientId",
+  "/app/patient-delete",
   verifyAndAuthoriseToken,
-  deleteEmployeeOrIndividualUser
+  deleteEmployeeOrIndividualUserForApp
 );
 
 // doctor delete
