@@ -1,7 +1,10 @@
+const mongoose = require("mongoose")
 const User = require("../../models/common/user.model.js");
 const Superadmin = require("../../models/superadmin.model.js");
 const Corporate = require("../../models/corporates/corporate.model.js");
 const EMR = require("../../models/common/emr.model.js");
+const Eprescriptions = require("../../models/patient/eprescription/eprescription.model.js");
+const UserExistingEprescription = require("../../models/patient/existingPatientEprescription/existingPatientEprescription.model.js")
 // const CorporateAddress = require("../models/corporates/corporateAddress.model.js");
 // common address
 const Address = require("../../models/common/address.model.js");
@@ -681,21 +684,35 @@ const appLogin = async (req, res) => {
     const newOtp = new otpModel({ phone, otp });
     await sendOtp(phone, otp);
     await newOtp.save();
-    // if (!existingUser) {
-    //   return Response.error(res, 404, AppConstant.FAILED, "User not found !");
-    // }
+
+    const emr = await EMR.findOne({
+      user: existingUser._id
+    })
+
+    const eprescriptions = await Eprescriptions.findOne({
+      user: new mongoose.Types.ObjectId(existingUser._id),
+    })
+
+    const userEprescription = await UserExistingEprescription.findOne({
+      user: new mongoose.Types.ObjectId(existingUser._id),
+    })
+
+    if (!emr && (!eprescriptions || !userEprescription)) {
+      return Response.success(
+        res,
+        {
+          phone
+        },
+        206,
+        AppConstant.SUCCESS,
+        "Otp has been send to your phone !"
+      );
+    }
+
     return Response.success(
       res,
       {
-        phone,
-        // firstName,
-        // lastName,
-        // profileImg,
-        // phone,
-        // gender,
-        // role,
-        // accessToken,
-        // refreshToken,
+        phone
       },
       200,
       AppConstant.SUCCESS,
