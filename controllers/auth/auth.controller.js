@@ -669,12 +669,11 @@ const appLogin = async (req, res) => {
     }
 
     const { phone } = req.body;
-    // let existingUser = await User.findOne({ phone: login });
-    // if (login.includes("@")) {
-    //   existingUser = await User.findOne({ email: login });
-    // } else {
-    //   existingUser = await User.findOne({ phone: login });
-    // }
+    const existingUser = await User.findOne({ phone });
+
+    if (!existingUser) {
+      return Response.error(res, 404, AppConstant.FAILED, "User not found!");
+    }
 
     // create random 6-digit otp and sent using msg 91
     await otpModel.deleteMany({ phone });
