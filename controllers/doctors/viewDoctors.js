@@ -183,7 +183,7 @@ const getDoctorByCategory = async (req, res) => {
     const doctors = await User.find({
       specialization: category,
       role: "Doctor",
-    }).select("firstName lastName _id")
+    }).select("firstName lastName bio profileImg education noOfYearExperience specialization _id")
     .lean();
 
     if (!doctors) {
@@ -197,13 +197,27 @@ const getDoctorByCategory = async (req, res) => {
 
     const globalSettings = await GlobalSetting.findOne().select("consultationFee corporateDiscount individualUserDiscount")
 
-    const formattedDoctors = doctors.map(d => 
-      ({
-        ...d,
+    const formattedDoctors = doctors.map(d => {
+      // Extract courses and degrees if education exists
+      const courseList = Array.isArray(d.education)
+        ? d.education.map((item) => item.course || null)
+        : [];
+      const degreeList = Array.isArray(d.education)
+        ? d.education.map((item) => item.degree || null)
+        : [];
+
+      const discount = req.user?.role === "Employee" ? globalSettings.corporateDiscount : globalSettings.individualUserDiscount
+      const {education, ...rest} = d
+      return {
+        ...rest,
+        course: courseList,
+        degree: degreeList,
         consultationFee: globalSettings.consultationFee,
+        sellingPrice: globalSettings.consultationFee - (discount.type === "percentage" ? ((globalSettings.consultationFee * discount.value)/100) : discount.value),
         remainingConsultationsAvailable: 0,
-        discount: req.user?.role === "Employee" ? globalSettings.corporateDiscount : globalSettings.individualUserDiscount
-      }))
+        discount
+      }
+    })
 
     return Response.success(
       res,

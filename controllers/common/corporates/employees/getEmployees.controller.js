@@ -522,7 +522,7 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
     }).populate({
       path: "assignedDoctors",
       select:
-        "_id firstName lastName profileImg education specialization noOfYearExperience role",
+        "_id firstName lastName profileImg education specialization noOfYearExperience",
     });
 
     // Check if the user exists
@@ -537,9 +537,6 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
 
     // Prepare assigned doctor list
     const assignedDoctors = existingUser.assignedDoctors || [];
-    const specializations = assignedDoctors.map(
-      (doctor) => doctor.specialization
-    );
 
     const globalSettings = await GlobalSetting.findOne().select("consultationFee corporateDiscount individualUserDiscount")
     
@@ -563,6 +560,8 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
         ? education.map((item) => item.degree || null)
         : [];
 
+      const discount = existingUser.role === "Employee" ? globalSettings.corporateDiscount : globalSettings.individualUserDiscount
+
       return {
         _id,
         profileImg: profileImg !== "null" ? profileImg : null,
@@ -574,8 +573,9 @@ const getListOfAssignedDoctorByPatientId = async (req, res) => {
         specialization: specialization || null,
         role: role || null,
         consultationFee: globalSettings.consultationFee,
+        sellingPrice: globalSettings.consultationFee - (discount.type === "percentage" ? ((globalSettings.consultationFee * discount.value)/100) : discount.value),
         remainingConsultationsAvailable: 0,
-        discount: existingUser.role === "Employee" ? globalSettings.corporateDiscount : globalSettings.individualUserDiscount
+        discount
       };
     });
 
