@@ -317,50 +317,76 @@ const getLabPartnerPackages = async (req, res) => {
                 $and: [
                   { $eq: ["$$cityAvail.isActive", true] },
 
-                  city
-                    ? {
-                        $eq: [
-                          { $toLower: "$$cityAvail.cityName" },
-                          city.toLowerCase(),
-                        ],
-                      }
-                    : { $literal: true },
+                  {
+                    $or: [
 
-                  state
-                    ? {
-                        $eq: [
-                          { $toLower: "$$cityAvail.state" },
-                          state.toLowerCase(),
-                        ],
-                      }
-                    : { $literal: true },
-
-                  pincode
-                    ? {
-                        $and: [
-                          {
+                      city
+                        ? {
                             $eq: [
-                              {
-                                $size: {
-                                  $filter: {
-                                    input: {
-                                      $ifNull: [
-                                        "$$cityAvail.pinCodes_excluded",
-                                        [],
-                                      ],
-                                    },
-                                    cond: { $eq: ["$$this", pincode] },
+                              { $toLower: "$$cityAvail.cityName" },
+                              city.toLowerCase(),
+                            ],
+                          }
+                        : { $literal: true },
+
+                      city
+                        ? {
+                          $cond: {
+                            if: { $gt: [{ $size: { $ifNull: ["$$cityAvail.regions_included", []] } }, 0] },
+                            then: {
+                              $in: [
+                                { $toLower: city },
+                                {
+                                  $map: {
+                                    input: "$$cityAvail.regions_included",
+                                    as: "region",
+                                    in: { $toLower: "$$region" },
                                   },
                                 },
-                              },
-                              0,
-                            ],
+                              ],
+                            },
+                            else: true,
                           },
-                          // For pinCodes_included or other checks, keep as true or add logic
-                          { $literal: true },
-                        ],
-                      }
-                    : { $literal: true },
+                        }
+                        : { $literal: true },
+
+                      state
+                        ? {
+                            $eq: [
+                              { $toLower: "$$cityAvail.state" },
+                              state.toLowerCase(),
+                            ],
+                          }
+                        : { $literal: true },
+
+                      pincode
+                        ? {
+                            $and: [
+                              {
+                                $eq: [
+                                  {
+                                    $size: {
+                                      $filter: {
+                                        input: {
+                                          $ifNull: [
+                                            "$$cityAvail.pinCodes_excluded",
+                                            [],
+                                          ],
+                                        },
+                                        cond: { $eq: ["$$this", pincode] },
+                                      },
+                                    },
+                                  },
+                                  0,
+                                ],
+                              },
+                              // For pinCodes_included or other checks, keep as true or add logic
+                              { $literal: true },
+                            ],
+                          }
+                        : { $literal: true },
+                    ]
+                  }
                 ],
               },
             },
@@ -476,8 +502,22 @@ const getLabPartnerPackages = async (req, res) => {
     const [result] = await LabPackage.aggregate(aggregationPipeline);
 
     // Handle empty data
-    const packages = result?.data || [];
+    let packages = result?.data || [];
     const total = result?.metadata[0]?.total || 0;
+
+    if (packages?.length > 0) {
+      packages = packages.map(p => {
+        return {
+          ...p,
+          sampleRequiredCount: p?.sampleRequired?.length || 0,
+          preparationRequiredCount: p?.preparationRequired?.length || 0,
+          testIncluded: p?.testIncluded?.map(test => ({
+            ...test,
+            totalParameters: test?.parameters?.length || 0
+          }))
+        }
+      })
+    }
 
     return Response.success(
       res,
@@ -799,7 +839,15 @@ const getLabPartnerPackageById = async (req, res) => {
 
     return Response.success(
       res,
-      packageData,
+      {
+        ...packageData,
+        sampleRequiredCount: packageData?.sampleRequired?.length || 0,
+          preparationRequiredCount: packageData?.preparationRequired?.length || 0,
+          testIncluded: packageData?.testIncluded?.map(test => ({
+            ...test,
+            totalParameters: test?.parameters?.length || 0
+          }))
+      },
       200,
       "Lab partner package retrieved successfully"
     );

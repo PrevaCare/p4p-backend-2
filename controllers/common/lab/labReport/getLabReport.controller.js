@@ -114,6 +114,15 @@ const getBothLabReportOfAllUsers = async (req, res) => {
       ...existingLabReportOfUser,
     ];
 
+    if (responseLabReports?.length <= 0) {
+      return Response.success(
+        res,
+        responseLabReports,
+        404,
+        "No Lab Reports found!"
+      );
+    }
+
     return Response.success(
       res,
       responseLabReports,

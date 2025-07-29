@@ -42,7 +42,7 @@ const AppointmentSchema = new mongoose.Schema(
     },
     consultationType: {
       type: String,
-      enum: ["offline", "online"],
+      enum: ["onsite", "tele", "video"],
       required: [true, "Consultation type is required"],
     },
     status: {

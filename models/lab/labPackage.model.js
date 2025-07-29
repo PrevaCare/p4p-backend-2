@@ -20,13 +20,20 @@ const cityAvailabilitySchema = new mongoose.Schema({
   state: {
     type: String,
     trim: true,
-    required: true,
   },
   pinCodes_excluded: {
     type: [String],
     default: [],
   },
+  pinCodes_included: {
+    type: [String],
+    default: [],
+  },
   regions_excluded: {
+    type: [String],
+    default: [],
+  },
+  regions_included: {
     type: [String],
     default: [],
   },
@@ -88,6 +95,7 @@ const labPackage = new mongoose.Schema(
       trim: true,
     },
     desc: { type: String },
+    long_desc: { type: String },
     category: { type: String, required: [true, "category is required !"] },
     packageName: {
       type: String,

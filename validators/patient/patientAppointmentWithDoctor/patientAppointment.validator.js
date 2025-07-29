@@ -39,11 +39,11 @@ const patientAppointmentvadatorSchema = Joi.object({
     }),
 
   consultationType: Joi.string()
-    .valid("offline", "online")
+    .valid("onsite", "tele", "video")
     .required()
     .messages({
       "any.required": "Consultation type is required",
-      "any.only": "Consultation type must be either 'offline' or 'online'",
+      "any.only": "Consultation type must be either 'onsite', 'tele' or 'video'",
     }),
 
   status: Joi.string()

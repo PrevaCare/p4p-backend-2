@@ -1,7 +1,7 @@
 class Response {
   static success(res, data, statusCode, message, status = "Success") {
     return res.status(statusCode).json({
-      data: data,
+      data,
       message: message,
       statusCode: statusCode,
       status: status,

@@ -355,7 +355,7 @@ const getAppointmentDashboardCardDataByDoctorId = async (req, res) => {
           teleConsultations: [
             {
               $match: {
-                consultationType: "online",
+                consultationType: { $in: ["tele", "video"] },
                 status: { $ne: "cancelled" },
               },
             },
@@ -365,7 +365,7 @@ const getAppointmentDashboardCardDataByDoctorId = async (req, res) => {
           clinicConsultations: [
             {
               $match: {
-                consultationType: "offline",
+                consultationType: "onsite",
                 status: { $ne: "cancelled" },
               },
             },

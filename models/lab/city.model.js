@@ -10,7 +10,6 @@ const citySchema = new mongoose.Schema(
     },
     state: {
       type: String,
-      required: [true, "State is required"],
       trim: true,
     },
     pincode: {
@@ -57,9 +56,9 @@ citySchema.pre("findOneAndUpdate", function (next) {
   next();
 });
 
-citySchema.index(
-  { cityName: 1, state: 1 },
-  { unique: true, collation: { locale: "en", strength: 2 } }
-);
+// citySchema.index(
+//   { cityName: 1, state: 1 },
+//   { unique: true, collation: { locale: "en", strength: 2 } }
+// );
 
 module.exports = mongoose.model("City", citySchema);

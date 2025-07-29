@@ -46,7 +46,7 @@ const getNotificationCountByUserId = async (req, res) => {
 
 const getAllNotifications = async (req, res) => {
   try {
-    //
+    const limit = parseInt(req.query?.limit || 50)
     const { _id } = req.user;
     if (!_id) {
       return Response.error(
@@ -57,21 +57,27 @@ const getAllNotifications = async (req, res) => {
       );
     }
 
-    //
     const notifications = await notificationsModel.find(
       {
         userId: _id,
-        createdAt: {
-          $gte: getCurrentMonthDates().startDate,
-          $lte: getCurrentMonthDates().endDate,
-        },
       },
       "title message read createdAt"
+    ).limit(limit)
+      .lean();
+
+    // Set all notification as read
+    await notificationsModel.updateMany(
+      { userId: _id, read: { $ne: true } },  // Update only unread notifications
+      { $set: { read: true } }  // Set 'read' to true
     );
 
     return Response.success(
       res,
-      notifications,
+      {
+        notifications,
+        total: notifications?.length,
+        limit
+      },
       200,
       "notification count fetched !"
     );
