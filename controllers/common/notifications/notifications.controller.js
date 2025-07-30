@@ -63,6 +63,7 @@ const getAllNotifications = async (req, res) => {
       },
       "title message read createdAt"
     ).limit(limit)
+      .sort({createdAt: -1})
       .lean();
 
     // Set all notification as read

@@ -197,7 +197,7 @@ const getTeleconsultationData = async (req, res) => {
     const rawData = await Appointment.aggregate([
       {
         $match: {
-          consultationType: "online",
+          consultationType: { $in: ["tele", "video"] },
           appointmentDate: {
             $gte: startDate,
             $lte: endDate,
@@ -253,7 +253,7 @@ const getInPersonConsultationData = async (req, res) => {
     const rawData = await Appointment.aggregate([
       {
         $match: {
-          consultationType: "offline",
+          consultationType: "onsite",
           appointmentDate: {
             $gte: startDate,
             $lte: endDate,
