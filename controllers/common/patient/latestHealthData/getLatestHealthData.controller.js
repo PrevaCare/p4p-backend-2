@@ -355,9 +355,9 @@ const healthTrackerController = {
         bloodGroup: latestEMR?.basicInfo?.bloodGroup
           ? latestEMR?.basicInfo?.bloodGroup
           : null,
-        state: userAddress?.state || "",
-        city: userAddress?.city || "",
-        pincode: userAddress?.zipCode || "",
+        state: userAddress?.state?.trim() || "",
+        city: userAddress?.city?.trim() || "",
+        pincode: userAddress?.zipCode?.trim() || "",
         _id: patientId,
 
         // Add corporate details if available
