@@ -13,6 +13,8 @@ const AppConstant = require("../../../utils/AppConstant");
 const Response = require("../../../utils/Response");
 const City = require("../../../models/lab/city.model");
 
+var existingCodes = new Set()
+
 // Test CSV Schema
 const testCSVSchema = {
   // Required fields
@@ -652,7 +654,7 @@ const importLabPackages = async (req, res) => {
 
     // Parse the CSV file
     const csvData = await parseCSV(req.file.path);
-    console.log("CSV Data received:", csvData.length);
+    console.log("CSV Data received:", csvData.length, {data: JSON.stringify(csvData[0])});
 
     const results = {
       imported: 0,
@@ -662,48 +664,44 @@ const importLabPackages = async (req, res) => {
     };
 
     // Group rows by Package Code
-    const packageGroups = {};
+    // const packageGroups = {};
 
-    for (const row of csvData) {
-      const packageCode = row["Package Code"]?.trim();
+    // for (const row of csvData) {
+    //   const packageCode = row["Package Code"]?.trim();
 
-      if (!packageCode) {
-        results.errors.push("Row skipped: Package Code is required");
-        results.skipped++;
-        continue;
-      }
+    //   if (!packageCode) {
+    //     results.errors.push("Row skipped: Package Code is required");
+    //     results.skipped++;
+    //     continue;
+    //   }
 
-      if (!packageGroups[packageCode]) {
-        packageGroups[packageCode] = [];
-      }
+    //   if (!packageGroups[packageCode]) {
+    //     packageGroups[packageCode] = [];
+    //   }
 
-      packageGroups[packageCode].push(row);
-    }
+    //   packageGroups[packageCode].push(row);
+    // }
 
-    console.log(
-      `Grouped ${csvData.length} rows into ${
-        Object.keys(packageGroups).length
-      } packages`
-    );
+    // console.log(
+    //   `Grouped ${csvData.length} rows into ${
+    //     Object.keys(packageGroups).length
+    //   } packages`
+    // );
 
     // Process each package group
-    console.log(
-      `Processing ${Object.keys(packageGroups).length} packages one by one`
-    );
+    // console.log(
+    //   `Processing ${Object.keys(packageGroups).length} packages one by one`
+    // );
 
-    for (const [packageCode, rows] of Object.entries(packageGroups)) {
+    for (const row of csvData) {
       try {
-        console.log(
-          `Processing package: ${packageCode} with ${rows.length} cities`
-        );
 
         // Use the first row for common package data
-        const firstRow = rows[0];
-        const packageName = firstRow["Package Name"]?.trim();
+        const packageName = row["Package Name"]?.trim();
 
         if (!packageName) {
           results.errors.push(
-            `Package Name is required for code ${packageCode}`
+            `Package Name is required - ${JSON.stringify(row)}`
           );
           results.skipped++;
           continue;
@@ -712,115 +710,134 @@ const importLabPackages = async (req, res) => {
         // Process city availability for all rows in this package
         const cityAvailabilityArray = [];
 
-        for (const row of rows) {
-          try {
-            // Find or create city
-            const cityName = row["Location_place_name"]?.trim();
-            const pincode = row["Location_pincode"]?.trim();
+        try {
+          // Find or create city
+          const includedRegions = row["Included Regions"]?.trim()?.split(',')
+          const cityName = row["Location_place_name"]?.trim();
+          const pincode = row["Location_pincode"]?.trim();
 
-            if (!cityName || !pincode) {
-              console.warn(
-                `Skipping city entry with missing data for package ${packageCode}`
-              );
-              continue;
-            }
+          console.log({includedRegions: includedRegions?.length})
 
-            let city = await City.findOne({
+          if ((includedRegions && includedRegions?.length <= 0) && (!cityName || !pincode)) {
+            console.warn(
+              `Skipping city entry with missing data for package ${packageName}`
+            );
+            continue;
+          }
+
+          let city = await City.findOne({
+            cityName: cityName.toLowerCase(),
+            pinCode: pincode,
+          });
+
+          if (!city && cityName && pincode) {
+            city = await City.create({
               cityName: cityName.toLowerCase(),
-              pinCode: pincode,
-            });
-
-            if (!city) {
-              city = await City.create({
-                cityName: cityName.toLowerCase(),
-                pincode: pincode,
-                isActive: true,
-              });
-            }
-
-            // Calculate prices for this city
-            const billingRate = parseFloat(row["Billing Rate"]) || 0;
-            const partnerRate = parseFloat(row["Partner Rate"]) || 0;
-            const prevaCarePriceForCorporate =
-              parseFloat(row["PrevaCare Price for Corporate"]) || 0;
-            const prevaCarePriceForIndividual =
-              parseFloat(row["PrevaCare Price for Individual"]) || 0;
-            const discountPrice =
-              parseFloat(row["Discount Price"]) || prevaCarePrice;
-            const discountPercentage =
-              prevaCarePriceForCorporate > 0
-                ? Math.round(
-                    ((prevaCarePrice - discountPrice) / prevaCarePrice) * 100
-                  )
-                : 0;
-
-            // Add this city to the availability array
-            cityAvailabilityArray.push({
-              cityId: city._id,
-              cityName: city.cityName,
-              pinCode: city.pincode,
-              isAvailable: true,
-              billingRate: billingRate,
-              partnerRate: partnerRate,
-              prevaCarePriceForCorporate: prevaCarePriceForCorporate,
-              prevaCarePriceForIndividual: prevaCarePriceForIndividual,
-              discountPrice: discountPrice,
-              discountPercentage: discountPercentage,
-              homeCollectionCharge:
-                parseFloat(row["Home Collection Charges"]) || 0,
-              homeCollectionAvailable:
-                row["Home Collection available"] === "TRUE",
+              pincode: pincode,
               isActive: true,
             });
-          } catch (cityError) {
-            console.error(
-              `Error processing city for package ${packageCode}:`,
-              cityError
-            );
           }
+
+          // Calculate prices for this city
+          const billingRate = parseFloat(row["Billing Rate"]) || 0;
+          const partnerRate = parseFloat(row["Partner Rate"]) || 0;
+          const prevaCarePriceForIndividual =
+            parseFloat(row["PrevaCare Price for Individual"]) || billingRate || 0;
+          const prevaCarePriceForCorporate =
+            parseFloat(row["PrevaCare Price for Corporate"]) || billingRate || 0;
+            const corporateBulkPrice =
+            parseFloat(row["Corporate Bulk Price"]) || billingRate || 0;
+          const discountPrice = 0
+            // parseFloat(row["Discount Price"]) || prevaCarePrice;
+          const discountPercentage =
+            prevaCarePriceForCorporate > 0
+              ? Math.round(
+                  ((billingRate - prevaCarePriceForCorporate) / billingRate) * 100
+                )
+              : 0;
+
+          // Add this city to the availability array
+          cityAvailabilityArray.push({
+            cityId: city?._id,
+            cityName: city?.cityName,
+            pinCode: city?.pincode,
+            isAvailable: true,
+            billingRate: billingRate,
+            partnerRate: partnerRate,
+            prevaCarePriceForCorporate: prevaCarePriceForCorporate,
+            prevaCarePriceForIndividual: prevaCarePriceForIndividual,
+            discountPrice: discountPrice,
+            discountPercentage: discountPercentage,
+            homeCollectionCharge:
+              parseFloat(row["Home Collection Charges"] ? (row["Home Collection Charges"]?.toLowerCase() === "nil" ? 0 : row["Home Collection Charges"]) : 0) || 0,
+            homeCollectionAvailable:
+              row["Home Collection available"]?.toLowerCase() === "true" || row["Home Collection available"] === "1",
+            isActive: true,
+            regions_included: row["Included Regions"]?.trim()?.split(',') || [],
+            pinCodes_included: row["Included Location Pincodes"] ? row["Included Location Pincodes"]?.trim()?.split(',') : [],
+            pinCodes_excluded: row["Excluded Location Pincodes"] ? row["Excluded Location Pincodes"]?.trim()?.split(',') : [],
+          });
+        } catch (cityError) {
+          console.error(
+            `Error processing city for package ${packageName}:`,
+            cityError
+          );
         }
 
         if (cityAvailabilityArray.length === 0) {
           results.errors.push(
-            `No valid cities found for package ${packageCode}`
+            `No valid cities found for package ${packageName}`
           );
           results.skipped++;
           continue;
         }
 
-        // Parse tests included
-        const testsIncluded = firstRow["Tests Included"]
-          ? firstRow["Tests Included"]
-              .split(",")
-              .map((test) => test.trim())
-              .filter((test) => test)
-              .map((test) => ({
-                test: test,
-                parameters: [],
-              }))
+        const parameters = row["parameters"]
+          ? row["parameters"].split("|").map(p => p.trim()).filter(Boolean)
           : [];
 
+        // Parse tests included
+        const testsIncluded = row["Tests Included"]
+        ? row["Tests Included"]
+            .split(",")
+            .map(test => test.trim())
+            .filter(Boolean)
+            .map((test, index) => ({
+              test,
+              parameters: parameters[index]
+                ? parameters[index].split(",").map(p => p.trim()).filter(Boolean)
+                : []
+            }))
+        : [];
+
         console.log("Raw package data for:", {
-          packageCode,
-          firstRow: JSON.stringify(firstRow),
+          packageName,
+          row: JSON.stringify(row),
           cityCount: cityAvailabilityArray.length,
         });
+
+        let code = "00000"
+        do {
+          code = Math.floor(10000 + Math.random() * 90000); // 5-digit
+        } while (existingCodes.has(code));
+
+        const packageCode = `PREVACARE${code}`
 
         // Create complete package data
         const packageData = {
           labId: labId,
           packageName: packageName,
           packageCode: packageCode,
-          PackageCode: packageCode,
-          category: firstRow["Category"]?.trim() || "General",
-          desc: firstRow["Description"]?.trim() || "",
-          ageGroup: firstRow["Age Group"]?.trim() || "all age group",
-          gender: firstRow["Gender"]?.trim() || "both",
-          sampleRequired: firstRow["Samples Required"]
-            ? firstRow["Samples Required"].split(",").map((s) => s.trim())
+          category: row["Category"]?.trim() || "General",
+          desc: row["Short Description"]?.trim() || "",
+          long_desc: row["Long Description"]?.trim() || "",
+          ageGroup: row["Age Group"]?.trim() || "all age group",
+          gender: row["Gender"]?.trim() ? (row["Gender"]?.trim() === "M/F" ? "both" : row["Gender"]?.trim()) : "both",
+          sampleRequired: row["Samples Required"]
+            ? row["Samples Required"].split(",").map((s) => s.trim())
             : [],
-          preparationRequired: firstRow["Preparation Required"]
-            ? firstRow["Preparation Required"].split(",").map((s) => s.trim())
+          preparationRequired: row["Preparation Required"]
+            ? row["Preparation Required"].split(",").map((s) => s.trim())
             : [],
           testIncluded: testsIncluded,
           cityAvailability: cityAvailabilityArray,
@@ -828,7 +845,6 @@ const importLabPackages = async (req, res) => {
         };
 
         console.log("Final package data:", {
-          packageCode: packageData.packageCode,
           labId: packageData.labId,
           cities: packageData.cityAvailability.length,
           tests: packageData.testIncluded.length,
