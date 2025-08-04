@@ -674,9 +674,9 @@ const appLogin = async (req, res) => {
     const { phone } = req.body;
     const existingUser = await User.findOne({ phone });
 
-    if (!existingUser) {
-      return Response.error(res, 404, AppConstant.FAILED, "User not found!");
-    }
+    // if (!existingUser) {
+    //   return Response.error(res, 404, AppConstant.FAILED, "User not found!");
+    // }
 
     // create random 6-digit otp and sent using msg 91
     await otpModel.deleteMany({ phone });
@@ -686,15 +686,15 @@ const appLogin = async (req, res) => {
     await newOtp.save();
 
     const emr = await EMR.findOne({
-      user: existingUser._id
+      user: existingUser?._id
     })
 
     const eprescriptions = await Eprescriptions.findOne({
-      user: new mongoose.Types.ObjectId(existingUser._id),
+      user: new mongoose.Types.ObjectId(existingUser?._id),
     })
 
     const userEprescription = await UserExistingEprescription.findOne({
-      user: new mongoose.Types.ObjectId(existingUser._id),
+      user: new mongoose.Types.ObjectId(existingUser?._id),
     })
 
     if (!emr && (!eprescriptions || !userEprescription)) {
