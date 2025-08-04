@@ -492,25 +492,25 @@ const register = async (req, res) => {
 };
 
 const registerIndividualUser = async (req, res) => {
-  const { phone, email, password, ...otherFields } = req.body;
+  const { phone, email, password, key, ...otherFields } = req.body;
   const role = "IndividualUser"
 
-  if (!phone || !email || !role) {
+  if (!phone || !email || !key) {
     return Response.error(
       res,
       400,
       AppConstant.FAILED,
-      "Please provide all required fields - phone, email !"
+      "Please provide all required fields - phone, email, key !"
     );
   }
-  // if (key !== "3153218268346369" || role !== "IndividualUser") {
-  //   return Response.error(
-  //     res,
-  //     400,
-  //     AppConstant.FAILED,
-  //     "Invalid key or role provided !"
-  //   );
-  // }
+  if (key !== "3153218268346369") {
+    return Response.error(
+      res,
+      400,
+      AppConstant.FAILED,
+      "Invalid key provided !"
+    );
+  }
   const encryptedPassword = CryptoJS.AES.encrypt(
     password || `${phone}@123`,
     process.env.AES_SEC
@@ -546,19 +546,18 @@ const registerIndividualUser = async (req, res) => {
       ? (await uploadToS3(profileImg)).Location
       : null;
 
-    // if (clientType === "mobile") {
-    //   const isExistingOtpVerified = await otpModel.findOne({
-    //     $and: [{ phone }, { isVerified: true }],
-    //   });
-    //   if (!isExistingOtpVerified) {
-    //     return Response.error(
-    //       res,
-    //       400,
-    //       AppConstant.FAILED,
-    //       "Please verify otp first !"
-    //     );
-    //   }
-    // }
+    const isExistingOtpVerified = await otpModel.findOne({
+      $and: [{ phone }, { isVerified: true }],
+    });
+    if (!isExistingOtpVerified) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "Please verify otp first !"
+      );
+    }
+
     user = new IndividualUser({
       profileImg: uploadedProfileImg,
       phone,
@@ -568,25 +567,16 @@ const registerIndividualUser = async (req, res) => {
       ...otherFields,
     });
 
-    // const accessToken = generateToken(user);
-    // const refreshToken = generateRefreshToken(user);
-    // user.accessToken.push(accessToken);
-    // user.refreshToken.push(refreshToken);
+    const accessToken = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
+    user.accessToken.push(accessToken);
+    user.refreshToken.push(refreshToken);
 
     const savedUser = await user.save();
 
-    // create random 6-digit otp and sent using msg 91
-    await otpModel.deleteMany({ phone });
-    const otp = generateOtp();
-    const newOtp = new otpModel({ phone, otp });
-    await sendOtp(phone, otp);
-    await newOtp.save();
-
-    const { password, accessToken: token, refreshToken: rToken, ...rest} = savedUser.toObject()
-
     return Response.success(
       res,
-      rest,
+      savedUser,
       201,
       "User registered successfully !"
     );
@@ -751,6 +741,67 @@ const appLogin = async (req, res) => {
   }
 };
 
+const appSignup = async (req, res) => {
+  try {
+    const { "x-api-key": apiKey } = req.headers;
+    const decodedBase64 = Buffer.from(apiKey, "base64")
+      .toString("utf-8")
+      .trim();
+    const appLoginSecretKey = process.env.APP_LOGIN_KEY;
+    // console.log("=" + decodedBase64 + "+");
+    // console.log("=" + appLoginSecretKey + "+");
+    if (decodedBase64 !== appLoginSecretKey) {
+      return Response.error(
+        res,
+        401,
+        AppConstant.FAILED,
+        "You are not authenticated !"
+      );
+    }
+
+    const { error } = appLoginSchema.validate(req.body);
+    if (error) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        error.message || "validation failed"
+      );
+    }
+
+    const { phone } = req.body;
+    const existingUser = await User.findOne({ phone });
+
+    if (existingUser) {
+      return Response.error(res, 404, AppConstant.FAILED, "User already exist with this phone number!");
+    }
+
+    // create random 6-digit otp and sent using msg 91
+    const otp = generateOtp();
+    const newOtp = new otpModel({ phone, otp });
+    await sendOtp(phone, otp);
+    await newOtp.save();
+
+    return Response.success(
+      res,
+      {
+        phone
+      },
+      200,
+      AppConstant.SUCCESS,
+      "Otp has been send to your phone !"
+    );
+  } catch (err) {
+    // console.log(err);
+    return Response.error(
+      res,
+      500,
+      AppConstant.FAILED,
+      err.message || "Internal server error !"
+    );
+  }
+};
+
 // verify otp
 const verifyOtpAndLogin = async (req, res) => {
   try {
@@ -851,7 +902,7 @@ const verifyOtpAndLogin = async (req, res) => {
           isUserExist: false,
         },
         200,
-        "User logged in successfully !"
+        "Otp verified successfully!"
       );
     }
   } catch (err) {
@@ -1071,6 +1122,7 @@ module.exports = {
   login,
   verifyOtpAndLogin,
   appLogin,
+  appSignup,
   logout,
   refreshAccessToken,
   forgotPassword,

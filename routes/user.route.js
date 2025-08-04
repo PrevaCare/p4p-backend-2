@@ -7,6 +7,7 @@ const {
   forgotPassword,
   updatePassword,
   appLogin,
+  appSignup,
   verifyOtpAndLogin,
   registerIndividualUser,
 } = require("../controllers/auth/auth.controller.js");
@@ -98,6 +99,7 @@ router.post("/admin/users", getUserById);
 
 // app
 router.post("/app/user/login", appLogin);
+router.post("/app/user/signup", appSignup);
 router.post("/app/user/verify-otp", verifyOtpAndLogin);
 
 router.get("/app/user/details", verifyAndAuthoriseToken, getAppUserDetails);
