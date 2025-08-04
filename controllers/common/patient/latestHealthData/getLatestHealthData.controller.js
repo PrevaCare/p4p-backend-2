@@ -23,6 +23,7 @@ const corporatePlanModel = require("../../../../models/corporates/corporatePlan.
 const Employee = require("../../../../models/patient/employee/employee.model.js");
 const LiverRiskCalculator = require("../../../../models/patient/riskAssessments/liverRiskCalculate.model.js");
 const HealthScore = require("../../../../models/patient/healthScore/healthScore.model.js")
+const IndividualUser = require("../../../../models/individualUser/induvidualUser.model.js")
 
 const healthTrackerController = {
   async getLatestHealthData(req, res) {
