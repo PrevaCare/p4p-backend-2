@@ -135,7 +135,7 @@ const updateUserDetails = async (req, res) => {
   if (email) {
     const emailUser = await User.findOne({ email })
 
-    if (emailUser) {
+    if (emailUser && user.email !== emailUser?.email) {
       return Response.error(res, 400, "Failure", 'User already exists with this email')
     }
   }
@@ -153,23 +153,79 @@ const updateUserDetails = async (req, res) => {
     }
   }
 
-  if (addressName && user.address) user.address.name = addressName;
-  if (street && user.address) user.address.street = street;
-  if (city && user.address) user.address.city = city;
-  if (state && user.address) user.address.state = state;
-  if (pincode && user.address) user.address.pincode = pincode;
+  let changesMade = false;
 
-  // Update other user details if provided
-  if (profileImgUrl) user.profileImg = profileImgUrl;
-  if (email) user.email = email;
-  if (firstName) user.firstName = firstName;
-  if (lastName) user.lastName = lastName;
-  if (gender) user.gender = gender;
-  if (age) user.age = age;
-  if (weight) user.weight = weight;
-  if (height) user.height = height;
-  if (jobProfile) user.jobProfile = jobProfile;
-  if (isMarried) user.isMarried = !!isMarried;
+  if (addressName && user.address?.name !== addressName) {
+    user.address.name = addressName;
+    changesMade = true;
+  }
+  if (street && user.address?.street !== street) {
+    user.address.street = street;
+    changesMade = true;
+  }
+  if (city && user.address?.city !== city) {
+    user.address.city = city;
+    changesMade = true;
+  }
+  if (state && user.address?.state !== state) {
+    user.address.state = state;
+    changesMade = true;
+  }
+  if (pincode && user.address?.pincode !== pincode) {
+    user.address.pincode = pincode;
+    changesMade = true;
+  }
+
+  // Update other fields only if they have changed
+  if (profileImgUrl && user.profileImg !== profileImgUrl) {
+    user.profileImg = profileImgUrl;
+    changesMade = true;
+  }
+  if (email && user.email !== email) {
+    user.email = email;
+    changesMade = true;
+  }
+  if (firstName && user.firstName !== firstName) {
+    user.firstName = firstName;
+    changesMade = true;
+  }
+  if (lastName && user.lastName !== lastName) {
+    user.lastName = lastName;
+    changesMade = true;
+  }
+  if (gender && user.gender !== gender) {
+    user.gender = gender;
+    changesMade = true;
+  }
+  if (age && user.age !== age) {
+    user.age = age;
+    changesMade = true;
+  }
+  if (weight && user.weight !== weight) {
+    user.weight = weight;
+    changesMade = true;
+  }
+  if (height && user.height !== height) {
+    user.height = height;
+    changesMade = true;
+  }
+  if (jobProfile && user.jobProfile !== jobProfile) {
+    user.jobProfile = jobProfile;
+    changesMade = true;
+  }
+  if (isMarried && user.isMarried !== !!isMarried) {
+    user.isMarried = !!isMarried;
+    changesMade = true;
+  }
+
+  if (!changesMade) {
+    return Response.error(
+      res,
+      400,
+      AppConstant.FAILED,
+      "No changes were made to the user details"
+    );
+  }
 
    // Save the updated user details
    const updatedUser = await user.save();
