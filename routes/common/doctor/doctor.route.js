@@ -26,7 +26,7 @@ router.get(
 );
 
 // Doctor by category endpoint restricted to individual users and employees
-router.get(
+router.post(
   "/app/doctor-by-category",
   verifyToken,
   checkRoleAccess(["IndividualUser", "Employee"]),
