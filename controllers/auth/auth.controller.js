@@ -755,7 +755,7 @@ const verifyOtpAndLogin = async (req, res) => {
       );
     }
 
-    if (phone === "9899500873" && otp === "000000") {
+    if ((phone === "9899500873" || phone === "7455090168") && otp === "000000") {
       // continue this phone and otp for testing
     } else {
       // compare otp if ok then delete from otp
