@@ -529,6 +529,17 @@ const registerIndividualUser = async (req, res) => {
     //   );
     // }
 
+    const existingUser = await User.findOne({ phone })
+
+    if (existingUser) {
+      return Response.error(
+        res,
+        400,
+        AppConstant.FAILED,
+        "User already exist with this phone number!"
+      );
+    }
+
     profileImg = req.files && req.files.length > 0 && req.files.profileImg[0];
 
     uploadedProfileImg = profileImg
@@ -557,15 +568,25 @@ const registerIndividualUser = async (req, res) => {
       ...otherFields,
     });
 
-    const accessToken = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
-    user.accessToken.push(accessToken);
-    user.refreshToken.push(refreshToken);
+    // const accessToken = generateToken(user);
+    // const refreshToken = generateRefreshToken(user);
+    // user.accessToken.push(accessToken);
+    // user.refreshToken.push(refreshToken);
 
     const savedUser = await user.save();
+
+    // create random 6-digit otp and sent using msg 91
+    await otpModel.deleteMany({ phone });
+    const otp = generateOtp();
+    const newOtp = new otpModel({ phone, otp });
+    await sendOtp(phone, otp);
+    await newOtp.save();
+
+    const { password, accessToken: token, refreshToken: rToken, ...rest} = savedUser.toObject()
+
     return Response.success(
       res,
-      savedUser,
+      rest,
       201,
       "User registered successfully !"
     );
