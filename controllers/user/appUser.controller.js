@@ -122,7 +122,7 @@ const getUserPlans = async (req, res) => {
 
 const updateUserDetails = async (req, res) => {
   try {
-  const { firstName, lastName, email, gender, age, weight, height, addressName, street, state, city, zipCode, jobProfile, isMarried } = req.body;
+  const { firstName, lastName, email, gender, age, weight, height, addressName, street, state, city, pincode, jobProfile, isMarried } = req.body;
   const userId = req.user._id
   const UserModel = req.user.role === 'Employee' ? require('../../models/patient/employee/employee.model.js') : require('../../models/individualUser/induvidualUser.model.js');
 
@@ -157,7 +157,7 @@ const updateUserDetails = async (req, res) => {
   if (street && user.address) user.address.street = street;
   if (city && user.address) user.address.city = city;
   if (state && user.address) user.address.state = state;
-  if (zipCode && user.address) user.address.zipCode = zipCode;
+  if (pincode && user.address) user.address.pincode = pincode;
 
   // Update other user details if provided
   if (profileImgUrl) user.profileImg = profileImgUrl;

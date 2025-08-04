@@ -15,7 +15,7 @@ const dummyTest2 = {
       street: "Second",
       city: "New delhi",
       state: "Delhi",
-      zipCode: "110049",
+      pincode: "110049",
       _id: "671b4f5abc17933f93d74d67",
     },
   },
@@ -138,7 +138,7 @@ const dummyAdultFemaleEMRData = {
       street: "456 Maple St",
       city: "Los Angeles",
       state: "CA",
-      zipCode: "90001",
+      pincode: "90001",
     },
   },
   history: {

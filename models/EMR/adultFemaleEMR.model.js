@@ -6,7 +6,7 @@ const EMR = require("../common/emr.model");
 //   street: { type: String, required: true },
 //   city: { type: String, required: true },
 //   state: { type: String, required: true },
-//   zipCode: { type: String, required: true },
+//   pincode: { type: String, required: true },
 // });
 // Schema for Gynaecological History
 const GynaecologicalHistorySchema = new mongoose.Schema({

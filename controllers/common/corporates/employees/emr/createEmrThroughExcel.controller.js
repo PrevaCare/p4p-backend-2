@@ -176,7 +176,7 @@ const downloadSampleExcelFileToCreateEMR = async (req, res) => {
       { header: "Street", key: "street", width: 25 },
       { header: "City", key: "city", width: 20 },
       { header: "State", key: "state", width: 20 },
-      { header: "Zip Code", key: "zipCode", width: 15 },
+      { header: "Pin Code", key: "pincode", width: 15 },
 
       // Continue with all other fields from previous EMR...
       // History
@@ -499,7 +499,7 @@ const downloadSampleExcelFileToCreateEMR = async (req, res) => {
       street: "123 Main St",
       city: "Mumbai",
       state: "Maharashtra",
-      zipCode: "400001",
+      pincode: "400001",
       chiefComplaint: "Fever and body ache",
       historyOfPresentingIllness: "Fever since 3 days",
       // past history
@@ -744,7 +744,7 @@ const createAllEmployeeEmrThroughExcel = async (req, res) => {
             street: item["Street"],
             city: item["City"],
             state: item["State"],
-            zipCode: item["Zip Code"],
+            pincode: item["Pin Code"],
           },
         },
 

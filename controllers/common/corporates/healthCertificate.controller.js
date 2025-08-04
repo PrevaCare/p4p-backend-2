@@ -38,7 +38,7 @@ const generateCorporateHealthCertificate = async (req, res) => {
 
     // Step 1: Fetch corporate details including assigned doctors and addresses
     const corporateData = await Corporate.findById(corporate)
-      .populate("addresses", "name city state zipCode")
+      .populate("addresses", "name city state pincode")
       .populate(
         "assignedDoctors",
         "firstName lastName specialization education.degree medicalRegistrationNumber eSign"
@@ -136,7 +136,7 @@ const generateCorporateHealthCertificate = async (req, res) => {
         corporateData.addresses[0]?.name || "Address not available"
       }, ${corporateData.addresses[0]?.city || ""}, ${
         corporateData.addresses[0]?.state || ""
-      }, ${corporateData.addresses[0]?.zipCode || ""}`,
+      }, ${corporateData.addresses[0]?.pincode || ""}`,
       doctor: corporateData.assignedDoctors.slice(0, 3).map((doc) => ({
         _id: doc._id,
         firstName: doc.firstName,
@@ -618,7 +618,7 @@ const generateCorporateEmployeeFitnessCertificate = async (req, res) => {
           .populate({
             path: "corporate",
             select: "companyName addresses",
-            populate: { path: "addresses", select: "name city zipCode state" },
+            populate: { path: "addresses", select: "name city pincode state" },
           })
           .lean(),
 
@@ -713,7 +713,7 @@ const generateCorporateEmployeeFitnessCertificate = async (req, res) => {
       address: `${corporate.addresses[0]?.name || "Address not available"}, ${
         corporate.addresses[0]?.city || ""
       }, ${corporate.addresses[0]?.state || ""}, ${
-        corporate.addresses[0]?.zipCode || ""
+        corporate.addresses[0]?.pincode || ""
       }`,
       employeeId: _id,
       certificationId: `EMP-FC-${Date.now().toString().slice(-6)}`,

@@ -357,7 +357,7 @@ const healthTrackerController = {
           : null,
         state: userAddress?.state?.trim() || "",
         city: userAddress?.city?.trim() || "",
-        pincode: userAddress?.zipCode?.trim() || "",
+        pincode: userAddress?.pincode?.trim() || "",
         addressName: userAddress?.name?.trim() || "",
         street: userAddress?.street?.trim() || "",
         _id: patientId,

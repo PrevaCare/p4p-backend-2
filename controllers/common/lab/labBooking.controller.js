@@ -237,7 +237,7 @@ const createLabBooking = async (req, res) => {
     );
 
     if (!pinCode) {
-      pinCode = userInfo?.address?.pinCode || userInfo?.address?.zipCode || ""
+      pinCode = userInfo?.address?.pinCode || userInfo?.address?.pincode || ""
     }
 
     // let userAddress = null;

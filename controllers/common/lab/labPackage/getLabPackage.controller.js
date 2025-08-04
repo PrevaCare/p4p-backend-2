@@ -307,7 +307,7 @@ const searchLabPackages = async (req, res) => {
       maxPrice, // maximum prevaCarePrice
       cityName, // city name for availability search
       state, // state for availability search
-      zipCode, // zipCode filter
+      pincode, // pincode filter
       homeAvailability, // filter by home collection availability
       isActive, // filter by active status
       minDiscount, // minimum discount percentage
@@ -393,11 +393,11 @@ const searchLabPackages = async (req, res) => {
       cityFilters.push(cityFilter);
     }
 
-    // Add zipCode filter if provided
-    if (zipCode) {
-      // Make sure zipCode is not in the excluded pincodes array
+    // Add pincode filter if provided
+    if (pincode) {
+      // Make sure pincode is not in the excluded pincodes array
       cityFilters.push({
-        "cityAvailability.pinCodes_excluded": { $not: { $in: [zipCode] } },
+        "cityAvailability.pinCodes_excluded": { $not: { $in: [pincode] } },
       });
     }
 

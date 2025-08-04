@@ -5,7 +5,7 @@ const addressSchema = Joi.object({
   street: Joi.string().optional(),
   city: Joi.string().optional(),
   state: Joi.string().optional(),
-  zipCode: Joi.string()
+  pincode: Joi.string()
     .pattern(/^\d{5,6}$/)
     .optional(),
 }).optional();

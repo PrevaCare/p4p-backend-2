@@ -2088,7 +2088,7 @@ function getEmrHTML(emrPdfData, logoBase64) {
               <tr><th>Address</th><td>${basicInfo.address?.name || ""}, ${
                 basicInfo.address?.street || ""
               }, ${basicInfo.address?.city || ""}, ${basicInfo.address?.state || ""} - ${
-                basicInfo.address?.zipCode || ""
+                basicInfo.address?.pincode || ""
               }</td></tr>
             </tbody>
           </table>

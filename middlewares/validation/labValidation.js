@@ -29,7 +29,7 @@ const validateCityData = (city) => {
       if (!/^\d{6}$/.test(pinCode.trim())) {
         return {
           isValid: false,
-          error: `Invalid zipcode format in excluded list: ${pinCode}. Must be 6 digits.`,
+          error: `Invalid pincode format in excluded list: ${pinCode}. Must be 6 digits.`,
         };
       }
     }
@@ -128,7 +128,7 @@ const validateAddLabData = async (req, res, next) => {
       "street",
       "city",
       "state",
-      "zipCode",
+      "pincode",
     ];
     for (const field of requiredAddressFields) {
       if (!address[field] || !address[field].trim()) {
@@ -141,13 +141,13 @@ const validateAddLabData = async (req, res, next) => {
       }
     }
 
-    // Validate zipCode format in address
-    if (!/^\d{6}$/.test(address.zipCode.trim())) {
+    // Validate pincode format in address
+    if (!/^\d{6}$/.test(address.pincode.trim())) {
       return Response.error(
         res,
         400,
         AppConstant.FAILED,
-        `Invalid zipcode format in address: ${address.zipCode}. Must be 6 digits.`
+        `Invalid pincode format in address: ${address.pincode}. Must be 6 digits.`
       );
     }
 
@@ -270,7 +270,7 @@ const validateLabUpdateData = async (req, res, next) => {
         "street",
         "city",
         "state",
-        "zipCode",
+        "pincode",
       ];
       for (const field of requiredAddressFields) {
         if (
@@ -286,16 +286,16 @@ const validateLabUpdateData = async (req, res, next) => {
         }
       }
 
-      // Validate zipCode format in address if provided
+      // Validate pincode format in address if provided
       if (
-        req.body.address.zipCode &&
-        !/^\d{6}$/.test(req.body.address.zipCode.trim())
+        req.body.address.pincode &&
+        !/^\d{6}$/.test(req.body.address.pincode.trim())
       ) {
         return Response.error(
           res,
           400,
           AppConstant.FAILED,
-          `Invalid zipcode format in address: ${req.body.address.zipCode}. Must be 6 digits.`
+          `Invalid pincode format in address: ${req.body.address.pincode}. Must be 6 digits.`
         );
       }
     }
@@ -426,7 +426,7 @@ const validateCityCreation = async (req, res, next) => {
             res,
             400,
             AppConstant.FAILED,
-            `Invalid zipcode format in excluded list: ${pinCode}. Must be 6 digits.`
+            `Invalid pincode format in excluded list: ${pinCode}. Must be 6 digits.`
           );
         }
       }

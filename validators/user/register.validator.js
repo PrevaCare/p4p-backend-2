@@ -17,7 +17,7 @@ const addressSchema = Joi.object({
   city: Joi.string().required(),
   state: Joi.string().required(),
   // country: Joi.string().required(),
-  zipCode: Joi.string().required(),
+  pincode: Joi.string().required(),
   landmark: Joi.string().optional(),
 });
 const employeeAddressSchema = Joi.object({
@@ -27,7 +27,7 @@ const employeeAddressSchema = Joi.object({
   city: Joi.string().required(),
   state: Joi.string().required(),
   // country: Joi.string().required(),
-  zipCode: Joi.string().required(),
+  pincode: Joi.string().required(),
   landmark: Joi.string().optional(),
 });
 
@@ -158,13 +158,13 @@ const AddressSchema = Joi.object({
   street: Joi.string().required(),
   city: Joi.string().required(),
   state: Joi.string().required(),
-  zipCode: Joi.string().required(),
+  pincode: Joi.string().required(),
 });
 const OfflineConsultaionAddress = Joi.object({
   street: Joi.string().required(),
   city: Joi.string().required(),
   state: Joi.string().required(),
-  zipCode: Joi.string().required(),
+  pincode: Joi.string().required(),
 });
 
 const DoctorRegistrationSchema = Joi.object({
@@ -281,7 +281,7 @@ const instituteStudentRegistrationSchema = Joi.object({
 //   street: Joi.string().required(),
 //   city: Joi.string().required(),
 //   state: Joi.string().required(),
-//   zipCode: Joi.string().required()
+//   pincode: Joi.string().required()
 // });
 
 // const currentReportSchema = Joi.object({

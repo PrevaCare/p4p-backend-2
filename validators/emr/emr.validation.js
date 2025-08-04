@@ -6,7 +6,7 @@ const addressSchema = Joi.object({
   street: Joi.string().allow(null, "").required(),
   city: Joi.string().allow(null, "").required(),
   state: Joi.string().allow(null, "").required(),
-  zipCode: Joi.string().allow(null, "").required(),
+  pincode: Joi.string().allow(null, "").required(),
 });
 
 // Joi schema for General Physical Examination

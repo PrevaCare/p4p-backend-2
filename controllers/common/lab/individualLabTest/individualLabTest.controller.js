@@ -420,7 +420,7 @@ const searchIndividualLabTest = async (req, res) => {
       minPrice,
       maxPrice,
       city,
-      zipCode,
+      pincode,
       home_collection,
     } = req.body;
 
@@ -448,13 +448,13 @@ const searchIndividualLabTest = async (req, res) => {
     }
 
     // Handle location search
-    if (city || zipCode) {
+    if (city || pincode) {
       const cityQuery = {};
       if (city) {
         cityQuery.cityName = { $regex: new RegExp(city, "i") };
       }
-      if (zipCode) {
-        cityQuery.pincode = zipCode;
+      if (pincode) {
+        cityQuery.pincode = pincode;
       }
 
       const cities = await City.find(cityQuery);

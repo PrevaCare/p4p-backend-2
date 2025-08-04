@@ -266,7 +266,7 @@ const getLabPartnerPackages = async (req, res) => {
     
     if (!pincode) {
       const user = await User.findById(req.user?._id)
-      pincode = user?.address?.zipCode || user?.address?.pinCode
+      pincode = user?.address?.pincode || user?.address?.pinCode
     }
   
     // Validate labId format

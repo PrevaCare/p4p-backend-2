@@ -90,11 +90,11 @@ const createLab = async (req, res) => {
           continue;
         }
         let city;
-        if (cityData.zipCode) {
+        if (cityData.pincode) {
           city = await City.findOne({
             cityName: normalizedCityName,
             state: normalizedState,
-            pincode: cityData.zipCode,
+            pincode: cityData.pincode,
           });
         } else {
           city = await City.findOne({
@@ -129,11 +129,11 @@ const createLab = async (req, res) => {
         } else {
           // Create new city if it doesn't exist
           console.log("cityData", cityData);
-          if (cityData.zipCode) {
+          if (cityData.pincode) {
             city = await City.create({
               cityName: normalizedCityName,
               state: normalizedState,
-              pincode: cityData.zipCode,
+              pincode: cityData.pincode,
               isActive: true,
             });
           } else {
@@ -181,7 +181,7 @@ const createLab = async (req, res) => {
         street: req.body.address.street,
         city: req.body.address.city,
         state: req.body.address.state,
-        zipCode: req.body.address.zipCode,
+        pincode: req.body.address.pincode,
       },
       accountsDetail: req.body.accountsDetail || {},
     };

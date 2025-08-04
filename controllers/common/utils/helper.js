@@ -13,7 +13,7 @@ const getFormattedBasicInfo = (userData, latestEmr) => ({
     street: userData?.address?.street || "",
     city: userData?.address?.city || "",
     state: userData?.address?.state || "",
-    zipCode: userData?.address?.zipCode || "",
+    pincode: userData?.address?.pincode || "",
   },
 });
 

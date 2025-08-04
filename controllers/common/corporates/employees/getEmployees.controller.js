@@ -614,7 +614,7 @@ const getCorrporateInfoByEmployeeId = async (req, res) => {
       select: "email phone companyName logo",
       populate: {
         path: "addresses",
-        select: "name street phoneNumber city state zipCode landmark", // Select fields from addresses
+        select: "name street phoneNumber city state pincode landmark", // Select fields from addresses
       },
     });
 
@@ -639,7 +639,7 @@ const getCorrporateInfoByEmployeeId = async (req, res) => {
                 phoneNumber: address?.phoneNumber || null,
                 city: address?.city || null,
                 state: address?.state || null,
-                zipCode: address?.zipCode || null,
+                pincode: address?.pincode || null,
                 landmark: address?.landmark || null,
               };
             })
