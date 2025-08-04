@@ -492,24 +492,25 @@ const register = async (req, res) => {
 };
 
 const registerIndividualUser = async (req, res) => {
-  const { phone, email, password, role, key, ...otherFields } = req.body;
+  const { phone, email, password, ...otherFields } = req.body;
+  const role = "IndividualUser"
 
-  if (!phone || !email || !role || !key) {
+  if (!phone || !email || !role) {
     return Response.error(
       res,
       400,
       AppConstant.FAILED,
-      "Please provide all required fields - phone, email, role, key !"
+      "Please provide all required fields - phone, email !"
     );
   }
-  if (key !== "3153218268346369" || role !== "IndividualUser") {
-    return Response.error(
-      res,
-      400,
-      AppConstant.FAILED,
-      "Invalid key or role provided !"
-    );
-  }
+  // if (key !== "3153218268346369" || role !== "IndividualUser") {
+  //   return Response.error(
+  //     res,
+  //     400,
+  //     AppConstant.FAILED,
+  //     "Invalid key or role provided !"
+  //   );
+  // }
   const encryptedPassword = CryptoJS.AES.encrypt(
     password || `${phone}@123`,
     process.env.AES_SEC
