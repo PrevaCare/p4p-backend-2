@@ -358,6 +358,8 @@ const healthTrackerController = {
         state: userAddress?.state?.trim() || "",
         city: userAddress?.city?.trim() || "",
         pincode: userAddress?.zipCode?.trim() || "",
+        addressName: userAddress?.name?.trim() || "",
+        street: userAddress?.street?.trim() || "",
         _id: patientId,
 
         // Add corporate details if available
