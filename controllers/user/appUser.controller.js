@@ -122,7 +122,7 @@ const getUserPlans = async (req, res) => {
 
 const updateUserDetails = async (req, res) => {
   try {
-  const { firstName, lastName, gender, age, weight, height, addressName, street, state, city, zipCode, jobProfile, isMarried } = req.body;
+  const { firstName, lastName, email, gender, age, weight, height, addressName, street, state, city, zipCode, jobProfile, isMarried } = req.body;
   const userId = req.user._id
   const UserModel = req.user.role === 'Employee' ? require('../../models/patient/employee/employee.model.js') : require('../../models/individualUser/induvidualUser.model.js');
 
@@ -130,6 +130,14 @@ const updateUserDetails = async (req, res) => {
 
   if (!user) {
     return res.status(404).json({ message: 'User not found!' });
+  }
+
+  if (email) {
+    const emailUser = await User.findOne({ email })
+
+    if (emailUser) {
+      return Response.error(res, 400, "Failure", 'User already exists with this email')
+    }
   }
 
   const files = req.files.profileImg
@@ -153,6 +161,7 @@ const updateUserDetails = async (req, res) => {
 
   // Update other user details if provided
   if (profileImgUrl) user.profileImg = profileImgUrl;
+  if (email) user.email = email;
   if (firstName) user.firstName = firstName;
   if (lastName) user.lastName = lastName;
   if (gender) user.gender = gender;
