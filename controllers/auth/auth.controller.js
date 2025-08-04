@@ -684,11 +684,12 @@ const appLogin = async (req, res) => {
     }
 
     const { phone } = req.body;
-    const existingUser = await User.findOne({ phone });
+    // const existingUser = await User.findOne({ phone });
 
-    if (!existingUser) {
-      return Response.error(res, 404, AppConstant.FAILED, "User not found!");
-    }
+    // if (!existingUser) {
+
+    //   return Response.error(res, 404, AppConstant.FAILED, "User not found!");
+    // }
 
     // create random 6-digit otp and sent using msg 91
     await otpModel.deleteMany({ phone });
@@ -697,90 +698,29 @@ const appLogin = async (req, res) => {
     await sendOtp(phone, otp);
     await newOtp.save();
 
-    const emr = await EMR.findOne({
-      user: existingUser?._id
-    })
+    // const emr = await EMR.findOne({
+    //   user: existingUser?._id
+    // })
 
-    const eprescriptions = await Eprescriptions.findOne({
-      user: new mongoose.Types.ObjectId(existingUser?._id),
-    })
+    // const eprescriptions = await Eprescriptions.findOne({
+    //   user: new mongoose.Types.ObjectId(existingUser?._id),
+    // })
 
-    const userEprescription = await UserExistingEprescription.findOne({
-      user: new mongoose.Types.ObjectId(existingUser?._id),
-    })
+    // const userEprescription = await UserExistingEprescription.findOne({
+    //   user: new mongoose.Types.ObjectId(existingUser?._id),
+    // })
 
-    if (!emr && (!eprescriptions || !userEprescription)) {
-      return Response.success(
-        res,
-        {
-          phone
-        },
-        206,
-        AppConstant.SUCCESS,
-        "Otp has been send to your phone !"
-      );
-    }
-
-    return Response.success(
-      res,
-      {
-        phone
-      },
-      200,
-      AppConstant.SUCCESS,
-      "Otp has been send to your phone !"
-    );
-  } catch (err) {
-    // console.log(err);
-    return Response.error(
-      res,
-      500,
-      AppConstant.FAILED,
-      err.message || "Internal server error !"
-    );
-  }
-};
-
-const appSignup = async (req, res) => {
-  try {
-    const { "x-api-key": apiKey } = req.headers;
-    const decodedBase64 = Buffer.from(apiKey, "base64")
-      .toString("utf-8")
-      .trim();
-    const appLoginSecretKey = process.env.APP_LOGIN_KEY;
-    // console.log("=" + decodedBase64 + "+");
-    // console.log("=" + appLoginSecretKey + "+");
-    if (decodedBase64 !== appLoginSecretKey) {
-      return Response.error(
-        res,
-        401,
-        AppConstant.FAILED,
-        "You are not authenticated !"
-      );
-    }
-
-    const { error } = appLoginSchema.validate(req.body);
-    if (error) {
-      return Response.error(
-        res,
-        400,
-        AppConstant.FAILED,
-        error.message || "validation failed"
-      );
-    }
-
-    const { phone } = req.body;
-    const existingUser = await User.findOne({ phone });
-
-    if (existingUser) {
-      return Response.error(res, 404, AppConstant.FAILED, "User already exist with this phone number!");
-    }
-
-    // create random 6-digit otp and sent using msg 91
-    const otp = generateOtp();
-    const newOtp = new otpModel({ phone, otp });
-    await sendOtp(phone, otp);
-    await newOtp.save();
+    // if (!emr && (!eprescriptions || !userEprescription)) {
+    //   return Response.success(
+    //     res,
+    //     {
+    //       phone
+    //     },
+    //     206,
+    //     AppConstant.SUCCESS,
+    //     "Otp has been send to your phone !"
+    //   );
+    // }
 
     return Response.success(
       res,
@@ -1122,7 +1062,6 @@ module.exports = {
   login,
   verifyOtpAndLogin,
   appLogin,
-  appSignup,
   logout,
   refreshAccessToken,
   forgotPassword,
