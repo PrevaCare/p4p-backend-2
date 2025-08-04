@@ -165,9 +165,11 @@ const updateUserDetails = async (req, res) => {
    // Save the updated user details
    const updatedUser = await user.save();
 
+   const { accessToken, refreshToken, password, ...rest} = updatedUser.toObject()
+
    return res.status(200).json({
      message: 'User details updated successfully!',
-     data: updatedUser,
+     data: rest,
    });
   } catch (err) {
     console.log({err})
