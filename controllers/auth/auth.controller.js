@@ -674,9 +674,9 @@ const appLogin = async (req, res) => {
     const { phone } = req.body;
     const existingUser = await User.findOne({ phone });
 
-    // if (!existingUser) {
-    //   return Response.error(res, 404, AppConstant.FAILED, "User not found!");
-    // }
+    if (!existingUser) {
+      return Response.error(res, 404, AppConstant.FAILED, "User not found!");
+    }
 
     // create random 6-digit otp and sent using msg 91
     await otpModel.deleteMany({ phone });
@@ -764,8 +764,8 @@ const verifyOtpAndLogin = async (req, res) => {
     if (existingUser) {
       const accessToken = generateToken(existingUser);
       const refreshToken = generateRefreshToken(existingUser);
-      existingUser.accessToken.push(accessToken);
-      existingUser.refreshToken.push(refreshToken);
+      existingUser.accessToken = [accessToken];
+      existingUser.refreshToken = [refreshToken];
       await existingUser.save();
 
       let responseData = {
