@@ -757,6 +757,14 @@ const verifyOtpAndLogin = async (req, res) => {
 
     if ((phone === "9899500873" || phone === "7455090168") && otp === "000000") {
       // continue this phone and otp for testing
+      const existingOtp = await otpModel.findOne({
+        $and: [{ phone }],
+      }).sort({createdAt: -1});
+
+      if (existingOtp) {
+        existingOtp.isVerified = true;
+        await existingOtp.save();
+      }
     } else {
       // compare otp if ok then delete from otp
       const existingOtp = await otpModel.findOne({
