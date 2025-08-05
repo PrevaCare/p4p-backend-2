@@ -507,14 +507,23 @@ const getLabPartnerPackages = async (req, res) => {
 
     if (packages?.length > 0) {
       packages = packages.map(p => {
+        const totalTest = p?.testIncluded?.length || 0
+        let totalParameters = 0
+        const testIncluded = p?.testIncluded?.map(test => {
+          const testParamCount = test?.parameters?.length || 0
+          totalParameters += testParamCount
+          return {
+            ...test,
+            totalParameters: testParamCount
+          }
+        })
         return {
           ...p,
           sampleRequiredCount: p?.sampleRequired?.length || 0,
           preparationRequiredCount: p?.preparationRequired?.length || 0,
-          testIncluded: p?.testIncluded?.map(test => ({
-            ...test,
-            totalParameters: test?.parameters?.length || 0
-          }))
+          testIncluded,
+          totalTest,
+          totalParameters
         }
       })
     }
@@ -842,16 +851,26 @@ const getLabPartnerPackageById = async (req, res) => {
       );
     }
 
+    const totalTest = packageData?.testIncluded?.length || 0
+    let totalParameters = 0
+    const testIncluded = packageData?.testIncluded?.map(test => {
+      const testParamCount = test?.parameters?.length || 0
+      totalParameters += testParamCount
+      return {
+        ...test,
+        totalParameters: testParamCount
+      }
+    })
+
     return Response.success(
       res,
       {
         ...packageData,
         sampleRequiredCount: packageData?.sampleRequired?.length || 0,
-          preparationRequiredCount: packageData?.preparationRequired?.length || 0,
-          testIncluded: packageData?.testIncluded?.map(test => ({
-            ...test,
-            totalParameters: test?.parameters?.length || 0
-          }))
+        preparationRequiredCount: packageData?.preparationRequired?.length || 0,
+        testIncluded,
+        totalTest,
+        totalParameters
       },
       200,
       "Lab partner package retrieved successfully"
