@@ -136,15 +136,13 @@ const getCategoryOfDoctor = async (req, res) => {
         }
       },
       {
-        $group: {
-          _id: null,
-          names: { $push: "$name" }
-        }
-      },
-      {
         $project: {
-          _id: 0,
-          names: 1
+          _id: 1,
+          name: 1,
+          image: 1,
+          description: 1,
+          createdAt: 1,
+          updatedAt: 1
         }
       }
     ]);
@@ -158,14 +156,12 @@ const getCategoryOfDoctor = async (req, res) => {
       );
     }
 
-    const categoryNames = categories[0]?.names || []
-
     return Response.success(
       res,
-      { categories: categoryNames },
+      { categories },
       200,
+      "Categories Found Successfully!",
       AppConstant.SUCCESS,
-      "Categories Found Successfully!"
     );
   } catch (err) {
     return Response.error(
