@@ -158,7 +158,7 @@ const getCategoryOfDoctor = async (req, res) => {
 
     return Response.success(
       res,
-      { categories },
+      categories,
       200,
       "Categories Found Successfully!",
       AppConstant.SUCCESS,
