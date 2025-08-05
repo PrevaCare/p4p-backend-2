@@ -777,8 +777,8 @@ const verifyOtpAndLogin = async (req, res) => {
     if (existingUser) {
       const accessToken = generateToken(existingUser);
       const refreshToken = generateRefreshToken(existingUser);
-      existingUser.accessToken = [accessToken];
-      existingUser.refreshToken = [refreshToken];
+      existingUser.accessToken.push(accessToken);
+      existingUser.refreshToken.push(refreshToken);
       await existingUser.save();
 
       let responseData = {
