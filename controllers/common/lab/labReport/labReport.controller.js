@@ -447,38 +447,46 @@ const getLabPartnerPackages = async (req, res) => {
                       cityName: { $ifNull: ["$$cityAvail.cityName", ""] },
                       state: { $ifNull: ["$$cityAvail.state", ""] },
                       pinCodes_excluded: { $ifNull: ["$$cityAvail.pinCodes_excluded", []] },
-                      prevaCarePriceForCorporate:
-                        "$$cityAvail.prevaCarePriceForCorporate",
-                      prevaCarePriceForIndividual:
-                        "$$cityAvail.prevaCarePriceForIndividual",
-                      homeCollectionCharge: "$$cityAvail.homeCollectionCharge",
+                      prevaCarePriceForCorporate: {
+                        $toString: "$$cityAvail.prevaCarePriceForCorporate",
+                      },
+                      prevaCarePriceForIndividual: {
+                        $toString: "$$cityAvail.prevaCarePriceForIndividual",
+                      },
+                      homeCollectionCharge: {
+                        $toString: "$$cityAvail.homeCollectionCharge"
+                      },
                       homeCollectionAvailable:
                         "$$cityAvail.homeCollectionAvailable",
                       isActive: "$$cityAvail.isActive",
-                      totalPrice: "$$cityAvail.billingRate",
+                      totalPrice: {
+                        $toString: "$$cityAvail.billingRate"
+                      },
                       discountPercentageForCorporate: {
                         $cond: [
                           { $gt: ["$$cityAvail.billingRate", 0] },
                           {
-                            $round: [
-                              {
-                                $multiply: [
-                                  {
-                                    $divide: [
-                                      {
-                                        $subtract: [
-                                          "$$cityAvail.billingRate",
-                                          "$$cityAvail.prevaCarePriceForCorporate",
-                                        ],
-                                      },
-                                      "$$cityAvail.billingRate",
-                                    ],
-                                  },
-                                  100,
-                                ],
-                              },
-                              2, // rounds to 2 decimal places
-                            ],
+                            $toString: {
+                              $round: [
+                                {
+                                  $multiply: [
+                                    {
+                                      $divide: [
+                                        {
+                                          $subtract: [
+                                            "$$cityAvail.billingRate",
+                                            "$$cityAvail.prevaCarePriceForCorporate",
+                                          ],
+                                        },
+                                        "$$cityAvail.billingRate",
+                                      ],
+                                    },
+                                    100,
+                                  ],
+                                },
+                                2, // rounds to 2 decimal places
+                              ],
+                            },
                           },
                           null,
                         ],
@@ -487,25 +495,27 @@ const getLabPartnerPackages = async (req, res) => {
                         $cond: [
                           { $gt: ["$$cityAvail.billingRate", 0] }, // prevent division by zero
                           {
-                            $round: [
-                              {
-                                $multiply: [
-                                  {
-                                    $divide: [
-                                      {
-                                        $subtract: [
-                                          "$$cityAvail.billingRate",
-                                          "$$cityAvail.prevaCarePriceForIndividual",
-                                        ],
-                                      },
-                                      "$$cityAvail.billingRate",
-                                    ],
-                                  },
-                                  100,
-                                ],
-                              },
-                              2, // rounds to 2 decimal places
-                            ],
+                            $toString: {
+                              $round: [
+                                {
+                                  $multiply: [
+                                    {
+                                      $divide: [
+                                        {
+                                          $subtract: [
+                                            "$$cityAvail.billingRate",
+                                            "$$cityAvail.prevaCarePriceForIndividual",
+                                          ],
+                                        },
+                                        "$$cityAvail.billingRate",
+                                      ],
+                                    },
+                                    100,
+                                  ],
+                                },
+                                2, // rounds to 2 decimal places
+                              ],
+                            }
                           },
                           null,
                         ],
@@ -850,14 +860,17 @@ const getLabPartnerPackageById = async (req, res) => {
             cityId: cityId || "",
             cityName: cityName || "",
             state: state || "",
+            homeCollectionCharge: city?.homeCollectionCharge?.toString(),
+            prevaCarePriceForCorporate: prevaCarePriceForCorporate?.toString(),
+            prevaCarePriceForIndividual: prevaCarePriceForIndividual?.toString(),
             pinCodes_excluded: pinCodes_excluded || [],
-            totalPrice: billingRate,
+            totalPrice: billingRate?.toString(),
             discountPercentageForCorporate:
               billingRate > 0
                 ? (
                     ((billingRate - prevaCarePriceForCorporate) / billingRate) *
                     100
-                  ).toFixed(2)
+                  ).toFixed(2)?.toString()
                 : null,
             discountPercentageForIndividual:
               billingRate > 0
@@ -865,7 +878,7 @@ const getLabPartnerPackageById = async (req, res) => {
                     ((billingRate - prevaCarePriceForIndividual) /
                       billingRate) *
                     100
-                  ).toFixed(2)
+                  ).toFixed(2)?.toString()
                 : null,
           };
         }
