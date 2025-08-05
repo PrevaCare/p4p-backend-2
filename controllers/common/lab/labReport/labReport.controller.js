@@ -134,45 +134,67 @@ const getLabPartners = async (req, res) => {
       { $match: searchQuery },
 
       {
+        $lookup: {
+          from: "labpackages", // the name of the labpackages collection
+          localField: "_id", // the field in 'lab' collection that links to 'labpackages'
+          foreignField: "labId", // the field in 'labpackages' that references the lab
+          as: "labPackages", // alias for the result of the lookup
+        },
+      },
+
+      {
         $addFields: {
-          availableCities: {
-            $filter: {
-              input: "$availableCities",
-              as: "city",
-              cond: {
-                $and: [
-                  { $eq: ["$$city.isActive", true] },
-
-                  city
-                    ? {
-                        $eq: [
-                          { $toLower: "$$city.cityName" },
-                          city.toLowerCase(),
-                        ],
-                      }
-                    : { $literal: true },
-
-                  state
-                    ? {
-                        $eq: [
-                          { $toLower: "$$city.state" },
-                          state.toLowerCase(),
-                        ],
-                      }
-                    : { $literal: true },
-
-                  pincode
-                    ? {
-                        $not: {
-                          $in: [
-                            pincode,
-                            {
-                              $ifNull: ["$$city.pinCodes_excluded", []],
-                            },
+          labPackages: {
+            $map: {
+              input: "$labPackages",
+              as: "package",
+              in: {
+                $mergeObjects: [
+                  "$$package", 
+                  {
+                    availableCities: {
+                      $filter: {
+                        input: "$$package.cityAvailability",
+                        as: "city",
+                        cond: {
+                          $and: [
+                            { $eq: ["$$city.isActive", true] },
+    
+                            city
+                              ? {
+                                  $eq: [
+                                    { $toLower: "$$city.cityName" },
+                                    city.toLowerCase(),
+                                  ],
+                                }
+                              : { $literal: true },
+    
+                            state
+                              ? {
+                                  $eq: [
+                                    { $toLower: "$$city.state" },
+                                    state.toLowerCase(),
+                                  ],
+                                }
+                              : { $literal: true },
+    
+                            pincode
+                              ? {
+                                  $not: {
+                                    $in: [
+                                      pincode,
+                                      {
+                                        $ifNull: ["$$city.pinCodes_excluded", []],
+                                      },
+                                    ],
+                                  },
+                                }
+                              : { $literal: true },
                           ],
                         },
-                      }
-                    : { $literal: true },
+                      },
+                    },
+                  },
                 ],
               },
             },
@@ -182,8 +204,8 @@ const getLabPartners = async (req, res) => {
 
       {
         $match: {
-          availableCities: { $ne: null },
-          $expr: { $gt: [{ $size: "$availableCities" }, 0] },
+          "labPackages": { $gte: [{ $size: "$labPackages" }, 1] }, // Ensure there's at least one labpackage
+          "labPackages.availableCities": { $ne: [] }, // Ensure there are valid availableCities
         },
       },
 
@@ -201,7 +223,6 @@ const getLabPartners = async (req, res) => {
                 labPersonName: 1,
                 contactNumber: 1,
                 address: 1,
-                availableCities: 1,
               },
             },
           ],
