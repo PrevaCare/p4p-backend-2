@@ -422,10 +422,10 @@ const getLabPartnerPackages = async (req, res) => {
                     input: "$cityAvailability",
                     as: "cityAvail",
                     in: {
-                      cityId: "$$cityAvail.cityId",
-                      cityName: "$$cityAvail.cityName",
-                      state: "$$cityAvail.state",
-                      pinCodes_excluded: "$$cityAvail.pinCodes_excluded",
+                      cityId: "$$cityAvail._id",
+                      cityName: { $ifNull: ["$$cityAvail.cityName", ""] },
+                      state: { $ifNull: ["$$cityAvail.state", ""] },
+                      pinCodes_excluded: { $ifNull: ["$$cityAvail.pinCodes_excluded", []] },
                       prevaCarePriceForCorporate:
                         "$$cityAvail.prevaCarePriceForCorporate",
                       prevaCarePriceForIndividual:
@@ -670,10 +670,10 @@ const getAllLabPartnerPackages = async (req, res) => {
                     input: "$cityAvailability",
                     as: "cityAvail",
                     in: {
-                      cityId: "$$cityAvail.cityId",
-                      cityName: "$$cityAvail.cityName",
-                      state: "$$cityAvail.state",
-                      pinCodes_excluded: "$$cityAvail.pinCodes_excluded",
+                      cityId: "$$cityAvail._id",
+                      cityName: { $ifNull: ["$$cityAvail.cityName", ""] },
+                      state: { $ifNull: ["$$cityAvail.state", ""] },
+                      pinCodes_excluded: { $ifNull: ["$$cityAvail.pinCodes_excluded", []] },
                       prevaCarePriceForCorporate:
                         "$$cityAvail.prevaCarePriceForCorporate",
                       prevaCarePriceForIndividual:
@@ -814,8 +814,13 @@ const getLabPartnerPackageById = async (req, res) => {
           const prevaCarePriceForIndividual =
             city.prevaCarePriceForIndividual || 0;
 
+          const { _id: cityId, cityName, state, pinCodes_excluded, ...rest} = city
           return {
-            ...city,
+            ...rest,
+            cityId: cityId || "",
+            cityName: cityName || "",
+            state: state || "",
+            pinCodes_excluded: pinCodes_excluded || [],
             totalPrice: billingRate,
             discountPercentageForCorporate:
               billingRate > 0
