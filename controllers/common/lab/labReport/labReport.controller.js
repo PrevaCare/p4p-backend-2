@@ -145,67 +145,106 @@ const getLabPartners = async (req, res) => {
       {
         $addFields: {
           labPackages: {
-            $map: {
-              input: "$labPackages",
-              as: "package",
-              in: {
-                $mergeObjects: [
-                  "$$package", 
-                  {
-                    availableCities: {
-                      $filter: {
-                        input: "$$package.cityAvailability",
-                        as: "city",
-                        cond: {
-                          $and: [
-                            { $eq: ["$$city.isActive", true] },
-    
-                            city
-                              ? {
-                                  $eq: [
-                                    { $toLower: "$$city.cityName" },
-                                    city.toLowerCase(),
-                                  ],
-                                }
-                              : { $literal: true },
-    
-                            state
-                              ? {
-                                  $eq: [
-                                    { $toLower: "$$city.state" },
-                                    state.toLowerCase(),
-                                  ],
-                                }
-                              : { $literal: true },
-    
-                            pincode
-                              ? {
-                                  $not: {
-                                    $in: [
-                                      pincode,
-                                      {
-                                        $ifNull: ["$$city.pinCodes_excluded", []],
+            $filter: {
+              input: {
+                $map: {
+                  input: "$labPackages",
+                  as: "package",
+                  in: {
+                    $mergeObjects: [
+                      "$$package", 
+                      {
+                        availableCities: {
+                          $filter: {
+                            input: "$$package.cityAvailability",
+                            as: "city",
+                            cond: {
+                              $and: [
+                                { $eq: ["$$city.isActive", true] },
+      
+                                city
+                                  ? {
+                                      $cond: {
+                                        if: {
+                                          $and: [
+                                            // First condition: check if city name matches (case-insensitive)
+                                            {
+                                              $eq: [
+                                                { $toLower: "$$city.cityName" },
+                                                city.toLowerCase(),
+                                              ],
+                                            },
+                                            // Second condition: check if city has regions and if the city is in the regions
+                                            {
+                                              $cond: {
+                                                if: {
+                                                  $gt: [
+                                                    { $size: { $ifNull: ["$$city.regions_included", []] } },
+                                                    0,
+                                                  ],
+                                                },
+                                                then: {
+                                                  $in: [
+                                                    { $toLower: city },
+                                                    {
+                                                      $map: {
+                                                        input: "$$city.regions_included",
+                                                        as: "region",
+                                                        in: { $toLower: "$$region" },
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                                else: true,
+                                              },
+                                            },
+                                          ],
+                                        },
+                                        then: true,
+                                        else: { $literal: true },
                                       },
-                                    ],
-                                  },
-                                }
-                              : { $literal: true },
-                          ],
+                                    }
+                                  : { $literal: true },
+      
+                                state
+                                  ? {
+                                      $eq: [
+                                        { $toLower: "$$city.state" },
+                                        state.toLowerCase(),
+                                      ],
+                                    }
+                                  : { $literal: true },
+      
+                                pincode
+                                  ? {
+                                      $not: {
+                                        $in: [
+                                          pincode,
+                                          {
+                                            $ifNull: ["$$city.pinCodes_excluded", []],
+                                          },
+                                        ],
+                                      },
+                                    }
+                                  : { $literal: true },
+                              ],
+                            },
+                          },
                         },
                       },
-                    },
+                    ],
                   },
-                ],
+                },
               },
+              cond: { $gt: [{ $size: "$$this.availableCities" }, 0] },
             },
           },
         },
       },
-
+      
       {
         $match: {
           "labPackages": { $gte: [{ $size: "$labPackages" }, 1] }, // Ensure there's at least one labpackage
-          "labPackages.availableCities": { $ne: [] }, // Ensure there are valid availableCities
         },
       },
 
@@ -223,6 +262,7 @@ const getLabPartners = async (req, res) => {
                 labPersonName: 1,
                 contactNumber: 1,
                 address: 1,
+                labPackages: 1
               },
             },
           ],
