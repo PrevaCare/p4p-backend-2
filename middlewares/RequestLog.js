@@ -3,7 +3,7 @@ const RequestLog = require('../models/common/request.log.model');
 const logRequest = async (req, res, next) => {
   try {
     const logData = {
-      userId: req.user._id || null,
+      userId: req.user?._id || null,
       appLatestVersion: req.headers['x-app-latest-version'] || 'Not Provided', // Header for latest app version
       appStableVersion: req.headers['x-app-stable-version'] || 'Not Provided', // Header for stable app version
       deviceType: req.headers['x-device-type'] || 'Unknown', // Header for device type
