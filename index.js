@@ -55,7 +55,7 @@ const app = express();
 dotenv.config();
 const port = process.env.PORT;
 
-app.set('trust proxy', true);
+// app.set('trust proxy', true);
 
 // Import performance monitoring middleware
 const apiPerformanceMonitor = require("./middlewares/performance/apiPerformanceMonitor");
