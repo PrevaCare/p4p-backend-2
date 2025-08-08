@@ -13,10 +13,41 @@ const GlobalPlan = require("../../models/plans/GlobalPlan.model");
 const CorporatePlan = require("../../models/corporates/corporatePlan.model");
 const EMR = require("../../models/common/emr.model");
 const Appointment = require("../../models/patient/patientAppointment/patientAppointment.model");
+const RequestLog = require("../../models/common/request.log.model");
 
 const getDashboardData = async (req, res) => {
   try {
     const activeUsers = await User.countDocuments();
+    const prevaAppAndroidUsers = await RequestLog.aggregate([
+      {
+        $match: {
+          deviceType: "android",
+        },
+      },
+      {
+        $group: {
+          _id: "$userId",  // Group by userId to count unique users
+        },
+      },
+      {
+        $count: "uniqueAndroidUsers",  // Count the number of unique users
+      },
+    ]);
+    const prevaAppIOSUsers = await RequestLog.aggregate([
+      {
+        $match: {
+          deviceType: "ios",
+        },
+      },
+      {
+        $group: {
+          _id: "$userId",  // Group by userId to count unique users
+        },
+      },
+      {
+        $count: "uniqueIOSUsers",  // Count the number of unique users
+      },
+    ]);
     const corporates = await Corporate.countDocuments();
     const doctors = await Doctor.countDocuments();
     const doctorCategories = await DoctorCategory.countDocuments();
@@ -44,6 +75,8 @@ const getDashboardData = async (req, res) => {
     }).select("appointmentDate consultationType");
     res.status(200).json({
       activeUsers,
+      prevaAppAndroidUsers: prevaAppAndroidUsers[0]?.uniqueAndroidUsers || 0,
+      prevaAppIOSUsers: prevaAppIOSUsers[0]?.uniqueIOSUsers || 0,
       corporates,
       doctors,
       activeCorporateUsers,
