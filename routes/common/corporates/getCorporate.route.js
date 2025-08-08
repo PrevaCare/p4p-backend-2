@@ -51,6 +51,7 @@ const {
 const {
   generateHealthAssessmentPDF,
 } = require("../../../controllers/common/corporates/employees/emr/generateHealthAssessmentPdf.controller.js");
+const { logRequest } = require("../../../middlewares/RequestLog");
 
 // Risk Assessment PDF Route
 router.post(
@@ -135,6 +136,7 @@ router.get(
 router.post(
   "/app/patient/latest-health-data",
   verifyToken,
+  logRequest,
   // checkPermissions("READ", "Employee"),
   healthTrackerController.getLatestHealthData
 );
