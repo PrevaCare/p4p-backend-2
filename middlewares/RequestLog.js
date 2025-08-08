@@ -6,7 +6,7 @@ const logRequest = async (req, res, next) => {
 
     const logData = {
       ip: userIP, // Capture the IP address
-      userId: req.user._id,
+      userId: req.user._id || null,
       appLatestVersion: req.headers['x-app-latest-version'] || 'Not Provided', // Header for latest app version
       appStableVersion: req.headers['x-app-stable-version'] || 'Not Provided', // Header for stable app version
       deviceType: req.headers['x-device-type'] || 'Unknown', // Header for device type
